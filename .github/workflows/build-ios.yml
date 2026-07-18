@@ -15,16 +15,12 @@ jobs:
 
       - run: npm install
       - run: npx cap sync ios
-- run: npm install
-      - run: npx cap sync ios
 
       - name: Install CocoaPods dependencies
         run: |
           cd ios/App
           pod install
 
-      - name: Build archive (unsigned)
-        run: |
       - name: Build archive (unsigned)
         run: |
           xcodebuild -workspace ios/App/App.xcworkspace \
