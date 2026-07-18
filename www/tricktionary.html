@@ -1,0 +1,32 @@
+<!doctype html>
+<!-- Legacy URL of the old app; redirects into the SPA with the
+     tricktionary panel open. Copied verbatim to dist/ by Vite. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AIGHT &mdash; Tricktionary</title>
+    <meta http-equiv="refresh" content="0; url=./?panel=tricktionary" />
+    <link rel="canonical" href="./?panel=tricktionary" />
+    <script>
+      location.replace("./?panel=tricktionary");
+    </script>
+    <style>
+      body {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        margin: 0;
+        background: #050505;
+        color: #eee;
+        font-family: system-ui, sans-serif;
+      }
+      a {
+        color: #e71a00;
+      }
+    </style>
+  </head>
+  <body>
+    <p>Moved &mdash; <a href="./?panel=tricktionary">open the Tricktionary</a>.</p>
+  </body>
+</html>
