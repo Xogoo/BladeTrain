@@ -1,0 +1,35 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - run: npm install
+      - run: npx cap sync ios
+
+      - name: Build archive (unsigned)
+        run: |
+          xcodebuild -workspace ios/App/App.xcworkspace \
+            -scheme App -configuration Release \
+            -archivePath build/App.xcarchive \
+            -sdk iphoneos CODE_SIGNING_ALLOWED=NO archive
+
+      - name: Package as IPA
+        run: |
+          mkdir Payload
+          cp -r build/App.xcarchive/Products/Applications/App.app Payload/
+          zip -r AIGHT.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AIGHT-ipa
+          path: AIGHT.ipa
