@@ -216,7 +216,8 @@ const openPanel = ref(requestedPanel ?? null);
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 /* intro: loading screen dissolves, the game fades and scales in */
@@ -316,6 +317,7 @@ const openPanel = ref(requestedPanel ?? null);
   align-items: center;
   gap: 10px;
   padding: calc(env(safe-area-inset-top) + 16px) 16px 6px;
+  flex-shrink: 0;
 }
 
 .app-header__logo-text {
@@ -332,11 +334,13 @@ const openPanel = ref(requestedPanel ?? null);
 
 .app-main {
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .app-nav {
-  position: sticky;
-  bottom: 0;
+  flex-shrink: 0;
   display: flex;
   justify-content: center;
   gap: 8px;

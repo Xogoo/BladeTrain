@@ -465,8 +465,12 @@ const grindList = [
 
 .backup-actions {
   display: flex;
+  flex-direction: column;
   gap: 10px;
   margin: 4px 0 8px;
+}
+.backup-actions .btn {
+  width: 100%;
 }
 .backup-actions__file-input {
   display: none;
