@@ -1,5 +1,6 @@
 import { computed, reactive, watch } from "vue";
 import { GRINDS, RARE_GRIND_NAME_PARTS } from "../game/trickData.js";
+import { FAMILIES } from "../game/families.js";
 
 const STORAGE_KEY = "aight-collection-v1";
 
@@ -62,6 +63,13 @@ export const BADGES = [
   { id: "days-365", name: "Year of the Grind", desc: "Réussis des tricks sur 365 jours différents" },
   { id: "hammer", name: "Hammer Time", desc: "Réussis un trick valant 10 points ou plus" },
   { id: "nukes", name: "Nukes", desc: "Réussis un trick valant 15 points ou plus" },
+  // One badge per family, generated automatically — never needs a
+  // manual entry when a new family is added to families.js.
+  ...FAMILIES.map((family) => ({
+    id: `family-${family.id}`,
+    name: family.badgeName || family.name,
+    desc: `Termine la famille "${family.name}"`,
+  })),
 ];
 
 const SOUL_PLATE_GRINDS = GRINDS.filter((g) => !g.isGroove && !g.isSoulGroove);
@@ -99,6 +107,10 @@ function defaultCollection() {
     // only lives in this device's localStorage otherwise, see
     // useBackup.js. null means "never backed up".
     lastBackupAt: null,
+    // Sequential family training progress. index = how many entries of
+    // the family have been landed so far (0 = not started, entries.length
+    // = complete). completedAt = ISO date once the family is finished.
+    familyProgress: {}, // { [familyId]: { index, completedAt } }
   };
 }
 
@@ -159,6 +171,48 @@ function hasVariation(pattern) {
   return Object.keys(collection.variationsLanded).some((name) =>
     pattern.test(name)
   );
+}
+
+function familyProgressEntry(familyId) {
+  if (!collection.familyProgress[familyId]) {
+    collection.familyProgress[familyId] = { index: 0, completedAt: null };
+  }
+  return collection.familyProgress[familyId];
+}
+
+/** Current step (0-based) within a family — 0 means not started yet. */
+function familyIndex(familyId) {
+  return collection.familyProgress[familyId]?.index || 0;
+}
+
+function isFamilyComplete(familyId) {
+  return Boolean(collection.familyProgress[familyId]?.completedAt);
+}
+
+/**
+ * Call once the family's current step has been landed. Advances the
+ * pointer; if that was the last entry, marks the family complete and
+ * awards its badge (once). Returns the badge object if newly earned
+ * this call, else null — same "newly earned" shape as recordLand, so
+ * the game screen's badge toast can handle both the same way.
+ */
+function advanceFamilyProgress(familyId, totalEntries) {
+  const entry = familyProgressEntry(familyId);
+  entry.index = Math.min(entry.index + 1, totalEntries);
+  if (entry.index >= totalEntries && !entry.completedAt) {
+    entry.completedAt = new Date().toISOString();
+    const badgeId = `family-${familyId}`;
+    if (!collection.badges[badgeId]) {
+      collection.badges[badgeId] = new Date().toISOString();
+      return BADGES.find((b) => b.id === badgeId) || null;
+    }
+  }
+  return null;
+}
+
+/** Restart a family from its first trick (keeps any badge already earned). */
+function resetFamilyProgress(familyId) {
+  collection.familyProgress[familyId] = { index: 0, completedAt: null };
 }
 
 /** Badge conditions, evaluated against the just-landed spin. */
@@ -487,6 +541,10 @@ export function useCollection() {
     grindProgressPercent,
     earnedBadges,
     hasBadge,
+    familyIndex,
+    isFamilyComplete,
+    advanceFamilyProgress,
+    resetFamilyProgress,
     grindLandedCount,
     startSession,
     endSession,

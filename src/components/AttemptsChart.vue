@@ -10,7 +10,6 @@ const props = defineProps({
   series: { type: Object, default: null },
 });
 
-const COLOR = "#ffffff"; // matches --red-hi
 
 const W = 320;
 const H = 160;
@@ -81,7 +80,7 @@ const trend = computed(() => {
       <polyline
         :points="points"
         fill="none"
-        :stroke="COLOR"
+        class="chart__line"
         stroke-width="2.5"
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -92,7 +91,7 @@ const trend = computed(() => {
         :cx="xFor(j)"
         :cy="yFor(pt)"
         r="3.5"
-        :fill="COLOR"
+        class="chart__dot"
       />
       <text :x="W / 2" :y="H - 6" class="chart__axis-label" text-anchor="middle">
         réussi la 1ère, 2ème, 3ème fois&hellip; &middot; plus haut = moins d'essais (mieux)
@@ -124,8 +123,17 @@ const trend = computed(() => {
   stroke: var(--line);
   stroke-width: 1;
 }
+
+.chart__line {
+  stroke: var(--red-hi);
+}
+
+.chart__dot {
+  fill: var(--red-hi);
+}
 .chart__axis-label {
-  font-size: 8px;
+  font-size: 9px;
+  font-weight: 600;
   fill: var(--text-dim);
   font-family: var(--font-body);
 }
@@ -136,7 +144,8 @@ const trend = computed(() => {
   padding: 20px 10px;
 }
 .chart__trend {
-  font-size: 12px;
+  font-size: 14px;
+  font-weight: 600;
   text-align: center;
   color: var(--text-dim);
 }

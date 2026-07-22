@@ -20,9 +20,7 @@ export const LEVELS = [
 // (Nuts + a second grind) — Chill/Juicy/Nuts as separate steps don't
 // add much once you're picking your own grinds anyway. Group mode
 // keeps the full LEVELS list above unchanged.
-export const SOLO_LEVELS = LEVELS.filter(
-  (level) => level.id === 4 || level.id === CUSTOM_LEVEL
-);
+export const SOLO_LEVELS = LEVELS.filter((level) => level.id === CUSTOM_LEVEL);
 
 export const REEL_SPEEDS = [
   { id: "verySlow", name: "Très lente", ms: 2300 },
@@ -193,7 +191,7 @@ function defaultSettings() {
     mode: "solo", // solo | group
     level: 1,
     players: ["Joueur 1", "Joueur 2"],
-    reelSpeed: "instant",
+    reelSpeed: "normal",
     introMusic: false,
     // Quick test toggle: swaps black/white via a CSS filter rather than
     // a real second palette — see .theme-inverted in base.css.
@@ -239,7 +237,6 @@ function loadSettings() {
       merged.mode = "solo";
     }
     merged.introMusic = false;
-    merged.reelSpeed = "instant";
     if (!merged.grinds || typeof merged.grinds !== "object") {
       merged.grinds = {};
     }

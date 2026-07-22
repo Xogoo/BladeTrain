@@ -1,7 +1,6 @@
 <script setup>
 import { computed, ref } from "vue";
 import AppIcon from "./AppIcon.vue";
-import CollectionPanel from "./CollectionPanel.vue";
 import {
   CUSTOM_LEVEL,
   LEVELS,
@@ -11,17 +10,46 @@ import {
   useSettings,
 } from "../composables/useSettings.js";
 import { useGame } from "../composables/useGame.js";
-import { BADGES, useCollection } from "../composables/useCollection.js";
+import { useCollection } from "../composables/useCollection.js";
+import { FAMILIES } from "../game/families.js";
 import { useSpeech } from "../composables/useSpeech.js";
 import { useBackup } from "../composables/useBackup.js";
 
 const emit = defineEmits(["open-settings"]);
 
 const { settings, applyLevel } = useSettings();
-const { startGame } = useGame();
-const { uniqueTrickCount, landedGrindCount, totalGrinds, earnedBadges } =
-  useCollection();
+const { startGame, startFamilySession } = useGame();
+const { familyIndex, isFamilyComplete } = useCollection();
 const { needsBackupReminder, exportBackup } = useBackup();
+
+// Solo has two real choices now: a free Custom session, or training one
+// specific family (picked below). Not tied to settings.level — Custom
+// already covers that; this just decides what "Démarrer la session" does.
+const soloSection = ref("custom"); // 'custom' | 'family'
+const selectedFamilyId = ref(FAMILIES[0]?.id ?? null);
+const selectedFamily = computed(
+  () => FAMILIES.find((f) => f.id === selectedFamilyId.value) || null
+);
+const selectedFamilyStep = computed(() =>
+  selectedFamily.value ? familyIndex(selectedFamily.value.id) : 0
+);
+const selectedFamilyDone = computed(() =>
+  selectedFamily.value ? isFamilyComplete(selectedFamily.value.id) : false
+);
+
+function chooseSoloSection(section) {
+  soloSection.value = section;
+}
+
+function startSoloSession() {
+  if (soloSection.value === "family" && selectedFamily.value) {
+    startFamilySession(selectedFamily.value.id, settings, {
+      restart: selectedFamilyDone.value,
+    });
+  } else {
+    startGame(settings);
+  }
+}
 
 const MODES = [
   {
@@ -37,7 +65,6 @@ const MODES = [
 ];
 
 const step = ref("mode"); // 'mode' | 'setup'
-const showCollection = ref(false);
 
 const presetTitle = computed(() =>
   settings.mode === "solo" ? "Mode" : "Difficulté"
@@ -86,9 +113,6 @@ function removePlayer(index) {
       <img class="start__logo-mark" src="/img/blade-skater-silhouette.png" alt="" aria-hidden="true" />
       <h1 class="start__logo-text sticker-text">BLADE</h1>
     </div>
-    <p class="start__tagline">
-      Lance la machine à sous &middot; réussis le trick &middot; empile les points
-    </p>
 
     <div class="start__modes">
       <button
@@ -98,7 +122,6 @@ function removePlayer(index) {
         @click="chooseMode(mode.id)"
       >
         <span class="mode-card__name">{{ mode.name }}</span>
-        <span class="mode-card__tagline">{{ mode.tagline }}</span>
         <span class="mode-card__go"><AppIcon name="play" :size="16" /></span>
       </button>
     </div>
@@ -123,38 +146,66 @@ function removePlayer(index) {
     <div class="setup__section">
       <span class="setup__label">{{ presetTitle }}</span>
       <div class="pills">
-        <button
-          v-for="level in presetLevels"
-          :key="level.id"
-          class="pill"
-          :class="{ 'pill--active': settings.level === level.id }"
-          :title="level.tagline"
-          @click="selectLevel(level.id)"
-        >
-          {{ level.name }}
-        </button>
+        <template v-if="settings.mode === 'solo'">
+          <button
+            class="pill"
+            :class="{ 'pill--active': soloSection === 'custom' }"
+            @click="chooseSoloSection('custom')"
+          >
+            Custom
+          </button>
+          <button
+            class="pill"
+            :class="{ 'pill--active': soloSection === 'family' }"
+            @click="chooseSoloSection('family')"
+          >
+            Famille de tricks
+          </button>
+        </template>
+        <template v-else>
+          <button
+            v-for="level in presetLevels"
+            :key="level.id"
+            class="pill"
+            :class="{ 'pill--active': settings.level === level.id }"
+            :title="level.tagline"
+            @click="selectLevel(level.id)"
+          >
+            {{ level.name }}
+          </button>
+        </template>
+      </div>
+      <p v-if="settings.mode !== 'solo'" class="setup__hint">
+        {{ presetLevels.find((l) => l.id === settings.level)?.tagline }}
+      </p>
+      <p v-else-if="soloSection === 'custom'" class="setup__hint">Tes propres règles</p>
+    </div>
+
+    <div v-if="settings.mode === 'solo' && soloSection === 'family'" class="setup__section">
+      <span class="setup__label">Choisis une famille</span>
+      <div class="family-picker">
+        <select class="select" v-model="selectedFamilyId">
+          <option v-for="family in FAMILIES" :key="family.id" :value="family.id">
+            {{ family.name }}
+          </option>
+        </select>
+        <span v-if="selectedFamily" class="family-picker__progress">
+          <template v-if="selectedFamilyDone">Terminée ✓</template>
+          <template v-else>{{ selectedFamilyStep }}/{{ selectedFamily.entries.length }}</template>
+        </span>
       </div>
       <p class="setup__hint">
-        {{ presetLevels.find((l) => l.id === settings.level)?.tagline }}
+        Un trick précis à la fois, dans l'ordre — il faut le réussir pour
+        passer au suivant.
       </p>
     </div>
 
-    <div v-if="settings.mode === 'solo'" class="setup__section">
-      <button class="collection-strip panel" @click="showCollection = true">
-        <AppIcon name="trophy" :size="16" />
-        <span>
-          {{ uniqueTrickCount }} tricks &middot; {{ landedGrindCount }}/{{
-            totalGrinds
-          }}
-          grinds &middot; {{ earnedBadges.length }}/{{ BADGES.length }} badges
-        </span>
-        <span class="collection-strip__arrow">&rsaquo;</span>
-      </button>
-      <p class="setup__hint">
-        Pas de fin de partie — tourne aussi longtemps que tu veux. Les roues
-        favorisent les tricks que tu n'as pas encore réussis.
-      </p>
-    </div>
+    <p v-if="settings.mode === 'solo'" class="setup__hint setup__hint--standalone">
+      Pas de fin de partie — tourne aussi longtemps que tu veux.
+      <template v-if="soloSection === 'custom'">
+        Les roues favorisent les tricks que tu n'as pas encore réussis.
+      </template>
+    </p>
 
     <template v-else>
       <div class="setup__section">
@@ -200,12 +251,10 @@ function removePlayer(index) {
       </div>
     </template>
 
-    <button class="btn btn--go setup__go" @click="startGame(settings)">
+    <button class="btn btn--go setup__go" @click="settings.mode === 'solo' ? startSoloSession() : startGame(settings)">
       <AppIcon name="play" :size="20" />
       {{ settings.mode === "solo" ? "Démarrer la session" : "Démarrer la partie" }}
     </button>
-
-    <CollectionPanel v-if="showCollection" @close="showCollection = false" />
   </section>
 </template>
 
@@ -245,11 +294,6 @@ function removePlayer(index) {
   letter-spacing: 0.06em;
   line-height: 1;
   filter: drop-shadow(0 8px 34px rgba(var(--fg-rgb), 0.35));
-}
-
-.start__tagline {
-  color: var(--text-dim);
-  font-size: 17px;
 }
 
 .start__modes {
@@ -299,11 +343,6 @@ function removePlayer(index) {
 .mode-card:hover .mode-card__name {
   color: var(--red);
   text-shadow: var(--glow-red);
-}
-
-.mode-card__tagline {
-  font-size: 15px;
-  color: var(--text-dim);
 }
 
 .mode-card__go {
@@ -393,26 +432,42 @@ function removePlayer(index) {
   color: var(--text-dim);
 }
 
-.collection-strip {
+.family-picker {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 13px 16px;
+}
+
+.family-picker .select {
+  flex: 1;
+  font-family: var(--font-body);
   font-size: 15px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg-1);
   color: var(--text);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.collection-strip:hover {
-  border-color: var(--red-hi);
-  box-shadow: var(--glow-red-hi);
+/* Native <option> elements don't always inherit the select's own
+   background/color on some mobile browsers, leaving unselected rows
+   looking transparent until hovered — set them explicitly. */
+.family-picker .select option {
+  background: var(--bg-1);
+  color: var(--text);
 }
 
-.collection-strip__arrow {
-  margin-left: auto;
-  font-size: 22px;
-  line-height: 1;
+.family-picker__progress {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 13px;
   color: var(--red-hi);
+  white-space: nowrap;
+}
+
+.setup__hint--standalone {
+  margin-top: -6px;
+  margin-bottom: 6px;
 }
 
 .players {

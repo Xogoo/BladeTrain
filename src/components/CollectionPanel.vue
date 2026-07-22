@@ -75,6 +75,7 @@ function startReview() {
   );
   emit("close");
 }
+
 </script>
 
 <template>
@@ -278,7 +279,12 @@ function startReview() {
   padding: 6px 10px;
   border-radius: 8px;
   border: 1px solid var(--line);
-  background: var(--panel);
+  background: var(--bg-1);
+  color: var(--text);
+}
+
+.review-controls .select option {
+  background: var(--bg-1);
   color: var(--text);
 }
 
@@ -375,7 +381,8 @@ function startReview() {
   align-items: center;
   gap: 7px;
   padding: 4px 0;
-  font-size: 15px;
+  font-size: 17px;
+  font-weight: 600;
   color: var(--text-dim);
 }
 

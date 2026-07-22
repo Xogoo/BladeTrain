@@ -48,7 +48,7 @@ export const APPROACHES = [
 export const SPINS_TO_SOUL = [
   { name: "None", weight: EASY, score: 0 },
   { name: "Outspin 180", weight: 1, score: 1 },
-  { name: "Inspin 180", weight: EASY, score: 1 },
+  { name: "Inspin 180", weight: 1, score: 1 },
   { name: "Inspin 360", weight: 1, score: 2 },
   { name: "Outspin 360", weight: 1, score: 2 },
   { name: "Inspin 540", weight: 1, score: 3 },
@@ -65,7 +65,7 @@ export const SPINS_TO_SOUL = [
 // like the forward pool's None, not a coin flip with every other degree.
 export const SPINS_TO_SOUL_FAKIE = [
   { name: "None", weight: EASY, score: 0 },
-  { name: "Inspin 180", weight: EASY, score: 1 },
+  { name: "Inspin 180", weight: 1, score: 1 },
   { name: "Outspin 180", weight: 1, score: 1 },
   { name: "Inspin 360", weight: 1, score: 2 },
   { name: "Outspin 360", weight: 1, score: 2 },
@@ -103,7 +103,7 @@ export const SPINS_TO_GROOVE_BS = [
 
 export const SPINS_OFF_SOUL = [
   { name: "None", weight: EASY, score: 0 },
-  { name: "Inspin 180", weight: MEDIUM, score: 1 },
+  { name: "Inspin 180", weight: 1, score: 1 },
   { name: "Outspin 180", weight: 1, score: 1 },
   { name: "Outspin 360", weight: 1, score: 2 },
   { name: "Inspin 360", weight: 1, score: 2 },

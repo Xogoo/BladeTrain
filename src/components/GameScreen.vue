@@ -5,6 +5,7 @@ import SlotReel from "./SlotReel.vue";
 import TrickExplainPanel from "./TrickExplainPanel.vue";
 import TrickListPanel from "./TrickListPanel.vue";
 import { LETTERS, useGame } from "../composables/useGame.js";
+import { useCollection } from "../composables/useCollection.js";
 import { useSettings } from "../composables/useSettings.js";
 import { useSpeech } from "../composables/useSpeech.js";
 
@@ -33,8 +34,10 @@ const {
   addTry,
   giveUp,
   onReelsSettled,
+  activeFamily,
 } = useGame();
 const { settings, reelSpeedMs } = useSettings();
+const { familyIndex } = useCollection();
 const { speakTrick, playKeys } = useSpeech();
 
 // Group: a game starts with the "fight!" call.
@@ -169,6 +172,12 @@ function onReelStopped() {
 
         <!-- solo: land or skip, build the collection -->
         <template v-if="isSolo">
+          <div v-if="activeFamily" class="result__family">
+            <AppIcon name="list" :size="14" />
+            {{ activeFamily.name }} — trick {{ familyIndex(activeFamily.id) + 1 }}/{{
+              activeFamily.entries.length
+            }}
+          </div>
           <div class="result__score">
             <AppIcon name="zap" :size="18" />
             {{ state.spin.score }} point{{ state.spin.score === 1 ? "" : "s" }}
@@ -361,6 +370,19 @@ function onReelStopped() {
   transform: scale(1.15);
 }
 
+.result__family {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--red-hi);
+  margin-bottom: 8px;
+}
+
 .result__score {
   display: inline-flex;
   align-items: center;
@@ -381,7 +403,8 @@ function onReelStopped() {
 }
 
 .result__tries-label {
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: 600;
   color: var(--text-dim);
 }
 

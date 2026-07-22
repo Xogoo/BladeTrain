@@ -84,7 +84,8 @@ watch(
 
 .scoreboard__caption {
   font-family: var(--font-display);
-  font-size: 10px;
+  font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-dim);

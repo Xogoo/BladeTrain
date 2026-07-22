@@ -6,6 +6,7 @@ import {
   LEVELS,
   SOLO_LEVELS,
   CUSTOM_LEVEL,
+  REEL_SPEEDS,
   useSettings,
 } from "../composables/useSettings.js";
 import { useBackup } from "../composables/useBackup.js";
@@ -181,11 +182,20 @@ const grindList = [
     </button>
 
     <label class="option option--inline theme-toggle">
-      <span>Thème inversé (test)</span>
+      <span>Thème inversé</span>
       <span class="switch">
         <input type="checkbox" v-model="settings.invertedTheme" />
         <span class="track" />
       </span>
+    </label>
+
+    <label class="option option--inline">
+      <span>Vitesse des roues</span>
+      <select class="select" v-model="settings.reelSpeed">
+        <option v-for="speed in REEL_SPEEDS" :key="speed.id" :value="speed.id">
+          {{ speed.name }}
+        </option>
+      </select>
     </label>
 
     <h3 class="section-title">Sauvegarde</h3>
@@ -402,7 +412,8 @@ const grindList = [
   gap: 12px;
   padding: 7px 0;
   cursor: pointer;
-  font-size: 17px;
+  font-size: 19px;
+  font-weight: 600;
 }
 
 .option--inline {

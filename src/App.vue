@@ -32,7 +32,6 @@ watch(
 const {
   speechState,
   preloadSpeech,
-  toggleMute,
   stopSpeech,
   startMusic,
   fadeOutMusic,
@@ -148,16 +147,6 @@ const openPanel = ref(requestedPanel ?? null);
     @after-enter="unlockScroll"
   >
   <div v-if="showApp" class="app-shell">
-  <button
-    class="mute-btn"
-    :class="{ 'mute-btn--muted': speechState.muted }"
-    :aria-label="speechState.muted ? 'Réactiver le son' : 'Couper le son'"
-    :title="speechState.muted ? 'Réactiver le son' : 'Couper le son'"
-    @click="toggleMute()"
-  >
-    <AppIcon :name="speechState.muted ? 'sound-off' : 'sound'" :size="19" />
-  </button>
-
   <header v-if="state.screen !== 'start'" class="app-header">
     <button class="app-header__logo" aria-label="Accueil" @click="goToStart()">
       <span class="app-header__logo-text">BLADE</span>
@@ -283,35 +272,6 @@ const openPanel = ref(requestedPanel ?? null);
   }
 }
 
-.mute-btn {
-  position: fixed;
-  top: 12px;
-  right: 12px;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  border: 1px solid var(--line);
-  background: var(--panel);
-  backdrop-filter: blur(8px);
-  color: var(--text-dim);
-  transition: color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.mute-btn:hover {
-  color: var(--red-hi);
-  border-color: var(--red-hi);
-  box-shadow: var(--glow-red-hi);
-}
-
-.mute-btn--muted {
-  color: var(--red);
-  border-color: rgba(var(--fg-rgb), 0.6);
-}
-
 .app-loading {
   position: fixed;
   inset: 0;
@@ -355,7 +315,7 @@ const openPanel = ref(requestedPanel ?? null);
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  padding: 16px 16px 6px;
+  padding: calc(env(safe-area-inset-top) + 16px) 16px 6px;
 }
 
 .app-header__logo-text {
@@ -381,7 +341,7 @@ const openPanel = ref(requestedPanel ?? null);
   justify-content: center;
   gap: 8px;
   padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.92) 35%);
+  background: linear-gradient(180deg, transparent, rgba(var(--bg-0-rgb), 0.92) 35%);
   flex-wrap: wrap;
 }
 

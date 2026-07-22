@@ -211,12 +211,14 @@ const selectedSeries = computed(
 }
 .session-card__date {
   font-family: var(--font-display);
-  font-size: 13px;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--text);
 }
 .session-card__stats {
   margin-left: auto;
-  font-size: 13px;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--text-dim);
 }
 .session-card__chevron {

@@ -20,7 +20,8 @@ export function generateSpin(
   grindBias = null,
   grindToggles = null,
   switchUpGrindToggles = null,
-  lockedPairs = null
+  lockedPairs = null,
+  forcedTrick = null
 ) {
   const grindPool = grindCandidates(settings, usedGrinds, grindBias, grindToggles);
 
@@ -30,9 +31,18 @@ export function generateSpin(
   // degrees, switch up) still follows the current settings as normal —
   // the pool above is only used for the reel's visual spin, the winner
   // is forced.
+  //
+  // "Family training" (forcedTrick) goes one step further: grind,
+  // variation AND approach are all pinned to one exact trick — the
+  // current step in an ordered family — regardless of lockedPairs or
+  // the player's own Approach settings. Only used one entry at a time,
+  // never picked randomly among a list.
   let grind;
   let lockedVariationName = null;
-  if (lockedPairs && lockedPairs.length > 0) {
+  if (forcedTrick) {
+    grind = GRINDS.find((g) => g.name === forcedTrick.grindName) || pickWeighted(grindPool);
+    lockedVariationName = forcedTrick.variationName ?? "None";
+  } else if (lockedPairs && lockedPairs.length > 0) {
     const pair = lockedPairs[Math.floor(Math.random() * lockedPairs.length)];
     grind = GRINDS.find((g) => g.name === pair.grindName) || pickWeighted(grindPool);
     lockedVariationName = pair.variationName;
@@ -86,7 +96,11 @@ export function generateSpin(
   }
 
   const approachPool = approachCandidates(grind, settings);
-  const approach = hasApproachReel(settings) ? pickWeighted(approachPool) : null;
+  const approach = forcedTrick
+    ? APPROACHES.find((a) => a.name === forcedTrick.approach) || pickWeighted(approachPool)
+    : hasApproachReel(settings)
+    ? pickWeighted(approachPool)
+    : null;
 
   const spinToPool = spinToCandidates(grind, approach, settings);
   const spinTo = pickWeighted(spinToPool);
@@ -368,7 +382,7 @@ function switchSpinCandidates(grind, switchUpGrind, settings) {
   let pool = sameType
     ? [
         { name: "None", weight: 4, score: 0 },
-        { name: "Inspin 180", weight: 4, score: 1 },
+        { name: "Inspin 180", weight: 1, score: 1 },
         { name: "Outspin 180", weight: 1, score: 1 },
         { name: "Inspin 360", weight: 1, score: 2 },
         { name: "Outspin 360", weight: 1, score: 2 },
@@ -390,7 +404,7 @@ function switchSpinCandidates(grind, switchUpGrind, settings) {
     pool = sameType
       ? [
           { name: "None", weight: 4, score: 0 },
-          { name: "Inspin 180", weight: 4, score: 1 },
+          { name: "Inspin 180", weight: 1, score: 1 },
           { name: "Outspin 180", weight: 1, score: 1 },
           { name: "Inspin 360", weight: 1, score: 2 },
           { name: "Outspin 360", weight: 1, score: 2 },
