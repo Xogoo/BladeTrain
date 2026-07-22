@@ -1,0 +1,391 @@
+/* BLADE design system — black & white arcade theme.
+   Variables keep their --red-* names (dozens of components reference
+   them) but now hold white/grey values instead of red. */
+
+:root {
+  --bg-0: #050505;
+  --bg-1: #101010;
+  --bg-2: #1a1a1a;
+  --panel: rgba(var(--fg-rgb), 0.045);
+  --panel-strong: rgba(var(--fg-rgb), 0.08);
+  --line: rgba(var(--fg-rgb), 0.1);
+  --line-strong: rgba(var(--fg-rgb), 0.22);
+
+  --text: #f5f3f2;
+  --text-dim: #a6a09d;
+
+  --red: #d9d9d9;
+  --red-hi: #ffffff;
+  --red-deep: #a8a8a8;
+
+  /* Raw RGB triplet (no alpha) behind every glow/highlight/border
+     overlay in the app — rgba(var(--fg-rgb), X). Swapping this one
+     value in the light theme below flips every one of those overlays
+     from white-tinted to black-tinted in one place, instead of hunting
+     down dozens of hardcoded rgba(var(--fg-rgb), ...) individually. */
+  --fg-rgb: 255, 255, 255;
+  /* Text color on the bright CTA gradient (.btn--primary/.btn--go) —
+     needs to stay readable whichever way --red-hi/--red are pointing. */
+  --cta-text: #111111;
+  /* .sticker-text fill + outline (the chunky "BLADE"-style lettering). */
+  --sticker-fill: #ffffff;
+  --sticker-outline: #000000;
+  /* Base color of the toggle-switch knob (off state). */
+  --knob-fill: #ffffff;
+
+  --glow-red: 0 0 12px rgba(var(--fg-rgb), 0.4), 0 0 36px rgba(var(--fg-rgb), 0.16);
+  --glow-red-hi: 0 0 12px rgba(var(--fg-rgb), 0.55), 0 0 36px rgba(var(--fg-rgb), 0.25);
+  --glow-white: 0 0 10px rgba(var(--fg-rgb), 0.4), 0 0 30px rgba(var(--fg-rgb), 0.15);
+
+  --font-display: "Orbitron", "Avenir Next", sans-serif;
+  --font-body: "Rajdhani", "Avenir Next", sans-serif;
+
+  --radius: 14px;
+  --reel-item-h: 58px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: 18px;
+  color: var(--text);
+  background:
+    radial-gradient(1000px 480px at 50% -12%, rgba(var(--fg-rgb), 0.06), transparent 60%),
+    radial-gradient(760px 700px at 50% 115%, rgba(var(--fg-rgb), 0.035), transparent 60%),
+    linear-gradient(180deg, var(--bg-1), var(--bg-0) 55%);
+  background-attachment: fixed;
+  min-height: 100dvh;
+}
+
+/* faint arcade grid overlay */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, rgba(var(--fg-rgb), 0.025) 0 1px, transparent 1px 44px),
+    repeating-linear-gradient(90deg, rgba(var(--fg-rgb), 0.02) 0 1px, transparent 1px 44px);
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.25));
+  z-index: 0;
+}
+
+#app {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: var(--red-hi);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* the browser's blue focus ring clashes with the theme; keep a red one
+   for keyboard navigation only */
+button:focus {
+  outline: none;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--red-hi);
+  outline-offset: 2px;
+}
+
+/* ---------- shared building blocks ---------- */
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  backdrop-filter: blur(10px);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 12px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--panel-strong);
+  color: var(--text);
+  transition: transform 0.12s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--red-hi);
+  box-shadow: var(--glow-red-hi);
+}
+
+.btn:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.btn--primary {
+  border-color: rgba(var(--fg-rgb), 0.65);
+  color: var(--cta-text);
+  background: linear-gradient(135deg, var(--red-hi), var(--red));
+  box-shadow: var(--glow-red);
+}
+
+.btn--primary:hover {
+  border-color: #fff;
+}
+
+.btn--go {
+  border-color: rgba(var(--fg-rgb), 0.65);
+  color: var(--cta-text);
+  background: linear-gradient(135deg, var(--red-hi), var(--red) 60%, var(--red-deep));
+  box-shadow: var(--glow-red);
+  animation: go-pulse 2s ease-in-out infinite;
+}
+
+.btn--go:hover {
+  border-color: #fff;
+  box-shadow: 0 0 18px rgba(var(--fg-rgb), 0.55), 0 0 52px rgba(var(--fg-rgb), 0.25);
+}
+
+@keyframes go-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 10px rgba(var(--fg-rgb), 0.35), 0 0 30px rgba(var(--fg-rgb), 0.14);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(var(--fg-rgb), 0.7), 0 0 52px rgba(var(--fg-rgb), 0.32);
+  }
+}
+
+.btn--ghost {
+  background: transparent;
+}
+
+.btn--icon {
+  padding: 10px 14px;
+}
+
+/* toggle switch */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 46px;
+  height: 26px;
+  flex: none;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch .track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(var(--fg-rgb), 0.12);
+  border: 1px solid var(--line);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.switch .track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--knob-fill);
+  box-shadow: 0 0 6px rgba(var(--fg-rgb), 0.5);
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.switch input:checked + .track {
+  background: rgba(var(--fg-rgb), 0.55);
+  box-shadow: inset 0 0 10px rgba(var(--fg-rgb), 0.5), 0 0 8px rgba(var(--fg-rgb), 0.3);
+}
+
+.switch input:checked + .track::after {
+  transform: translateX(20px);
+  background: var(--red-hi);
+  box-shadow: 0 0 10px rgba(var(--fg-rgb), 0.8);
+}
+
+/* form controls */
+.select,
+.number-input {
+  font-family: var(--font-body);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--bg-2);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  padding: 9px 12px;
+}
+
+.select:focus,
+.number-input:focus {
+  outline: none;
+  border-color: var(--red-hi);
+  box-shadow: var(--glow-red-hi);
+}
+
+/* data tables (tricktionary, trick list) */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 16px;
+}
+
+.data-table th {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.data-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.data-table .thumb {
+  width: 84px;
+  height: 84px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid var(--line-strong);
+}
+
+/* ---------- shared animations ---------- */
+
+@keyframes pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* white sticker lettering with a dark outline — inverted from the old
+   red-fill/white-outline look, keeps the punchy sticker effect legible
+   against the dark background */
+.sticker-text {
+  color: var(--sticker-fill);
+  text-shadow:
+    -1px -1px 0 var(--sticker-outline),
+    1px -1px 0 var(--sticker-outline),
+    -1px 1px 0 var(--sticker-outline),
+    1px 1px 0 var(--sticker-outline),
+    0 0 24px rgba(var(--fg-rgb), 0.35);
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rise-in {
+  animation: rise-in 0.35s ease both;
+}
+
+/* Real light-theme palette (not a CSS filter) — every token below is
+   what actually gets consumed throughout the app via var(...), so this
+   is the single place a "theme" lives. */
+body.theme-inverted {
+  --bg-0: #fafafa;
+  --bg-1: #f0f0f0;
+  --bg-2: #e2e2e2;
+  --panel: rgba(0, 0, 0, 0.045);
+  --panel-strong: rgba(0, 0, 0, 0.08);
+  --line: rgba(0, 0, 0, 0.1);
+  --line-strong: rgba(0, 0, 0, 0.22);
+
+  --text: #14110f;
+  --text-dim: #5c5652;
+
+  --red: #262626;
+  --red-hi: #000000;
+  --red-deep: #575757;
+
+  --fg-rgb: 0, 0, 0;
+  --cta-text: #ffffff;
+  --sticker-fill: #000000;
+  --sticker-outline: #ffffff;
+  --knob-fill: #000000;
+}
+
+/* The confetti/stamp is a fixed white SVG asset, not a CSS color — it
+   needs its own targeted invert in the light theme, or it vanishes
+   against the now-light background. Scoped to just this image, so it
+   doesn't hit the backdrop-filter compositing bug a page-wide invert
+   caused. */
+body.theme-inverted .gameover__stamp,
+body.theme-inverted .logo-rain img,
+body.theme-inverted .start__logo-mark,
+body.theme-inverted .app-loading__logo-mark {
+  filter: invert(1);
+}
