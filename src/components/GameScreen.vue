@@ -138,25 +138,6 @@ function onReelStopped() {
       </div>
     </div>
 
-    <div class="machine panel">
-      <div class="machine__lights" aria-hidden="true">
-        <span v-for="i in 14" :key="i" :style="{ '--i': i }" />
-      </div>
-
-      <div class="machine__reels">
-        <SlotReel
-          v-for="(reel, index) in visibleReels"
-          :key="reel.name"
-          :label="reel.label"
-          :pool="reel.pool"
-          :winner="reel.winner"
-          :spin-id="state.spinId"
-          :duration="reelSpeedMs() + index * staggerFor(reelSpeedMs())"
-          @stopped="onReelStopped"
-        />
-      </div>
-    </div>
-
     <transition name="result">
       <div v-if="isResult" class="result">
         <div class="result__name sticker-text">
@@ -257,6 +238,25 @@ function onReelStopped() {
         </template>
       </div>
     </transition>
+
+    <div class="machine panel">
+      <div class="machine__lights" aria-hidden="true">
+        <span v-for="i in 14" :key="i" :style="{ '--i': i }" />
+      </div>
+
+      <div class="machine__reels">
+        <SlotReel
+          v-for="(reel, index) in visibleReels"
+          :key="reel.name"
+          :label="reel.label"
+          :pool="reel.pool"
+          :winner="reel.winner"
+          :spin-id="state.spinId"
+          :duration="reelSpeedMs() + index * staggerFor(reelSpeedMs())"
+          @stopped="onReelStopped"
+        />
+      </div>
+    </div>
 
     <TrickExplainPanel
       v-if="openPanel === 'explain'"
