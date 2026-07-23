@@ -319,6 +319,42 @@ button:focus-visible {
   border: 1px solid var(--line-strong);
 }
 
+/* On narrow screens, a 3-column table (term / thumbnail / comment) no
+   longer fits without horizontal scrolling. Only tables that actually
+   contain a thumbnail (the tricktionary's grind/synonym/variation
+   lists) get restacked into full-width "cards" — tables without images
+   (trick list, game over standings, ...) stay as compact rows, since
+   those already fit fine. */
+@media (max-width: 560px) {
+  .data-table:has(.thumb),
+  .data-table:has(.thumb) tbody,
+  .data-table:has(.thumb) tr,
+  .data-table:has(.thumb) td {
+    display: block;
+    width: 100%;
+  }
+
+  .data-table:has(.thumb) tr {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .data-table:has(.thumb) td {
+    padding: 3px 0;
+    border-bottom: none;
+  }
+
+  .data-table:has(.thumb) .term {
+    margin-bottom: 4px;
+  }
+
+  .data-table:has(.thumb) .thumb {
+    width: 68px;
+    height: 68px;
+    margin: 2px 0 6px;
+  }
+}
+
 /* ---------- shared animations ---------- */
 
 @keyframes pop {
