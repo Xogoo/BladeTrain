@@ -135,14 +135,14 @@ const LEVEL_PRESETS = {
 // everything.
 const LEVEL_EXCLUDED_GRINDS = {
   1: [...RARE_GRIND_NAME_PARTS, "Pudslide", "Fastslide"],
-  2: ["Closed Book", "Open Book", "Citric Acid", "Darkslide", "Sidewalk"],
+  2: ["Darkslide"],
   3: [],
   4: [],
 };
 
 // "Soul tricks only" keeps just the common soul grinds — the oldschool/
-// rare ones (Citric Acid, Hot Dog, Sidewalk, Training Wheel, Closed
-// Book, Open Book) are pure soul too but deliberately left out here.
+// rare ones (Darkslide, Tabernacle, Byn Soul, ...) are pure soul too
+// but deliberately left out here.
 const SOUL_ONLY_NAMES = [
   "Acid",
   "Makio",
@@ -361,8 +361,8 @@ export function useSettings() {
   };
 
   // "Soul only" / "Groove only" pick the pure family and switch
-  // everything else off — hybrids (Tabernacle, Darkslide, Wheelbarrow,
-  // Byn Soul: isSoulGroove) are excluded from both.
+  // everything else off — hybrids (Tabernacle, Darkslide, Byn Soul:
+  // isSoulGroove) are excluded from both.
   const setGrindsByType = (type) => {
     for (const grind of GRINDS) {
       settings.grinds[grind.name] =

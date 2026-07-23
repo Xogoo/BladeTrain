@@ -103,7 +103,12 @@ export function generateSpin(
     : null;
 
   const spinToPool = spinToCandidates(grind, approach, settings);
-  const spinTo = pickWeighted(spinToPool);
+  const spinTo =
+    forcedTrick && forcedTrick.spinToName
+      ? baseSpinToPool(grind, approach ? approach.isFakie : false).find(
+          (s) => s.name === forcedTrick.spinToName
+        ) || pickWeighted(spinToPool)
+      : pickWeighted(spinToPool);
 
   const spinOffPool = spinOffCandidates(grind, settings);
   const spinOff = pickWeighted(spinOffPool);
@@ -285,16 +290,29 @@ function hasAnyDegreeChecked(settings, prefix) {
   );
 }
 
+// Which base spin-in table a grind uses, before any settings-based
+// filtering. Shared by spinToCandidates (normal random play) and the
+// forced-spin lookup below (family training), so both always agree.
+//
+// "FS "/"BS " prefixed grinds are easy to detect by substring, but the
+// two plain base grinds — "Frontside" and "Backside" themselves — have
+// no such prefix and used to fall through to the Backside table by
+// accident; checked explicitly here so Frontside gets its own (mirror
+// image) spin table like every other FS grind.
+function baseSpinToPool(grind, isFakie) {
+  if (!grind.isGroove) {
+    return isFakie ? SPINS_TO_SOUL_FAKIE : SPINS_TO_SOUL;
+  }
+  const isFrontside = grind.name === "Frontside" || grind.name.includes("FS ");
+  if (isFrontside) {
+    return isFakie ? SPINS_TO_GROOVE_FS_FAKIE : SPINS_TO_GROOVE_FS;
+  }
+  return SPINS_TO_GROOVE_BS;
+}
+
 function spinToCandidates(grind, approach, settings) {
   const isFakie = approach ? approach.isFakie : false;
-  let pool;
-  if (!grind.isGroove) {
-    pool = isFakie ? SPINS_TO_SOUL_FAKIE : SPINS_TO_SOUL;
-  } else if (grind.name.includes("FS ")) {
-    pool = isFakie ? SPINS_TO_GROOVE_FS_FAKIE : SPINS_TO_GROOVE_FS;
-  } else {
-    pool = SPINS_TO_GROOVE_BS;
-  }
+  let pool = baseSpinToPool(grind, isFakie);
   pool = filterSpinDirection(pool, settings);
   // Training focus: with only Alley-oop (or only True) checked — or a
   // specific degree checked with both directions still on — "None"
