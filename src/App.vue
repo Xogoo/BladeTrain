@@ -18,12 +18,30 @@ import { useSpeech } from "./composables/useSpeech.js";
 const { state, goToStart } = useGame();
 const { settings } = useSettings();
 
-// Quick black/white swap test — see .theme-inverted in base.css. Lives
-// on <body> since the filter needs to cover the ambient background
-// gradient too, which is painted on body, outside this component.
+// Real light/dark palette swap — see .theme-inverted in base.css. Lives
+// on <body> since it needs to cover the ambient background gradient
+// too, which is painted on body, outside this component.
 watch(
   () => settings.invertedTheme,
   (inverted) => document.body.classList.toggle("theme-inverted", inverted),
+  { immediate: true }
+);
+
+// Accent color: which hue buttons/highlights/badges use — "mono" is
+// the default black & white look and needs no class at all, so it's
+// just removed rather than replaced with a "mono" class of its own.
+watch(
+  () => settings.accentColor,
+  (accent) => {
+    document.body.classList.forEach((cls) => {
+      if (cls.startsWith("accent-")) {
+        document.body.classList.remove(cls);
+      }
+    });
+    if (accent && accent !== "mono") {
+      document.body.classList.add(`accent-${accent}`);
+    }
+  },
   { immediate: true }
 );
 

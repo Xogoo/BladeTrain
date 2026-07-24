@@ -31,6 +31,23 @@ export const REEL_SPEEDS = [
   { id: "instant", name: "Instantanée", ms: 80 },
 ];
 
+// Accent color: which hue the app's highlights (buttons, active states,
+// scores, badges, career path) use — the ambient background/panels
+// stay neutral either way, see body.accent-* in base.css. "mono" is
+// the original black & white look and needs no body class at all.
+export const ACCENT_COLORS = [
+  { id: "mono", name: "Monochrome", swatch: "#f2f2f2" },
+  { id: "red", name: "Rouge", swatch: "#ff5252" },
+  { id: "orange", name: "Orange", swatch: "#ffab5b" },
+  { id: "yellow", name: "Jaune", swatch: "#ffe14d" },
+  { id: "green", name: "Vert", swatch: "#7cff8a" },
+  { id: "teal", name: "Turquoise", swatch: "#2dd4bf" },
+  { id: "blue", name: "Bleu", swatch: "#4d8dff" },
+  { id: "indigo", name: "Indigo", swatch: "#6366f1" },
+  { id: "purple", name: "Violet", swatch: "#a970ff" },
+  { id: "pink", name: "Rose", swatch: "#ff6fa5" },
+];
+
 const ALL_TRICKS_OFF = {
   fakie: false,
   switch: false,
@@ -193,9 +210,12 @@ function defaultSettings() {
     players: ["Joueur 1", "Joueur 2"],
     reelSpeed: "normal",
     introMusic: false,
-    // Quick test toggle: swaps black/white via a CSS filter rather than
-    // a real second palette — see .theme-inverted in base.css.
+    // Quick test toggle: swaps to a real light palette — see
+    // .theme-inverted in base.css.
     invertedTheme: false,
+    // Which hue the app's highlights use — see ACCENT_COLORS above and
+    // body.accent-* in base.css. "mono" needs no body class.
+    accentColor: "mono",
     // Only used to pre-fill the "to" field when sharing/emailing a
     // backup export — never sent anywhere on its own, see
     // useBackup.js.

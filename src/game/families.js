@@ -310,3 +310,17 @@ export const FAMILIES = [
 export function familyById(id) {
   return FAMILIES.find((family) => family.id === id) || null;
 }
+
+// A stable signature for one family entry — its actual content, not
+// its position in family.entries. Used to track "has this exact trick
+// been landed" in a way that survives a family's composition changing
+// later (a grind added/removed no longer silently misaligns which
+// entries count as done, the way a plain array index used to).
+export function familyEntryKey(entry) {
+  return [
+    entry.grindName,
+    entry.variationName,
+    entry.approach,
+    entry.spinToName || "",
+  ].join("|");
+}

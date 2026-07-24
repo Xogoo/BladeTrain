@@ -1,6 +1,6 @@
 import { computed, reactive, watch } from "vue";
 import { GRINDS, RARE_GRIND_NAME_PARTS } from "../game/trickData.js";
-import { FAMILIES } from "../game/families.js";
+import { FAMILIES, familyById, familyEntryKey } from "../game/families.js";
 
 const STORAGE_KEY = "aight-collection-v1";
 
@@ -175,25 +175,44 @@ function hasVariation(pattern) {
 }
 
 // Reads (and migrates) a family's progress entry. Old sessions stored a
-// sequential `index` (how many entries landed, in fixed order) — since
-// that's just as valid a "first N landed" set under the new random-draw
-// model, it's migrated in place the first time this family is touched
-// rather than losing that progress.
+// Family progress is keyed by each entry's actual content (grind +
+// variation + approach + forced spin — see families.js's
+// familyEntryKey), not by its position in family.entries. That way,
+// adding or removing a grind from a family later never silently
+// misaligns which tricks already count as landed — a position-index
+// stayed "correct" only as long as the array never changed shape,
+// which turned out not to be a safe assumption.
+//
+// Old saves used a plain position index (`landedIndices`, and before
+// that a sequential `index`) — neither recorded WHICH trick was
+// landed, only a count/slot, so there's no reliable way to migrate
+// partial progress across to real content keys. `completedAt` (a
+// family already fully finished, badge earned) is preserved either
+// way; partial progress is not carried over and restarts at 0 rather
+// than risk misattributing it to the wrong tricks.
 function familyProgressEntry(familyId) {
   const existing = collection.familyProgress[familyId];
-  if (!existing || !Array.isArray(existing.landedIndices)) {
-    const legacyCount = existing?.index || 0;
+  if (!existing || !Array.isArray(existing.landedKeys)) {
     collection.familyProgress[familyId] = {
-      landedIndices: Array.from({ length: legacyCount }, (_, i) => i),
+      landedKeys: [],
       completedAt: existing?.completedAt || null,
     };
   }
   return collection.familyProgress[familyId];
 }
 
-/** How many of the family's tricks have been landed so far. */
+function familyLandedKeySet(familyId) {
+  return new Set(familyProgressEntry(familyId).landedKeys);
+}
+
+/** How many of the family's CURRENT entries have been landed so far. */
 function familyIndex(familyId) {
-  return familyProgressEntry(familyId).landedIndices.length;
+  const family = familyById(familyId);
+  if (!family) {
+    return 0;
+  }
+  const keys = familyLandedKeySet(familyId);
+  return family.entries.filter((entry) => keys.has(familyEntryKey(entry))).length;
 }
 
 function isFamilyComplete(familyId) {
@@ -219,14 +238,14 @@ function careerProgress(track) {
 }
 
 /**
- * Indices (into family.entries) not yet landed — the pool the next
- * random draw picks from. Empty once the family is complete.
+ * Indices (into `entries`) not yet landed — the pool the next random
+ * draw picks from. Empty once every current entry is covered.
  */
-function familyRemainingIndices(familyId, totalEntries) {
-  const done = new Set(familyProgressEntry(familyId).landedIndices);
+function familyRemainingIndices(familyId, entries) {
+  const keys = familyLandedKeySet(familyId);
   const remaining = [];
-  for (let i = 0; i < totalEntries; i += 1) {
-    if (!done.has(i)) {
+  for (let i = 0; i < entries.length; i += 1) {
+    if (!keys.has(familyEntryKey(entries[i]))) {
       remaining.push(i);
     }
   }
@@ -234,19 +253,23 @@ function familyRemainingIndices(familyId, totalEntries) {
 }
 
 /**
- * Call once a family's drawn entry (by index) has been landed. Marks it
- * done; if that was the last one left, marks the family complete and
- * awards its badge (once). Returns the badge object if newly earned
- * this call, else null — same "newly earned" shape as recordLand, so
- * the game screen's badge toast can handle both the same way.
+ * Call once a family's drawn entry has been landed. Marks its content
+ * key done; if every one of the family's CURRENT entries is now
+ * covered, marks the family complete and awards its badge (once).
+ * Returns the badge object if newly earned this call, else null — same
+ * "newly earned" shape as recordLand, so the game screen's badge toast
+ * can handle both the same way.
  */
-function advanceFamilyProgress(familyId, entryIndex, totalEntries) {
-  const entry = familyProgressEntry(familyId);
-  if (!entry.landedIndices.includes(entryIndex)) {
-    entry.landedIndices.push(entryIndex);
+function advanceFamilyProgress(familyId, entry, entries) {
+  const progress = familyProgressEntry(familyId);
+  const key = familyEntryKey(entry);
+  if (!progress.landedKeys.includes(key)) {
+    progress.landedKeys.push(key);
   }
-  if (entry.landedIndices.length >= totalEntries && !entry.completedAt) {
-    entry.completedAt = new Date().toISOString();
+  const keys = new Set(progress.landedKeys);
+  const nowComplete = entries.every((e) => keys.has(familyEntryKey(e)));
+  if (nowComplete && !progress.completedAt) {
+    progress.completedAt = new Date().toISOString();
     const badgeId = `family-${familyId}`;
     if (!collection.badges[badgeId]) {
       collection.badges[badgeId] = new Date().toISOString();
@@ -258,7 +281,7 @@ function advanceFamilyProgress(familyId, entryIndex, totalEntries) {
 
 /** Restart a family from scratch (keeps any badge already earned). */
 function resetFamilyProgress(familyId) {
-  collection.familyProgress[familyId] = { landedIndices: [], completedAt: null };
+  collection.familyProgress[familyId] = { landedKeys: [], completedAt: null };
 }
 
 /** Badge conditions, evaluated against the just-landed spin. */
@@ -384,6 +407,46 @@ export function useCollection() {
     collection.lands.filter((l) => l.sessionId === sessionId);
 
   /**
+   * Every badge earned during a session's time window — a session's
+   * own `endedAt` isn't set yet while it's still the active one, so
+   * "now" is used as the upper bound in that case.
+   */
+  const sessionBadges = (sessionId) => {
+    const session = sessionById(sessionId);
+    if (!session) {
+      return [];
+    }
+    const start = new Date(session.startedAt).getTime();
+    const end = session.endedAt ? new Date(session.endedAt).getTime() : Date.now();
+    return BADGES.filter((badge) => {
+      const earnedAt = collection.badges[badge.id];
+      if (!earnedAt) {
+        return false;
+      }
+      const t = new Date(earnedAt).getTime();
+      return t >= start && t <= end;
+    });
+  };
+
+  /**
+   * How much each family trained during a session actually advanced —
+   * e.g. "Soul +3" if 3 of its tricks were landed this session, however
+   * many attempts that took. Only families actually touched appear.
+   */
+  const sessionFamilyProgress = (sessionId) => {
+    const counts = {};
+    for (const land of sessionLands(sessionId)) {
+      if (!land.familyId) {
+        continue;
+      }
+      counts[land.familyId] = (counts[land.familyId] || 0) + 1;
+    }
+    return Object.entries(counts)
+      .map(([familyId, count]) => ({ family: familyById(familyId), count }))
+      .filter((entry) => entry.family);
+  };
+
+  /**
    * Progress data for the chart: only exact tricks landed 2+ times
    * (across all sessions, lifetime), each as the chronological list of
    * how many tries it took, so a downward trend shows you improving on
@@ -482,7 +545,7 @@ export function useCollection() {
   }
 
   /** Records a landed spin and returns any newly earned badges. */
-  const recordLand = (spin, tries = 1, sessionId = null) => {
+  const recordLand = (spin, tries = 1, sessionId = null, familyId = null) => {
     const winners = spinWinners(spin);
     statsIn(collection.tricks, spin.name).landed += 1;
     statsIn(collection.grinds, winners.Grind).landed += 1;
@@ -500,6 +563,9 @@ export function useCollection() {
       switchUpGrindName: winners.SwitchUp !== "None" ? winners.SwitchUp : null,
       switchUpVariationName:
         winners.SwitchUp !== "None" ? winners.SwitchUpVariation : null,
+      // Which family (if any) was being trained when this was landed —
+      // feeds the end-of-session recap's "families progressed" list.
+      familyId,
       tries,
       score: spin.score,
     });
@@ -646,6 +712,8 @@ export function useCollection() {
     sessionById,
     sessionHistory,
     sessionLands,
+    sessionBadges,
+    sessionFamilyProgress,
     repeatedTrickSeries,
     switchUpLands,
     staleCombos,

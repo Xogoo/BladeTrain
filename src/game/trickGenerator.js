@@ -66,7 +66,13 @@ export function generateSpin(
   let switchSpin = null;
   let switchUpVariationPool = [];
   let switchUpVariation = null;
-  if (hasSwitchUpReel(settings)) {
+  // Family training only ever pins grind/variation/approach/spin-in/
+  // spin-out — a switch-up (2nd grind) is a whole extra trick bolted on
+  // that has nothing to do with what the family is training, so it's
+  // suppressed entirely here regardless of the player's own Switch up
+  // setting. Same reasoning as the spin-out fix above: forced tricks
+  // should draw ONLY the exact trick the family entry describes.
+  if (hasSwitchUpReel(settings) && !forcedTrick) {
     switchUpPool = grindCandidates(
       settings,
       usedGrinds,

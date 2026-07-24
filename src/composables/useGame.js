@@ -200,7 +200,7 @@ export function useGame() {
     if (family) {
       const remaining = collection.familyRemainingIndices(
         state.activeFamilyId,
-        family.entries.length
+        family.entries
       );
       // Should only be empty for one frame right as the family
       // completes (landTrick clears activeFamilyId before this runs) —
@@ -284,7 +284,12 @@ export function useGame() {
     state.tricks.push(currentTrick());
     let badges =
       state.mode === "solo"
-        ? collection.recordLand(state.spin, state.tries, state.sessionId)
+        ? collection.recordLand(
+            state.spin,
+            state.tries,
+            state.sessionId,
+            state.activeFamilyId
+          )
         : [];
     let justCompletedFamily = null;
     if (state.activeFamilyId) {
@@ -292,8 +297,8 @@ export function useGame() {
       if (family && state.activeFamilyEntryIndex !== null) {
         const familyBadge = collection.advanceFamilyProgress(
           state.activeFamilyId,
-          state.activeFamilyEntryIndex,
-          family.entries.length
+          family.entries[state.activeFamilyEntryIndex],
+          family.entries
         );
         if (familyBadge) {
           badges = [...badges, familyBadge];

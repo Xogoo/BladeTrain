@@ -1,12 +1,14 @@
 <script setup>
 import { computed } from "vue";
+import AppIcon from "./AppIcon.vue";
 import { useCollection } from "../composables/useCollection.js";
 
 const props = defineProps({
   sessionId: { type: [Number, String], required: true },
 });
 
-const { sessionById, sessionLands } = useCollection();
+const { sessionById, sessionLands, sessionBadges, sessionFamilyProgress } =
+  useCollection();
 
 const session = computed(() => sessionById(props.sessionId));
 const lands = computed(() =>
@@ -23,6 +25,22 @@ const avgTries = computed(() => {
 
 const attempted = computed(() => (session.value?.landed || 0) + (session.value?.skipped || 0));
 
+const totalScore = computed(() =>
+  lands.value.reduce((sum, land) => sum + (land.score || 0), 0)
+);
+
+const bestTrick = computed(() => {
+  if (!lands.value.length) return null;
+  return [...lands.value].sort((a, b) => b.score - a.score)[0];
+});
+
+const badges = computed(() => sessionBadges(props.sessionId));
+const familyProgress = computed(() => sessionFamilyProgress(props.sessionId));
+
+function familyBaseName(name) {
+  return name.replace(/ \((Normal|Switch)\)$/, "");
+}
+
 function formatDate(iso) {
   return new Date(iso).toLocaleString("fr-FR", {
     day: "2-digit",
@@ -36,6 +54,11 @@ function formatDate(iso) {
 <template>
   <div v-if="session" class="summary">
     <p class="summary__date">{{ formatDate(session.startedAt) }}</p>
+
+    <div class="summary__score">
+      <span class="summary__score-value">{{ totalScore }}</span>
+      <span class="summary__score-label">point{{ totalScore === 1 ? "" : "s" }}</span>
+    </div>
 
     <div class="summary__stats">
       <div class="summary__stat">
@@ -53,6 +76,34 @@ function formatDate(iso) {
       <div class="summary__stat">
         <span class="summary__value">{{ avgTries }}</span>
         <span class="summary__label">essais moy.</span>
+      </div>
+    </div>
+
+    <div v-if="bestTrick" class="summary__highlight">
+      <AppIcon name="zap" :size="16" />
+      <span
+        ><strong>Meilleur trick :</strong> {{ bestTrick.trickName }} (+{{
+          bestTrick.score
+        }})</span
+      >
+    </div>
+
+    <div v-if="familyProgress.length" class="summary__section">
+      <h3 class="summary__section-title">Familles entraînées</h3>
+      <div class="summary__families">
+        <span v-for="fp in familyProgress" :key="fp.family.id" class="summary__family-pill">
+          {{ familyBaseName(fp.family.name) }} +{{ fp.count }}
+        </span>
+      </div>
+    </div>
+
+    <div v-if="badges.length" class="summary__section">
+      <h3 class="summary__section-title">Badges débloqués</h3>
+      <div class="summary__badges">
+        <div v-for="badge in badges" :key="badge.id" class="summary__badge">
+          <AppIcon name="trophy" :size="16" />
+          <span>{{ badge.name }}</span>
+        </div>
       </div>
     </div>
 
@@ -79,6 +130,88 @@ function formatDate(iso) {
   font-size: 13px;
   color: var(--text-dim);
   text-align: center;
+}
+
+.summary__score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.summary__score-value {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--red-hi);
+  text-shadow: var(--glow-red-hi);
+}
+
+.summary__score-label {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.summary__highlight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.summary__highlight strong {
+  color: var(--red-hi);
+}
+
+.summary__section-title {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin: 0 0 8px;
+}
+
+.summary__families {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.summary__family-pill {
+  font-family: var(--font-display);
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  color: var(--red-hi);
+}
+
+.summary__badges {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.summary__badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--text);
 }
 
 .summary__stats {

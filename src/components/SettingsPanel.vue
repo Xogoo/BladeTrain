@@ -7,6 +7,7 @@ import {
   SOLO_LEVELS,
   CUSTOM_LEVEL,
   REEL_SPEEDS,
+  ACCENT_COLORS,
   useSettings,
 } from "../composables/useSettings.js";
 import { useBackup } from "../composables/useBackup.js";
@@ -189,6 +190,22 @@ const grindList = [
       </span>
     </label>
 
+    <div class="option option--inline accent-picker">
+      <span>Couleur d'accent</span>
+      <div class="accent-swatches">
+        <button
+          v-for="accent in ACCENT_COLORS"
+          :key="accent.id"
+          class="accent-swatch"
+          :class="{ 'accent-swatch--active': settings.accentColor === accent.id }"
+          :style="{ background: accent.swatch }"
+          :aria-label="accent.name"
+          :title="accent.name"
+          @click="settings.accentColor = accent.id"
+        />
+      </div>
+    </div>
+
     <label class="option option--inline">
       <span>Vitesse des roues</span>
       <select class="select" v-model="settings.reelSpeed">
@@ -362,7 +379,35 @@ const grindList = [
 }
 
 .theme-toggle {
+  margin-bottom: 12px;
+}
+
+.accent-picker {
   margin-bottom: 20px;
+}
+
+.accent-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.accent-swatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--line-strong);
+  padding: 0;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.accent-swatch:hover {
+  transform: scale(1.1);
+}
+
+.accent-swatch--active {
+  border-color: var(--text);
+  box-shadow: 0 0 0 2px var(--bg-1), 0 0 0 4px var(--text);
 }
 
 .section-title {
