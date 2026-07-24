@@ -19,6 +19,17 @@
   --red-hi: #f2f2f2;
   --red-deep: #a8a8a8;
 
+  /* The one deliberate exception to the monochrome rule: the trend
+     line's "good"/"bad" read (Historique) keeps real green/red so it
+     stays instantly scannable — but still needs its own dark/light
+     pair like everything else, or it goes unreadable when the theme
+     flips (this is exactly what was hardcoded and broken before).
+     Named --danger-hi rather than reusing --red-hi, since --red-hi is
+     the monochrome accent everywhere else in the app (not actually
+     red) — this one is a real alert red on purpose. */
+  --green-hi: #7cff8a;
+  --danger-hi: #ff6b6b;
+
   /* Raw RGB triplet (no alpha) behind every glow/highlight/border
      overlay in the app — rgba(var(--fg-rgb), X). Swapping this one
      value in the light theme below flips every one of those overlays
@@ -416,6 +427,11 @@ body.theme-inverted {
   --red: #262626;
   --red-hi: #000000;
   --red-deep: #575757;
+
+  /* Dark enough to read on the light backgrounds above — the bright
+     #7cff8a from the dark theme would wash out here. */
+  --green-hi: #1a7a2e;
+  --danger-hi: #c62828;
 
   --fg-rgb: 0, 0, 0;
   --cta-text: #ffffff;

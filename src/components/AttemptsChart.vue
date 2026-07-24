@@ -150,9 +150,9 @@ const trend = computed(() => {
   color: var(--text-dim);
 }
 .chart__trend--good {
-  color: #7cff8a;
+  color: var(--green-hi);
 }
 .chart__trend--bad {
-  color: var(--red-hi);
+  color: var(--danger-hi);
 }
 </style>

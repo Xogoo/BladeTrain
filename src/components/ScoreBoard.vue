@@ -4,9 +4,16 @@ import { LETTERS, useGame } from "../composables/useGame.js";
 import { useSettings } from "../composables/useSettings.js";
 import { useCollection } from "../composables/useCollection.js";
 
-const { state, isSolo } = useGame();
+const { state, isSolo, activeFamily } = useGame();
 const { levelName } = useSettings();
-const { uniqueTrickCount } = useCollection();
+const { uniqueTrickCount, familyIndex } = useCollection();
+
+// Family names carry their own "(Normal)"/"(Switch)" suffix (see
+// families.js) — stripped here, there's no room for it in this small
+// a space and the track is already obvious from context.
+function familyBaseName(name) {
+  return name.replace(/ \((Normal|Switch)\)$/, "");
+}
 
 const pointsPop = ref(false);
 
@@ -39,7 +46,13 @@ watch(
       }}</span>
     </div>
     <div class="scoreboard__divider" />
-    <div class="scoreboard__block">
+    <div v-if="activeFamily" class="scoreboard__block">
+      <span class="scoreboard__caption">{{ familyBaseName(activeFamily.name) }}</span>
+      <span class="scoreboard__level">
+        {{ familyIndex(activeFamily.id) }}/{{ activeFamily.entries.length }}
+      </span>
+    </div>
+    <div v-else class="scoreboard__block">
       <span class="scoreboard__caption">Collection</span>
       <span class="scoreboard__level">{{ uniqueTrickCount }}</span>
     </div>

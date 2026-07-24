@@ -4,11 +4,13 @@ import AppModal from "./AppModal.vue";
 import AppIcon from "./AppIcon.vue";
 import AttemptsChart from "./AttemptsChart.vue";
 import SessionSummary from "./SessionSummary.vue";
+import SwitchUpHistoryPanel from "./SwitchUpHistoryPanel.vue";
 import { useCollection } from "../composables/useCollection.js";
 
 defineEmits(["close"]);
 
-const { sessionHistory, repeatedTrickSeries, resetCollection } = useCollection();
+const { sessionHistory, repeatedTrickSeries, switchUpLands, resetCollection } =
+  useCollection();
 
 const confirmingReset = ref(false);
 const onReset = () => {
@@ -65,6 +67,8 @@ watch(
 const selectedSeries = computed(
   () => rankedTricks.value.find((t) => t.name === selectedName.value) || null
 );
+
+const showSwitchUps = ref(false);
 </script>
 
 <template>
@@ -72,19 +76,24 @@ const selectedSeries = computed(
     <h3 class="section-title">Progression</h3>
 
     <div v-if="rankedTricks.length" class="trick-picker">
-      <button
-        v-for="trick in rankedTricks"
-        :key="trick.name"
-        class="trick-picker__pill"
-        :class="{ 'trick-picker__pill--active': trick.name === selectedName }"
-        @click="selectedName = trick.name"
-      >
-        {{ trick.name }}
-        <span class="trick-picker__count">&times;{{ trick.tries.length }}</span>
-      </button>
+      <select class="select" v-model="selectedName">
+        <option v-for="trick in rankedTricks" :key="trick.name" :value="trick.name">
+          {{ trick.name }} &times;{{ trick.tries.length }}
+        </option>
+      </select>
     </div>
 
     <AttemptsChart :series="selectedSeries" />
+
+    <h3 class="section-title">Switch-ups</h3>
+    <p v-if="!switchUpLands.length" class="hint">
+      Pas encore de switch-up réussi &mdash; ils apparaîtront ici une fois que
+      tu en auras réussi un.
+    </p>
+    <button v-else class="btn switchup-teaser" @click="showSwitchUps = true">
+      <AppIcon name="list" :size="16" />
+      Voir tes {{ switchUpLands.length }} switch-up{{ switchUpLands.length === 1 ? "" : "s" }}
+    </button>
 
     <h3 class="section-title">Sessions</h3>
     <p v-if="!sessionHistory.length" class="hint">
@@ -121,6 +130,8 @@ const selectedSeries = computed(
       </button>
     </div>
   </AppModal>
+
+  <SwitchUpHistoryPanel v-if="showSwitchUps" @close="showSwitchUps = false" />
 </template>
 
 <style scoped>
@@ -151,43 +162,36 @@ const selectedSeries = computed(
   box-shadow: 0 0 10px rgba(var(--fg-rgb), 0.2);
 }
 
-/* Trick selector: horizontally scrollable pills, most-repeated first.
-   Same visual language as .app-nav__btn so it doesn't feel like a
-   different UI kit was dropped into the History panel. */
+/* Trick selector: a plain dropdown, most-repeated first — the pill
+   row this replaced didn't fit small screens (overflowed and needed
+   horizontal scrolling to see the rest). Same select styling as the
+   family picker in StartScreen, for consistency. */
 .trick-picker {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 10px;
-  margin-bottom: 4px;
-  -webkit-overflow-scrolling: touch;
+  margin-bottom: 12px;
 }
-.trick-picker::-webkit-scrollbar {
-  height: 4px;
-}
-.trick-picker__pill {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: 999px;
+.trick-picker .select {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 15px;
+  padding: 10px 12px;
+  border-radius: 10px;
   border: 1px solid var(--line);
-  background: var(--panel);
-  color: var(--text-dim);
-  font-family: var(--font-display);
-  font-size: 12px;
-  white-space: nowrap;
-  transition: color 0.2s ease, border-color 0.2s ease;
+  background: var(--bg-1);
+  color: var(--text);
 }
-.trick-picker__pill--active {
-  color: var(--red-hi);
-  border-color: var(--red-hi);
-  box-shadow: var(--glow-red-hi);
+/* Native <option> elements don't always inherit the select's own
+   background/color on some mobile browsers, leaving unselected rows
+   looking transparent until hovered — set them explicitly. */
+.trick-picker .select option {
+  background: var(--bg-1);
+  color: var(--text);
 }
-.trick-picker__count {
-  opacity: 0.7;
-  font-size: 11px;
+
+.switchup-teaser {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
 }
 
 .sessions {

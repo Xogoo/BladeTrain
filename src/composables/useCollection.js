@@ -405,6 +405,19 @@ export function useCollection() {
   });
 
   /**
+   * Every switch-up (2nd grind) ever landed, most recent first — the
+   * Historique panel's own sort (by date, first grind, second grind,
+   * ...) is applied on top of this in the component itself, same
+   * pattern as rankedTricks/repeatedTrickSeries.
+   */
+  const switchUpLands = computed(() =>
+    [...collection.lands]
+      .filter((land) => land.switchUpGrindName)
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+  );
+
+
+  /**
    * Every trainable (grind, variation) pair — each grind always
    * supports "None" (no variation) on top of its own variations list.
    * This is the universe staleCombos() checks against.
@@ -481,6 +494,12 @@ export function useCollection() {
       trickName: spin.name,
       grindName: winners.Grind,
       variationName: winners.GrindVariation,
+      // Switch-up (2nd grind) info, only set when this land actually
+      // had one — null otherwise. Feeds the Historique panel's
+      // Switch-ups list (see switchUpLands below).
+      switchUpGrindName: winners.SwitchUp !== "None" ? winners.SwitchUp : null,
+      switchUpVariationName:
+        winners.SwitchUp !== "None" ? winners.SwitchUpVariation : null,
       tries,
       score: spin.score,
     });
@@ -628,6 +647,7 @@ export function useCollection() {
     sessionHistory,
     sessionLands,
     repeatedTrickSeries,
+    switchUpLands,
     staleCombos,
   };
 }

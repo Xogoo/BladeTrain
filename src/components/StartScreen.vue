@@ -26,6 +26,12 @@ const { needsBackupReminder, exportBackup } = useBackup();
 // specific family (picked below). Not tied to settings.level — Custom
 // already covers that; this just decides what "Démarrer la session" does.
 const soloSection = ref("custom"); // 'custom' | 'family'
+// FAMILIES is defined in an arbitrary creation order — sorted here by
+// tier (career difficulty order) so this dropdown reads the same way
+// as the Carrière path, instead of whatever order they were added in.
+const soloFamilyOptions = computed(() =>
+  [...FAMILIES].sort((a, b) => a.tier - b.tier)
+);
 const selectedFamilyId = ref(FAMILIES[0]?.id ?? null);
 const selectedFamily = computed(
   () => FAMILIES.find((f) => f.id === selectedFamilyId.value) || null
@@ -76,12 +82,41 @@ const careerSteps = computed(() => {
   });
 });
 
+// Zigzag path: nodes alternate left (25%) / right (75%), one fixed
+// ROW_HEIGHT apart vertically, however many steps there are — smooth
+// S-curves between consecutive points (not straight segments) give a
+// winding, less rigid line. The SVG connector below is generated from
+// these exact same coordinates so it always lines up, no matter how
+// the list grows.
+const ZIGZAG_ROW_HEIGHT = 128;
+const zigzagX = (i) => (i % 2 === 0 ? 25 : 75);
+const zigzagY = (i) => i * ZIGZAG_ROW_HEIGHT + ZIGZAG_ROW_HEIGHT / 2;
+const zigzagPathHeight = computed(() => careerSteps.value.length * ZIGZAG_ROW_HEIGHT);
+const zigzagPath = computed(() => {
+  const n = careerSteps.value.length;
+  if (!n) {
+    return "";
+  }
+  let d = `M${zigzagX(0)} ${zigzagY(0)}`;
+  for (let i = 1; i < n; i++) {
+    const [x0, y0] = [zigzagX(i - 1), zigzagY(i - 1)];
+    const [x1, y1] = [zigzagX(i), zigzagY(i)];
+    const midY = (y0 + y1) / 2;
+    d += ` C${x0} ${midY} ${x1} ${midY} ${x1} ${y1}`;
+  }
+  return d;
+});
+
 // Family names carry their own "(Normal)"/"(Switch)" suffix (see
 // families.js) so they read fine on their own in the Solo picker — but
 // inside the career-track screen that's already the whole context, so
 // it's stripped here for a cleaner list.
 function familyBaseName(name) {
   return name.replace(/ \((Normal|Switch)\)$/, "");
+}
+
+function careerStepPercent(family) {
+  return Math.round((familyIndex(family.id) / family.entries.length) * 100);
 }
 
 function chooseCareerTrack(track) {
@@ -264,7 +299,16 @@ function removePlayer(index) {
       Carrière — {{ careerTrack === "normal" ? "Normal" : "Switch" }}
     </h2>
 
-    <div class="career-path">
+    <div class="career-path" :style="{ height: zigzagPathHeight + 'px' }">
+      <svg
+        class="career-path__line"
+        :viewBox="`0 0 100 ${zigzagPathHeight}`"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <path :d="zigzagPath" />
+      </svg>
+
       <div
         v-for="(careerStep, i) in careerSteps"
         :key="careerStep.family.id"
@@ -273,20 +317,16 @@ function removePlayer(index) {
           'career-step--done': careerStep.done,
           'career-step--locked': !careerStep.unlocked,
         }"
+        :style="{ top: zigzagY(i) + 'px', left: zigzagX(i) + '%' }"
       >
-        <div
-          v-if="i > 0"
-          class="career-step__connector"
-          :class="{ 'career-step__connector--done': careerSteps[i - 1].done }"
-        />
         <button
           class="career-step__row"
           :disabled="!careerStep.unlocked"
           @click="startCareerFamily(careerStep)"
         >
           <span class="career-step__node">
-            <AppIcon v-if="careerStep.done" name="check" :size="18" />
-            <AppIcon v-else-if="!careerStep.unlocked" name="lock" :size="16" />
+            <AppIcon v-if="careerStep.done" name="check" :size="24" />
+            <AppIcon v-else-if="!careerStep.unlocked" name="lock" :size="22" />
             <template v-else>{{ i + 1 }}</template>
           </span>
           <span class="career-step__info">
@@ -294,7 +334,7 @@ function removePlayer(index) {
             <span class="career-step__progress">
               <template v-if="careerStep.done">Terminée ✓</template>
               <template v-else-if="careerStep.unlocked">
-                {{ familyIndex(careerStep.family.id) }}/{{ careerStep.family.entries.length }}
+                {{ careerStepPercent(careerStep.family) }}%
               </template>
               <template v-else>Verrouillée</template>
             </span>
@@ -357,7 +397,7 @@ function removePlayer(index) {
       <span class="setup__label">Choisis une famille</span>
       <div class="family-picker">
         <select class="select" v-model="selectedFamilyId">
-          <option v-for="family in FAMILIES" :key="family.id" :value="family.id">
+          <option v-for="family in soloFamilyOptions" :key="family.id" :value="family.id">
             {{ family.name }}
           </option>
         </select>
@@ -706,35 +746,37 @@ function removePlayer(index) {
 }
 
 .career-path {
-  display: flex;
-  flex-direction: column;
+  position: relative;
   width: 100%;
 }
 
-.career-step {
-  position: relative;
-}
-
-.career-step__connector {
+.career-path__line {
   position: absolute;
-  left: 25px;
-  top: -8px;
-  width: 2px;
-  height: 16px;
-  background: var(--line-strong);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
-.career-step__connector--done {
-  background: var(--red-hi);
+.career-path__line path {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 2;
+  stroke-dasharray: 6 7;
+  vector-effect: non-scaling-stroke;
+}
+
+.career-step {
+  position: absolute;
+  transform: translate(-50%, -50%);
 }
 
 .career-step__row {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 14px;
-  width: 100%;
-  padding: 10px 6px;
-  text-align: left;
+  gap: 6px;
+  padding: 6px;
   border-radius: 12px;
   transition: background 0.15s ease;
 }
@@ -752,12 +794,12 @@ function removePlayer(index) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: 58px;
+  height: 58px;
   border-radius: 50%;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 15px;
+  font-size: 20px;
   border: 2px solid var(--line-strong);
   background: var(--bg-1);
   color: var(--text-dim);
@@ -782,16 +824,18 @@ function removePlayer(index) {
 }
 
 .career-step__info {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+  align-items: center;
+  gap: 3px;
+  max-width: 128px;
+  text-align: center;
 }
 
 .career-step__name {
   font-size: 15px;
   font-weight: 600;
+  line-height: 1.25;
   color: var(--text);
 }
 
@@ -801,8 +845,9 @@ function removePlayer(index) {
 
 .career-step__progress {
   font-family: var(--font-display);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-dim);
+  white-space: nowrap;
 }
 
 .career-step--done .career-step__progress {

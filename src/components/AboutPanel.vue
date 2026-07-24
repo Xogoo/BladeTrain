@@ -57,11 +57,48 @@ const REFERENCES = [
       </li>
     </ol>
     <p>
+      Deux façons de jouer en Solo : <strong>Custom</strong> (les roues
+      tournent librement selon tes réglages) ou une
+      <strong>famille de tricks</strong> précise — un trick de la liste est
+      tiré au hasard parmi ceux que tu n'as pas encore réussis. Passer ne
+      fait que retirer un autre trick de la liste, rien n'est bloqué ; une
+      fois réussi, un trick ne revient plus. Termine tous les tricks pour
+      compléter la famille.
+    </p>
+    <p>
       Le mode solo t'entraîne : les tricks que tu n'as jamais réussis et ceux
       que tu passes souvent reviennent plus fréquemment. Ta collection, tes
       badges d'étapes (premier topside, premier 540, tous les grinds
       soul-plate, ...) et ta progression par grind sont sauvegardés sur cet
       appareil — regarde-les dans <strong>Collection</strong>.
+    </p>
+
+    <h3 class="section-title">Mode Carrière</h3>
+    <p>
+      Deux progressions totalement indépendantes — <strong>Normal</strong> et
+      <strong>Switch</strong> — chacune avec les mêmes familles de tricks,
+      dans le même ordre, mais qui avancent chacune à leur rythme.
+    </p>
+    <ol class="steps">
+      <li>
+        Depuis l'écran d'accueil, choisis <strong>Carrière</strong>, puis
+        Normal ou Switch.
+      </li>
+      <li>
+        Les familles s'enchaînent en chemin d'étapes : la première est
+        toujours ouverte, chaque suivante se débloque une fois la précédente
+        entièrement terminée.
+      </li>
+      <li>
+        Termine une famille et la session se met en pause : choisis
+        <strong>Famille suivante</strong> pour enchaîner directement, ou
+        <strong>Continuer en solo libre</strong>.
+      </li>
+    </ol>
+    <p>
+      La Carrière a son propre bouton de réinitialisation (en bas de l'écran
+      Carrière), séparé du reste — remettre ta Carrière à zéro ne touche pas
+      à ta collection, tes badges ou ton historique, et inversement.
     </p>
 
     <h3 class="section-title">Mode Groupe — B.L.A.D.E</h3>
