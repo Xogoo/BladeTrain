@@ -1,6 +1,8 @@
 <script setup>
-import { computed, ref } from "vue";
+import { ref, computed } from "vue";
 import AppModal from "./AppModal.vue";
+import TrickPreviewPanel from "./TrickPreviewPanel.vue";
+import { useGame } from "../composables/useGame.js";
 import { GRINDS, RARE_GRIND_NAME_PARTS } from "../game/trickData.js";
 import {
   LEVELS,
@@ -12,7 +14,16 @@ import {
 } from "../composables/useSettings.js";
 import { useBackup } from "../composables/useBackup.js";
 
-defineEmits(["close"]);
+const emit = defineEmits(["close"]);
+
+const { startGame } = useGame();
+const showPreview = ref(false);
+
+function onStartFromPreview() {
+  showPreview.value = false;
+  startGame(settings);
+  emit("close");
+}
 
 const {
   settings,
@@ -364,10 +375,17 @@ const grindList = [
     <p class="hint">Les réglages sont sauvegardés sur cet appareil et s'appliquent à la prochaine partie.</p>
 
     <div class="actions">
-      <button class="btn btn--primary" @click="$emit('close')">Terminé</button>
+      <button class="btn btn--primary" @click="showPreview = true">Terminé</button>
       <button class="btn btn--ghost" @click="reset()">Tout réinitialiser</button>
     </div>
   </AppModal>
+
+  <TrickPreviewPanel
+    v-if="showPreview"
+    :settings="settings"
+    @back="showPreview = false"
+    @start="onStartFromPreview"
+  />
 </template>
 
 <style scoped>

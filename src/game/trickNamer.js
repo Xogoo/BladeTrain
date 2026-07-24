@@ -75,7 +75,17 @@ export function nameTrick(slots) {
   // (only possible when the two grinds are of different types) have no
   // such stylized name, so they're shown as plain numbers.
   const switchUpIsGroove = !!(switchUp && switchUp.winner.isGroove);
-  const switchSpinName = nameSwitchSpin(switchSpin);
+  // Only ever one groove side in a cross-type (270/450) transition —
+  // pass along whichever grind that is, so nameSwitchSpin can read its
+  // FS/BS orientation. Same-type transitions (both true or both false)
+  // ignore this entirely.
+  const crossTypeGrooveName =
+    isGroove !== switchUpIsGroove
+      ? isGroove
+        ? grind.winner.name
+        : switchUp.winner.name
+      : null;
+  const switchSpinName = nameSwitchSpin(switchSpin, crossTypeGrooveName);
 
   const switchUpVariationName =
     switchUpVariation && switchUpVariation.winner.name !== "None"
@@ -203,20 +213,32 @@ function parseSpinTo(spinTo, isGroove, isInspin, isOutspin, isFakie) {
   return name.replace("Inspin", "").replace("Outspin", "").replace("None", "");
 }
 
-// Names the rotation between the two switch-up grinds. 180/360/540
-// borrow the normal soul spin names; 270/450 (different-type
-// transitions) have no such name and are shown as-is.
-function nameSwitchSpin(switchSpin) {
+// Names the rotation between the two switch-up grinds. 180/360/540 use
+// the normal soul-style Alley-oop/True/Hurricane names. 270/450 only
+// happen on a cross-type transition (soul<->groove) — same convention
+// as a groove grind's own spin-in (see families.js groove270Entries):
+// Outspin is the "forward" rotation for an FS-type grind, Inspin for a
+// BS-type one, and THAT direction is what reads as "Alley-oop" here
+// (the other direction is "True"), even though that's the opposite of
+// Inspin/Outspin's meaning for a same-type (180/360/540) rotation.
+function isFrontsideGrindName(name) {
+  return name === "Frontside" || name.includes("FS ");
+}
+
+function nameSwitchSpin(switchSpin, crossTypeGrooveName) {
   if (!switchSpin) {
     return "";
   }
   const name = switchSpin.winner.name;
   const isInspin = name.includes("Inspin");
-  if (name.includes("270")) {
-    return "270";
-  }
-  if (name.includes("450")) {
-    return "450";
+  if (name.includes("270") || name.includes("450")) {
+    if (crossTypeGrooveName) {
+      const isFrontside = isFrontsideGrindName(crossTypeGrooveName);
+      const isAlleyOop = isFrontside ? !isInspin : isInspin;
+      const label = isAlleyOop ? "Alley-oop" : "True";
+      return name.includes("450") ? `450 ${label}` : label;
+    }
+    return name.includes("450") ? "450" : "270";
   }
   if (name.includes("180")) {
     return isInspin ? "Alley-oop" : "True";
