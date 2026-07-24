@@ -107,10 +107,11 @@ function defaultCollection() {
     // only lives in this device's localStorage otherwise, see
     // useBackup.js. null means "never backed up".
     lastBackupAt: null,
-    // Sequential family training progress. index = how many entries of
-    // the family have been landed so far (0 = not started, entries.length
-    // = complete). completedAt = ISO date once the family is finished.
-    familyProgress: {}, // { [familyId]: { index, completedAt } }
+    // Family training progress: which entries (by index into
+    // family.entries) have been landed so far — drawn at random among
+    // whatever's left, not in a fixed order (see useGame.js). completedAt
+    // = ISO date once every entry has been landed.
+    familyProgress: {}, // { [familyId]: { landedIndices: number[], completedAt } }
   };
 }
 
@@ -173,16 +174,26 @@ function hasVariation(pattern) {
   );
 }
 
+// Reads (and migrates) a family's progress entry. Old sessions stored a
+// sequential `index` (how many entries landed, in fixed order) — since
+// that's just as valid a "first N landed" set under the new random-draw
+// model, it's migrated in place the first time this family is touched
+// rather than losing that progress.
 function familyProgressEntry(familyId) {
-  if (!collection.familyProgress[familyId]) {
-    collection.familyProgress[familyId] = { index: 0, completedAt: null };
+  const existing = collection.familyProgress[familyId];
+  if (!existing || !Array.isArray(existing.landedIndices)) {
+    const legacyCount = existing?.index || 0;
+    collection.familyProgress[familyId] = {
+      landedIndices: Array.from({ length: legacyCount }, (_, i) => i),
+      completedAt: existing?.completedAt || null,
+    };
   }
   return collection.familyProgress[familyId];
 }
 
-/** Current step (0-based) within a family — 0 means not started yet. */
+/** How many of the family's tricks have been landed so far. */
 function familyIndex(familyId) {
-  return collection.familyProgress[familyId]?.index || 0;
+  return familyProgressEntry(familyId).landedIndices.length;
 }
 
 function isFamilyComplete(familyId) {
@@ -190,16 +201,51 @@ function isFamilyComplete(familyId) {
 }
 
 /**
- * Call once the family's current step has been landed. Advances the
- * pointer; if that was the last entry, marks the family complete and
+ * Overall progress for one Career track ("normal" or "switch"): every
+ * family whose `track` matches, tricks landed vs total across all of
+ * them, and the resulting percent (0 if the track has no families yet).
+ * Used by the Carrière screen's Normal/Switch buttons.
+ */
+function careerProgress(track) {
+  const families = FAMILIES.filter((family) => family.track === track);
+  let landed = 0;
+  let total = 0;
+  for (const family of families) {
+    landed += familyIndex(family.id);
+    total += family.entries.length;
+  }
+  const percent = total ? Math.round((landed / total) * 100) : 0;
+  return { landed, total, percent };
+}
+
+/**
+ * Indices (into family.entries) not yet landed — the pool the next
+ * random draw picks from. Empty once the family is complete.
+ */
+function familyRemainingIndices(familyId, totalEntries) {
+  const done = new Set(familyProgressEntry(familyId).landedIndices);
+  const remaining = [];
+  for (let i = 0; i < totalEntries; i += 1) {
+    if (!done.has(i)) {
+      remaining.push(i);
+    }
+  }
+  return remaining;
+}
+
+/**
+ * Call once a family's drawn entry (by index) has been landed. Marks it
+ * done; if that was the last one left, marks the family complete and
  * awards its badge (once). Returns the badge object if newly earned
  * this call, else null — same "newly earned" shape as recordLand, so
  * the game screen's badge toast can handle both the same way.
  */
-function advanceFamilyProgress(familyId, totalEntries) {
+function advanceFamilyProgress(familyId, entryIndex, totalEntries) {
   const entry = familyProgressEntry(familyId);
-  entry.index = Math.min(entry.index + 1, totalEntries);
-  if (entry.index >= totalEntries && !entry.completedAt) {
+  if (!entry.landedIndices.includes(entryIndex)) {
+    entry.landedIndices.push(entryIndex);
+  }
+  if (entry.landedIndices.length >= totalEntries && !entry.completedAt) {
     entry.completedAt = new Date().toISOString();
     const badgeId = `family-${familyId}`;
     if (!collection.badges[badgeId]) {
@@ -210,9 +256,9 @@ function advanceFamilyProgress(familyId, totalEntries) {
   return null;
 }
 
-/** Restart a family from its first trick (keeps any badge already earned). */
+/** Restart a family from scratch (keeps any badge already earned). */
 function resetFamilyProgress(familyId) {
-  collection.familyProgress[familyId] = { index: 0, completedAt: null };
+  collection.familyProgress[familyId] = { landedIndices: [], completedAt: null };
 }
 
 /** Badge conditions, evaluated against the just-landed spin. */
@@ -473,8 +519,35 @@ export function useCollection() {
   };
 
   /** Wipes all lifetime progress: tricks, grinds, lands and badges. */
+  // Wipes everything EXCEPT Career progress (familyProgress) and the
+  // family-completion badges tied to it — those have their own
+  // dedicated reset button on the Carrière screen (resetCareerProgress
+  // below), precisely so the two stay independent of each other.
   const resetCollection = () => {
-    Object.assign(collection, defaultCollection());
+    const { familyProgress, badges } = collection;
+    const preservedBadges = {};
+    for (const [id, date] of Object.entries(badges)) {
+      if (id.startsWith("family-")) {
+        preservedBadges[id] = date;
+      }
+    }
+    Object.assign(collection, defaultCollection(), {
+      familyProgress,
+      badges: preservedBadges,
+    });
+  };
+
+  // The Career screen's own reset: wipes every family's progress (both
+  // Normal and Switch tracks) and their completion badges, and nothing
+  // else — the rest of the collection (stats, badges, session history)
+  // is untouched.
+  const resetCareerProgress = () => {
+    collection.familyProgress = {};
+    for (const id of Object.keys(collection.badges)) {
+      if (id.startsWith("family-")) {
+        delete collection.badges[id];
+      }
+    }
   };
 
   const recordSkip = (spin, sessionId = null) => {
@@ -534,6 +607,7 @@ export function useCollection() {
     recordLand,
     recordSkip,
     resetCollection,
+    resetCareerProgress,
     grindBias,
     uniqueTrickCount,
     landedGrindCount,
@@ -543,6 +617,8 @@ export function useCollection() {
     hasBadge,
     familyIndex,
     isFamilyComplete,
+    familyRemainingIndices,
+    careerProgress,
     advanceFamilyProgress,
     resetFamilyProgress,
     grindLandedCount,

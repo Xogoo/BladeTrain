@@ -214,24 +214,6 @@ const SOUL_GRINDS = [
     ],
   },
   {
-    name: "Citric Acid",
-    weight: RARE,
-    score: 3,
-    url: "http://skateyeg.com/bog/05.1_Citric_Acid.html",
-    comment:
-      "Le pied avant s'enroule derrière le pied soul et se replace devant en position acid.",
-    variations: ["Topside", "Negative", "Tough", "Tough Topside"],
-  },
-  {
-    name: "Hot Dog",
-    weight: RARE,
-    noSwitch: true,
-    url: "http://skateyeg.com/bog/11.0_Hot_Dog.html",
-    comment:
-      "(Double Negative) Grind sur les deux semelles négatives. Plus facile sur une box étroite qu'on peut grinder des deux côtés.",
-    variations: ["Rough", "Tough", "Tough&Rough"],
-  },
-  {
     name: "Mizou",
     weight: EASY,
     score: 1,
@@ -246,15 +228,6 @@ const SOUL_GRINDS = [
       "Tough",
       "Tough Topside",
     ],
-  },
-  {
-    name: "Sidewalk",
-    weight: RARE,
-    score: 1,
-    url: "http://skateyeg.com/bog/04.1_Sidewalk.html",
-    comment:
-      "Figure oldschool. Comme un PStar mais avec le pied arrière complètement posé sur les lacets. Un Sidewalk topside s'appelle Tendon Tear.",
-    variations: ["Topside", "Negative"],
   },
   {
     name: "X-Grind",
@@ -272,14 +245,6 @@ const SOUL_GRINDS = [
       "Tough Topside",
       "Tough&Rough",
     ],
-  },
-  {
-    name: "Training Wheel",
-    weight: RARE,
-    comment: `Le patin avant roule sur la roue du talon, le patin arrière se bloque dans un soul topside.
-      Image : Chris Haffey, AO Training Wheel,
-      <a target="_blank" href="https://www.youtube.com/watch?v=Dv00GSmm0gk">B.L.A.D.E. Aragon</a>`,
-    variations: ["Tough"],
   },
   {
     name: "BS Tabernacle",
@@ -317,24 +282,6 @@ const SOUL_GRINDS = [
     variations: ["Channel"],
   },
   {
-    name: "BS Wheelbarrow",
-    weight: RARE,
-    isSoulGroove: true,
-    url: "http://skateyeg.com/bog/15.1_Backside_Wheelbarrow.html",
-    comment:
-      "Un Backside Backslide avec le pied avant qui roule sur la roue arrière.",
-    variations: ["Channel"],
-  },
-  {
-    name: "FS Wheelbarrow",
-    weight: RARE,
-    isSoulGroove: true,
-    url: "http://skateyeg.com/bog/15.0_Wheelbarrow.html",
-    comment:
-      "Un Frontside Backslide avec le pied avant qui roule sur la roue arrière.",
-    variations: ["Channel"],
-  },
-  {
     name: "BS Byn Soul",
     weight: RARE,
     isSoulGroove: true,
@@ -349,22 +296,6 @@ const SOUL_GRINDS = [
     comment: `(Neighborhood) Comme un Soul mais avec le pied soul tourné en position Backside Torque.
       <a target="_blank" href="https://www.picuki.com/media/2251667102534778405">Image</a>.`,
     variations: ["Channel"],
-  },
-  {
-    name: "Closed Book",
-    weight: RARE,
-    noSwitch: true,
-    comment: `(Biscuit, Double Inner, Impossible Grind, Snub Soul) Grind sur les semelles avec les deux pieds, pointes de pied face à face.
-    Image : Aaron Dizom, <a target="_blank" href="https://www.youtube.com/watch?v=L3H5E13UkBw">United Front</a>`,
-    variations: ["Rough", "Tough", "Topside", "Negative"],
-  },
-  {
-    name: "Open Book",
-    weight: RARE,
-    noSwitch: true,
-    comment: `(Crab, Crab Stance, Double Outer) Grind sur les semelles avec les deux pieds, talons face à face.
-    Image : <a target="_blank" href="https://www.youtube.com/channel/UC_cMnM6u3xJ3yeW1jzIHgaQ">Ricardo Lino</a>`,
-    variations: ["Rough", "Tough", "Topside", "Negative"],
   },
 ];
 
@@ -835,17 +766,7 @@ export const OBSTACLE_VARIATIONS = [
 
 // Grinds excluded unless the "rare grinds" setting is on.
 // Matched by substring so BS/FS variants are covered.
-export const RARE_GRIND_NAME_PARTS = [
-  "Wheelbarrow",
-  "Training Wheel",
-  "Hot Dog",
-  "Closed Book",
-  "Open Book",
-  "Byn Soul",
-  "Sidewalk",
-  "Darkslide",
-  "Citric Acid",
-];
+export const RARE_GRIND_NAME_PARTS = ["Byn Soul", "Darkslide"];
 
 export function thumbUrl(name) {
   return `img/captures/200x200/${name.replaceAll(" ", "")}.jpg`;

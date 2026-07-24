@@ -31,6 +31,9 @@ const {
   rerollTrick,
   landTrick,
   skipTrick,
+  nextFamilyInOrder,
+  continueFreePlay,
+  nextCareerFamily,
   addTry,
   giveUp,
   onReelsSettled,
@@ -39,6 +42,17 @@ const {
 const { settings, reelSpeedMs } = useSettings();
 const { familyIndex } = useCollection();
 const { speakTrick, playKeys } = useSpeech();
+
+// Family names carry their own "(Normal)"/"(Switch)" suffix (see
+// families.js) — stripped here since the completion pause already
+// makes that context obvious.
+function familyBaseName(name) {
+  return name.replace(/ \((Normal|Switch)\)$/, "");
+}
+
+const nextFamilyPreview = computed(() =>
+  state.familyJustCompleted ? nextFamilyInOrder(state.familyJustCompleted) : null
+);
 
 // Group: a game starts with the "fight!" call.
 onMounted(() => {
@@ -153,51 +167,80 @@ function onReelStopped() {
 
         <!-- solo: land or skip, build the collection -->
         <template v-if="isSolo">
-          <div v-if="activeFamily" class="result__family">
-            <AppIcon name="list" :size="14" />
-            {{ activeFamily.name }} — trick {{ familyIndex(activeFamily.id) + 1 }}/{{
-              activeFamily.entries.length
-            }}
-          </div>
-          <div class="result__score">
-            <AppIcon name="zap" :size="18" />
-            {{ state.spin.score }} point{{ state.spin.score === 1 ? "" : "s" }}
-          </div>
+          <template v-if="state.familyJustCompleted">
+            <div class="family-pause">
+              <AppIcon name="trophy" :size="26" />
+              <h3 class="family-pause__title">
+                Famille {{ familyBaseName(state.familyJustCompleted.name) }} complétée !
+              </h3>
+            </div>
+            <div class="result__actions">
+              <button
+                v-if="nextFamilyPreview"
+                class="btn btn--go"
+                @click="nextCareerFamily(settings)"
+              >
+                <AppIcon name="forward" :size="18" /> Famille suivante :
+                {{ familyBaseName(nextFamilyPreview.name) }}
+              </button>
+              <button class="btn" @click="continueFreePlay(settings)">
+                <AppIcon name="play" :size="18" /> Continuer en solo libre
+              </button>
+            </div>
+            <div class="result__actions result__actions--secondary">
+              <button class="btn btn--ghost" @click="giveUp()">
+                <AppIcon name="flag" :size="16" /> Terminer la session
+              </button>
+            </div>
+          </template>
 
-          <!-- attempt counter: tap once per failed real-life try before
-               you finally land it (or skip). Doesn't reroll anything. -->
-          <div class="result__tries">
-            <span class="result__tries-label">
-              Essai {{ state.tries }}{{ state.tries > 1 ? ` (${state.tries - 1} raté${state.tries - 1 === 1 ? "" : "s"})` : "" }}
-            </span>
-            <button class="btn btn--ghost result__tries-btn" @click="addTry()">
-              <AppIcon name="forward" :size="14" /> Raté, on rejoue
-            </button>
-          </div>
+          <template v-else>
+            <div v-if="activeFamily" class="result__family">
+              <AppIcon name="list" :size="14" />
+              {{ activeFamily.name }} — {{ familyIndex(activeFamily.id) }}/{{
+                activeFamily.entries.length
+              }} réussis
+            </div>
+            <div class="result__score">
+              <AppIcon name="zap" :size="18" />
+              {{ state.spin.score }} point{{ state.spin.score === 1 ? "" : "s" }}
+            </div>
 
-          <div class="result__actions">
-            <button class="btn" @click="openPanel = 'explain'">
-              <AppIcon name="question" :size="18" /> Explication
-            </button>
-            <button class="btn" @click="skipTrick(settings)">
-              <AppIcon name="forward" :size="18" /> Passer
-            </button>
-            <button class="btn btn--go" @click="landTrick(settings)">
-              <AppIcon name="check" :size="18" /> Blade! +{{ state.spin.score }}
-            </button>
-          </div>
-          <div class="result__actions result__actions--secondary">
-            <button class="btn btn--ghost" @click="giveUp()">
-              <AppIcon name="flag" :size="16" /> Terminer la session
-            </button>
-            <button
-              class="btn btn--ghost"
-              :disabled="state.tricks.length + state.skipped.length === 0"
-              @click="openPanel = 'tricklist'"
-            >
-              <AppIcon name="list" :size="16" /> Liste des tricks ({{ state.tricks.length }})
-            </button>
-          </div>
+            <!-- attempt counter: tap once per failed real-life try before
+                 you finally land it (or skip). Doesn't reroll anything. -->
+            <div class="result__tries">
+              <span class="result__tries-label">
+                Essai {{ state.tries }}{{ state.tries > 1 ? ` (${state.tries - 1} raté${state.tries - 1 === 1 ? "" : "s"})` : "" }}
+              </span>
+              <button class="btn btn--ghost result__tries-btn" @click="addTry()">
+                <AppIcon name="forward" :size="14" /> Raté, on rejoue
+              </button>
+            </div>
+
+            <div class="result__actions">
+              <button class="btn" @click="openPanel = 'explain'">
+                <AppIcon name="question" :size="18" /> Explication
+              </button>
+              <button class="btn" @click="skipTrick(settings)">
+                <AppIcon name="forward" :size="18" /> Passer
+              </button>
+              <button class="btn btn--go" @click="landTrick(settings)">
+                <AppIcon name="check" :size="18" /> Blade! +{{ state.spin.score }}
+              </button>
+            </div>
+            <div class="result__actions result__actions--secondary">
+              <button class="btn btn--ghost" @click="giveUp()">
+                <AppIcon name="flag" :size="16" /> Terminer la session
+              </button>
+              <button
+                class="btn btn--ghost"
+                :disabled="state.tricks.length + state.skipped.length === 0"
+                @click="openPanel = 'tricklist'"
+              >
+                <AppIcon name="list" :size="16" /> Liste des tricks ({{ state.tricks.length }})
+              </button>
+            </div>
+          </template>
         </template>
 
         <!-- group: every player attempts the same trick, bails cost a letter -->
@@ -269,7 +312,11 @@ function onReelStopped() {
       <div v-if="badgeToast.length" class="badge-toast">
         <div v-for="badge in badgeToast" :key="badge.id" class="badge-toast__item">
           <AppIcon name="trophy" :size="18" />
-          <span>
+          <span v-if="badge.id.startsWith('family-')">
+            <strong>Famille complétée !</strong>
+            <small>{{ badge.name }}</small>
+          </span>
+          <span v-else>
             <strong>Badge débloqué : {{ badge.name }}</strong>
             <small>{{ badge.desc }}</small>
           </span>
@@ -381,6 +428,26 @@ function onReelStopped() {
   letter-spacing: 0.04em;
   color: var(--red-hi);
   margin-bottom: 8px;
+}
+
+.family-pause {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 0 16px;
+  color: var(--red-hi);
+}
+
+.family-pause__title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text);
+  margin: 4px 0 0;
 }
 
 .result__score {

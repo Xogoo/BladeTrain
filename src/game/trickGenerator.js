@@ -111,7 +111,19 @@ export function generateSpin(
       : pickWeighted(spinToPool);
 
   const spinOffPool = spinOffCandidates(grind, settings);
-  const spinOff = pickWeighted(spinOffPool);
+  // Family training only ever pins grind/variation/approach/spin-IN —
+  // spin-OUT was left fully random, which meant a plain "Groove"
+  // family entry could still land you on a Fakie (or degree) exit that
+  // has nothing to do with what the family is actually training.
+  // Forced tricks now default the exit to its neutral, no-rotation
+  // outcome ("None" for soul, "Forwards" for groove) unless the entry
+  // explicitly asks for a specific one via `spinOffName` (for a future
+  // spin-out-focused family).
+  const spinOff = forcedTrick
+    ? baseSpinOffPool(grind).find(
+        (s) => s.name === (forcedTrick.spinOffName || neutralSpinOffName(grind))
+      ) || pickWeighted(spinOffPool)
+    : pickWeighted(spinOffPool);
 
   const reels = [
     reel("Approach", "Approach", approachPool, approach),
@@ -351,6 +363,18 @@ function spinToCandidates(grind, approach, settings) {
         : SPINS_TO_GROOVE_BS;
   }
   return filterSpinDegrees(pool, settings, "spinIn");
+}
+
+// Raw (unfiltered by settings) spin-out pool for a grind, and the
+// no-rotation exit name within it — used to resolve a family's forced
+// spin-out regardless of the player's own spin-out settings, same
+// philosophy as baseSpinToPool above.
+function baseSpinOffPool(grind) {
+  return grind.isGroove ? SPINS_OFF_GROOVE : SPINS_OFF_SOUL;
+}
+
+function neutralSpinOffName(grind) {
+  return grind.isGroove ? "Forwards" : "None";
 }
 
 function spinOffCandidates(grind, settings) {

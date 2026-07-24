@@ -1,6 +1,6 @@
 import { computed, reactive } from "vue";
 import { generateSpin } from "../game/trickGenerator.js";
-import { familyById } from "../game/families.js";
+import { FAMILIES, familyById } from "../game/families.js";
 import { useCollection } from "./useCollection.js";
 
 // Group mode is S.K.A.T.E with the letters A.I.G.H.T: bail a trick and
@@ -35,11 +35,22 @@ const state = reactive({
   // panel) — restricts the Grind/Variation reels to exactly this list
   // of { grindName, variationName } pairs. null in a normal session.
   lockedPairs: null,
-  // Set when training a family (see game/families.js) — forces the
-  // exact current step's grind+variation+approach. Cleared as soon as
-  // the family is completed, so the session then continues as normal
-  // free solo play.
+  // Set when training a family (see game/families.js) — restricts the
+  // draw to that family's entries only, until every one has been
+  // landed at least once. Cleared as soon as the family is completed —
+  // see familyJustCompleted below, which pauses the session right
+  // there instead of silently rolling into something else.
   activeFamilyId: null,
+  // Which entry (index into activeFamily.entries) the CURRENT spin drew
+  // — a random pick among entries not yet landed, redrawn on every spin
+  // (skip included). null when no family is active.
+  activeFamilyEntryIndex: null,
+  // The family object just finished by the last landTrick() call, or
+  // null. While set, the game screen shows a completion pause instead
+  // of drawing the next spin automatically — the player explicitly
+  // picks "next family" or "keep going free" (see continueFreePlay /
+  // nextCareerFamily below) rather than the switch happening unnoticed.
+  familyJustCompleted: null,
 
   // group (S.K.A.T.E) state
   players: [], // { name, letters }
@@ -83,6 +94,8 @@ export function useGame() {
     state.newBadges = [];
     state.lockedPairs = null;
     state.activeFamilyId = null;
+    state.activeFamilyEntryIndex = null;
+    state.familyJustCompleted = null;
     state.screen = "game";
 
     if (mode === "solo") {
@@ -116,6 +129,8 @@ export function useGame() {
     state.newBadges = [];
     state.lockedPairs = pairs;
     state.activeFamilyId = null;
+    state.activeFamilyEntryIndex = null;
+    state.familyJustCompleted = null;
     state.screen = "game";
     state.spinsTotal = Infinity;
     state.sessionId = collection.startSession();
@@ -123,11 +138,12 @@ export function useGame() {
   };
 
   /**
-   * Solo only: sequential family training (see game/families.js). Only
-   * the family's current step is ever drawn — grind, variation and
-   * approach all pinned — and it never advances until you land it.
-   * Resumes where you left off unless `restart` is set (or the family
-   * was already fully complete, in which case it restarts anyway).
+   * Solo only: family training (see game/families.js). Each spin draws
+   * a random entry among the family's tricks not yet landed — skipping
+   * doesn't block anything, it just redraws; landing removes that entry
+   * from the pool for good. Resumes where you left off unless `restart`
+   * is set (or the family was already fully complete, in which case it
+   * restarts anyway).
    */
   const startFamilySession = (familyId, settings, { restart = false } = {}) => {
     state.mode = "solo";
@@ -139,6 +155,8 @@ export function useGame() {
     state.newBadges = [];
     state.lockedPairs = null;
     state.activeFamilyId = familyId;
+    state.activeFamilyEntryIndex = null;
+    state.familyJustCompleted = null;
     if (restart || collection.isFamilyComplete(familyId)) {
       collection.resetFamilyProgress(familyId);
     }
@@ -178,9 +196,25 @@ export function useGame() {
     // Solo trains you: never-landed and often-skipped grinds come up more.
     const bias = state.mode === "solo" ? collection.grindBias() : null;
     const family = state.activeFamilyId ? familyById(state.activeFamilyId) : null;
-    const forcedTrick = family
-      ? family.entries[collection.familyIndex(state.activeFamilyId)]
-      : null;
+    let forcedTrick = null;
+    if (family) {
+      const remaining = collection.familyRemainingIndices(
+        state.activeFamilyId,
+        family.entries.length
+      );
+      // Should only be empty for one frame right as the family
+      // completes (landTrick clears activeFamilyId before this runs) —
+      // guarded here anyway rather than crashing.
+      if (remaining.length) {
+        state.activeFamilyEntryIndex =
+          remaining[Math.floor(Math.random() * remaining.length)];
+        forcedTrick = family.entries[state.activeFamilyEntryIndex];
+      } else {
+        state.activeFamilyEntryIndex = null;
+      }
+    } else {
+      state.activeFamilyEntryIndex = null;
+    }
     state.spin = generateSpin(
       settings.tricks,
       state.usedGrinds,
@@ -252,25 +286,63 @@ export function useGame() {
       state.mode === "solo"
         ? collection.recordLand(state.spin, state.tries, state.sessionId)
         : [];
+    let justCompletedFamily = null;
     if (state.activeFamilyId) {
       const family = familyById(state.activeFamilyId);
-      if (family) {
+      if (family && state.activeFamilyEntryIndex !== null) {
         const familyBadge = collection.advanceFamilyProgress(
           state.activeFamilyId,
+          state.activeFamilyEntryIndex,
           family.entries.length
         );
         if (familyBadge) {
           badges = [...badges, familyBadge];
         }
-        // Family finished — the session carries on as normal free solo
-        // play rather than ending outright.
         if (collection.isFamilyComplete(state.activeFamilyId)) {
+          justCompletedFamily = family;
           state.activeFamilyId = null;
+          state.activeFamilyEntryIndex = null;
         }
       }
     }
     state.newBadges = badges;
+    if (justCompletedFamily) {
+      // Pause here — don't draw a next (unrelated) spin until the
+      // player explicitly chooses what happens next.
+      state.familyJustCompleted = justCompletedFamily;
+      return;
+    }
     nextSpin(settings);
+  };
+
+  /** The next family in career order after this one (same track, next
+   * tier), or null if it was the last one. */
+  const nextFamilyInOrder = (family) =>
+    FAMILIES.find((f) => f.track === family.track && f.tier === family.tier + 1) ||
+    null;
+
+  // Player's choice after a family completion pause: keep the session
+  // going as normal free solo play (what used to happen automatically).
+  const continueFreePlay = (settings) => {
+    state.familyJustCompleted = null;
+    nextSpin(settings);
+  };
+
+  // Player's choice after a family completion pause: jump straight into
+  // training the next family in career order (same track). No-ops if
+  // there isn't one (shouldn't be reachable from the UI in that case).
+  const nextCareerFamily = (settings) => {
+    const completed = state.familyJustCompleted;
+    if (!completed) {
+      return;
+    }
+    const next = nextFamilyInOrder(completed);
+    state.familyJustCompleted = null;
+    if (next) {
+      startFamilySession(next.id, settings);
+    } else {
+      nextSpin(settings);
+    }
   };
 
   const skipTrick = (settings) => {
@@ -324,6 +396,9 @@ export function useGame() {
     rerollTrick,
     landTrick,
     skipTrick,
+    nextFamilyInOrder,
+    continueFreePlay,
+    nextCareerFamily,
     addTry,
     giveUp,
     goToStart,

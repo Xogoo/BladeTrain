@@ -27,12 +27,6 @@ const SOUL_GRIND_NAMES = [
   "Mistrial",
   "Mizou",
   "X-Grind",
-  "BS Tabernacle",
-  "FS Tabernacle",
-  "BS Darkslide",
-  "FS Darkslide",
-  "BS Byn Soul",
-  "FS Byn Soul",
 ];
 
 // Every groove grind in the game (isGroove: true).
@@ -103,7 +97,10 @@ function spinEntries(grindNames, spinToName, switchMode, variationName = "None")
 }
 
 // Same idea as spinEntries, but covering several spin-ins at once (e.g.
-// both directions of a 360) instead of just one.
+// both directions of a 360) instead of just one — currently unused
+// (360/Hurricane and their Topside versions were split apart into
+// separate families, one direction each), kept here in case a future
+// family wants to combine directions again.
 function bothSpinEntries(grindNames, spinToNames, switchMode, variationName = "None") {
   const approach = approachName(switchMode);
   return grindNames.flatMap((grindName) =>
@@ -179,42 +176,42 @@ export const FAMILIES = [
     id: "groove",
     name: "Groove",
     badgeName: "Groove Mates",
-    tier: 1,
+    tier: 2,
     buildEntries: (switchMode) => plainEntries(GROOVE_GRIND_NAMES, switchMode),
   }),
   ...trackPair({
     id: "topside",
     name: "Topside",
     badgeName: "Topside Story",
-    tier: 2,
+    tier: 3,
     buildEntries: (switchMode) => plainEntries(TOPSIDE_GRIND_NAMES, switchMode, "Topside"),
   }),
   ...trackPair({
     id: "alleyoop",
     name: "Alley-oop",
     badgeName: "Alley-Oop Troop",
-    tier: 2,
+    tier: 4,
     buildEntries: (switchMode) => spinEntries(SOUL_GRIND_NAMES, "Inspin 180", switchMode),
   }),
   ...trackPair({
     id: "true",
     name: "True",
     badgeName: "True Story",
-    tier: 2,
+    tier: 5,
     buildEntries: (switchMode) => spinEntries(SOUL_GRIND_NAMES, "Outspin 180", switchMode),
   }),
   ...trackPair({
     id: "groove-270",
     name: "Groove 270",
     badgeName: "Groove-Oop",
-    tier: 2,
+    tier: 8,
     buildEntries: (switchMode) => groove270Entries(GROOVE_GRIND_NAMES, switchMode),
   }),
   ...trackPair({
     id: "alleyoop-top",
     name: "Alley-oop Top",
     badgeName: "Top Gun",
-    tier: 3,
+    tier: 6,
     buildEntries: (switchMode) =>
       spinEntries(TOPSIDE_GRIND_NAMES, "Inspin 180", switchMode, "Topside"),
   }),
@@ -222,7 +219,7 @@ export const FAMILIES = [
     id: "true-top",
     name: "True Top",
     badgeName: "True Grit",
-    tier: 3,
+    tier: 7,
     buildEntries: (switchMode) =>
       spinEntries(TOPSIDE_GRIND_NAMES, "Outspin 180", switchMode, "Topside"),
   }),
@@ -230,23 +227,37 @@ export const FAMILIES = [
     id: "360",
     name: "360",
     badgeName: "360 No Scope",
-    tier: 2,
-    buildEntries: (switchMode) =>
-      bothSpinEntries(SOUL_GRIND_NAMES, ["Inspin 360", "Outspin 360"], switchMode),
+    tier: 14,
+    buildEntries: (switchMode) => spinEntries(SOUL_GRIND_NAMES, "Inspin 360", switchMode),
+  }),
+  ...trackPair({
+    id: "hurricane",
+    name: "Hurricane",
+    badgeName: "Eye of the Storm",
+    tier: 16,
+    buildEntries: (switchMode) => spinEntries(SOUL_GRIND_NAMES, "Outspin 360", switchMode),
   }),
   ...trackPair({
     id: "360-top",
     name: "360 Top",
-    badgeName: "Hurricane Season",
-    tier: 3,
+    badgeName: "Top Spin",
+    tier: 15,
     buildEntries: (switchMode) =>
-      bothSpinEntries(TOPSIDE_GRIND_NAMES, ["Inspin 360", "Outspin 360"], switchMode, "Topside"),
+      spinEntries(TOPSIDE_GRIND_NAMES, "Inspin 360", switchMode, "Topside"),
+  }),
+  ...trackPair({
+    id: "hurricane-top",
+    name: "Hurricane Top",
+    badgeName: "Hurricane Season",
+    tier: 17,
+    buildEntries: (switchMode) =>
+      spinEntries(TOPSIDE_GRIND_NAMES, "Outspin 360", switchMode, "Topside"),
   }),
   ...trackPair({
     id: "zerospin",
     name: "Zerospin",
     badgeName: "Zero Hour",
-    tier: 2,
+    tier: 9,
     buildEntries: (switchMode) =>
       fakieSpinEntries([...SOUL_GRIND_NAMES, ...GROOVE_GRIND_NAMES], "None", switchMode),
   }),
@@ -254,7 +265,7 @@ export const FAMILIES = [
     id: "zerospin-top",
     name: "Topside Zerospin",
     badgeName: "Absolute Zero",
-    tier: 3,
+    tier: 10,
     buildEntries: (switchMode) =>
       fakieSpinEntries(TOPSIDE_GRIND_NAMES, "None", switchMode, "Topside"),
   }),
@@ -262,35 +273,35 @@ export const FAMILIES = [
     id: "halfcab",
     name: "Halfcab",
     badgeName: "Taxi Driver",
-    tier: 2,
+    tier: 11,
     buildEntries: (switchMode) => fakieSpinEntries(SOUL_GRIND_NAMES, "Inspin 180", switchMode),
   }),
   ...trackPair({
     id: "true-halfcab",
     name: "True Halfcab",
     badgeName: "Cabin Fever",
-    tier: 2,
+    tier: 12,
     buildEntries: (switchMode) => fakieSpinEntries(SOUL_GRIND_NAMES, "Outspin 180", switchMode),
   }),
   ...trackPair({
     id: "fullcab",
     name: "Fullcab",
     badgeName: "Cab Calloway",
-    tier: 2,
+    tier: 19,
     buildEntries: (switchMode) => fakieSpinEntries(SOUL_GRIND_NAMES, "Inspin 360", switchMode),
   }),
   ...trackPair({
     id: "true-fullcab",
     name: "True Fullcab",
     badgeName: "Yellow Cab",
-    tier: 2,
+    tier: 18,
     buildEntries: (switchMode) => fakieSpinEntries(SOUL_GRIND_NAMES, "Outspin 360", switchMode),
   }),
   ...trackPair({
     id: "groove-fakie-270",
     name: "Groove Fakie 270",
     badgeName: "Reverse Gear",
-    tier: 2,
+    tier: 13,
     buildEntries: (switchMode) =>
       groove270Entries(GROOVE_GRIND_NAMES, switchMode, { fakie: true }),
   }),

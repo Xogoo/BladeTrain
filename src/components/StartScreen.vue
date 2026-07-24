@@ -19,7 +19,7 @@ const emit = defineEmits(["open-settings"]);
 
 const { settings, applyLevel } = useSettings();
 const { startGame, startFamilySession } = useGame();
-const { familyIndex, isFamilyComplete } = useCollection();
+const { familyIndex, isFamilyComplete, careerProgress, resetCareerProgress } = useCollection();
 const { needsBackupReminder, exportBackup } = useBackup();
 
 // Solo has two real choices now: a free Custom session, or training one
@@ -51,11 +51,76 @@ function startSoloSession() {
   }
 }
 
+// Career: two fully independent progressions (Normal / Switch), each
+// walking the same families.js order — see game/families.js `tier`,
+// which is now a strict 1..N progression rather than a grouping (each
+// tier has exactly one family). Step 1 is always unlocked; every next
+// step unlocks once the previous one is fully complete — tapping a
+// locked step does nothing. Tapping an unlocked one starts training it
+// directly, same mechanism as Solo's "Famille de tricks".
+const careerTrack = ref(null); // 'normal' | 'switch' | null
+
+const careerSteps = computed(() => {
+  if (!careerTrack.value) {
+    return [];
+  }
+  const families = FAMILIES.filter((family) => family.track === careerTrack.value).sort(
+    (a, b) => a.tier - b.tier
+  );
+  let previousDone = true; // nothing before step 1, so it's always open
+  return families.map((family) => {
+    const done = isFamilyComplete(family.id);
+    const unlocked = previousDone;
+    previousDone = done;
+    return { family, done, unlocked };
+  });
+});
+
+// Family names carry their own "(Normal)"/"(Switch)" suffix (see
+// families.js) so they read fine on their own in the Solo picker — but
+// inside the career-track screen that's already the whole context, so
+// it's stripped here for a cleaner list.
+function familyBaseName(name) {
+  return name.replace(/ \((Normal|Switch)\)$/, "");
+}
+
+function chooseCareerTrack(track) {
+  careerTrack.value = track;
+  step.value = "career-track";
+}
+
+function startCareerFamily(careerStep) {
+  if (!careerStep.unlocked) {
+    return;
+  }
+  startFamilySession(careerStep.family.id, settings, {
+    restart: isFamilyComplete(careerStep.family.id),
+  });
+}
+
+// Career gets its own reset, deliberately separate from the general
+// "Réinitialiser la progression" in Collection — same tap-again-to-
+// confirm pattern used there and in Session History.
+const confirmingCareerReset = ref(false);
+function onCareerReset() {
+  if (!confirmingCareerReset.value) {
+    confirmingCareerReset.value = true;
+    return;
+  }
+  resetCareerProgress();
+  confirmingCareerReset.value = false;
+}
+
 const MODES = [
   {
     id: "solo",
     name: "Solo",
     tagline: "Session sans fin — construis ta collection de tricks",
+  },
+  {
+    id: "career",
+    name: "Carrière",
+    tagline: "Deux progressions indépendantes — Normal et Switch",
   },
   {
     id: "group",
@@ -64,7 +129,7 @@ const MODES = [
   },
 ];
 
-const step = ref("mode"); // 'mode' | 'setup'
+const step = ref("mode"); // 'mode' | 'career' | 'career-track' | 'setup'
 
 const presetTitle = computed(() =>
   settings.mode === "solo" ? "Mode" : "Difficulté"
@@ -78,6 +143,11 @@ const { fadeOutMusic } = useSpeech();
 // Committing to a mode ends the intro: the title music fades out here
 // (and only here — it keeps playing through the toolbar panels).
 function chooseMode(modeId) {
+  if (modeId === "career") {
+    step.value = "career";
+    fadeOutMusic();
+    return;
+  }
   settings.mode = modeId;
   if (modeId === "solo" && !SOLO_LEVELS.some((l) => l.id === settings.level)) {
     applyLevel(CUSTOM_LEVEL);
@@ -129,6 +199,108 @@ function removePlayer(index) {
     <div v-if="needsBackupReminder" class="backup-reminder panel">
       <span>Ça fait un moment — tu sauvegardes ta progression ?</span>
       <button class="btn" @click="exportBackup">Sauvegarder maintenant</button>
+    </div>
+  </section>
+
+  <!-- step 1b: Carrière chosen — Normal vs Switch, each own progress -->
+  <section v-else-if="step === 'career'" class="start setup rise-in">
+    <div class="setup__top">
+      <button class="btn btn--ghost setup__back" @click="step = 'mode'">
+        &lsaquo; Retour
+      </button>
+    </div>
+    <h2 class="setup__title sticker-text">Carrière</h2>
+    <p class="setup__hint setup__hint--standalone">
+      Deux progressions totalement indépendantes — chacune avance à son
+      propre rythme.
+    </p>
+
+    <div class="career-tracks">
+      <button
+        v-for="track in ['normal', 'switch']"
+        :key="track"
+        class="career-track panel"
+        @click="chooseCareerTrack(track)"
+      >
+        <span class="career-track__name">{{ track === "normal" ? "Normal" : "Switch" }}</span>
+        <span class="career-track__percent">{{ careerProgress(track).percent }}%</span>
+        <div class="career-track__bar">
+          <div
+            class="career-track__bar-fill"
+            :style="{ width: careerProgress(track).percent + '%' }"
+          />
+        </div>
+        <span class="career-track__count">
+          {{ careerProgress(track).landed }}/{{ careerProgress(track).total }} tricks
+        </span>
+      </button>
+    </div>
+
+    <div class="actions">
+      <button
+        class="btn btn--ghost reset-btn"
+        :class="{ 'reset-btn--confirm': confirmingCareerReset }"
+        @click="onCareerReset"
+        @blur="confirmingCareerReset = false"
+      >
+        {{
+          confirmingCareerReset
+            ? "Retape pour tout effacer"
+            : "Réinitialiser la Carrière"
+        }}
+      </button>
+    </div>
+  </section>
+
+  <!-- step 1c: one Career track — a path of steps, each unlocking the
+       next once landed; tap an unlocked one to train it -->
+  <section v-else-if="step === 'career-track'" class="start setup rise-in">
+    <div class="setup__top">
+      <button class="btn btn--ghost setup__back" @click="step = 'career'">
+        &lsaquo; Retour
+      </button>
+    </div>
+    <h2 class="setup__title sticker-text">
+      Carrière — {{ careerTrack === "normal" ? "Normal" : "Switch" }}
+    </h2>
+
+    <div class="career-path">
+      <div
+        v-for="(careerStep, i) in careerSteps"
+        :key="careerStep.family.id"
+        class="career-step"
+        :class="{
+          'career-step--done': careerStep.done,
+          'career-step--locked': !careerStep.unlocked,
+        }"
+      >
+        <div
+          v-if="i > 0"
+          class="career-step__connector"
+          :class="{ 'career-step__connector--done': careerSteps[i - 1].done }"
+        />
+        <button
+          class="career-step__row"
+          :disabled="!careerStep.unlocked"
+          @click="startCareerFamily(careerStep)"
+        >
+          <span class="career-step__node">
+            <AppIcon v-if="careerStep.done" name="check" :size="18" />
+            <AppIcon v-else-if="!careerStep.unlocked" name="lock" :size="16" />
+            <template v-else>{{ i + 1 }}</template>
+          </span>
+          <span class="career-step__info">
+            <span class="career-step__name">{{ familyBaseName(careerStep.family.name) }}</span>
+            <span class="career-step__progress">
+              <template v-if="careerStep.done">Terminée ✓</template>
+              <template v-else-if="careerStep.unlocked">
+                {{ familyIndex(careerStep.family.id) }}/{{ careerStep.family.entries.length }}
+              </template>
+              <template v-else>Verrouillée</template>
+            </span>
+          </span>
+        </button>
+      </div>
     </div>
   </section>
 
@@ -468,6 +640,189 @@ function removePlayer(index) {
 .setup__hint--standalone {
   margin-top: -6px;
   margin-bottom: 6px;
+}
+
+/* ---------- career screens ---------- */
+
+.career-tracks {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.career-track {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 18px 20px;
+  text-align: left;
+  transition: transform 0.15s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.career-track:hover {
+  transform: translateY(-2px);
+  border-color: var(--red);
+  box-shadow: var(--glow-red);
+}
+
+.career-track__name {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 20px;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.career-track__percent {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--red-hi);
+}
+
+.career-track__bar {
+  grid-column: 1 / -1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-1);
+  overflow: hidden;
+}
+
+.career-track__bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--red-hi), var(--red));
+  transition: width 0.3s ease;
+}
+
+.career-track__count {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.career-path {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.career-step {
+  position: relative;
+}
+
+.career-step__connector {
+  position: absolute;
+  left: 25px;
+  top: -8px;
+  width: 2px;
+  height: 16px;
+  background: var(--line-strong);
+}
+
+.career-step__connector--done {
+  background: var(--red-hi);
+}
+
+.career-step__row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 10px 6px;
+  text-align: left;
+  border-radius: 12px;
+  transition: background 0.15s ease;
+}
+
+.career-step__row:not(:disabled):hover {
+  background: var(--panel-strong);
+}
+
+.career-step__row:disabled {
+  cursor: default;
+}
+
+.career-step__node {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  border: 2px solid var(--line-strong);
+  background: var(--bg-1);
+  color: var(--text-dim);
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.career-step:not(.career-step--locked):not(.career-step--done) .career-step__node {
+  border-color: var(--red);
+  color: var(--red-hi);
+  box-shadow: var(--glow-red);
+}
+
+.career-step--done .career-step__node {
+  border-color: var(--red);
+  background: linear-gradient(135deg, var(--red-hi), var(--red));
+  color: var(--cta-text);
+}
+
+.career-step--locked .career-step__node {
+  opacity: 0.55;
+}
+
+.career-step__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.career-step__name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.career-step--locked .career-step__name {
+  color: var(--text-dim);
+}
+
+.career-step__progress {
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.career-step--done .career-step__progress {
+  color: var(--red-hi);
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+.reset-btn {
+  font-size: 13px;
+}
+
+.reset-btn--confirm {
+  color: var(--red-hi);
+  border-color: rgba(var(--fg-rgb), 0.6);
+  box-shadow: 0 0 10px rgba(var(--fg-rgb), 0.2);
 }
 
 .players {
