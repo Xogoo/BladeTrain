@@ -96,7 +96,7 @@ export function generateSpin(
     }
 
     switchUpVariationPool = variationCandidates(switchUp, settings, true);
-    switchUpVariation = hasVariationReel(settings)
+    switchUpVariation = hasVariationReel(settings, true)
       ? pickWeighted(switchUpVariationPool)
       : null;
   }
@@ -157,10 +157,11 @@ export function hasApproachReel(settings) {
   return settings.fakie || settings.switch;
 }
 
-export function hasVariationReel(settings) {
+export function hasVariationReel(settings, forSwitchUp = false) {
+  const topsideEnabled = forSwitchUp ? settings.switchUpTopside : settings.topside;
   return (
     settings.negative ||
-    settings.topside ||
+    topsideEnabled ||
     settings.rough ||
     settings.tough ||
     settings.channel ||
