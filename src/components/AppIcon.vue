@@ -25,6 +25,7 @@ const PATHS = {
   sound:
     "M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14",
   "sound-off": "M11 5L6 9H2v6h4l5 4V5zM23 9l-6 6M17 9l6 6",
+  share: "M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13",
 };
 </script>
 

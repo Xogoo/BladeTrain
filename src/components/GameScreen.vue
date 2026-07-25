@@ -84,7 +84,7 @@ watch(
     window.clearTimeout(badgeToastTimer);
     badgeToastTimer = window.setTimeout(() => {
       badgeToast.value = [];
-    }, 3500);
+    }, 4500);
   }
 );
 
@@ -299,21 +299,53 @@ function onReelStopped() {
     />
     <TrickListPanel v-if="openPanel === 'tricklist'" @close="openPanel = null" />
 
-    <transition name="badge-toast">
-      <div v-if="badgeToast.length" class="badge-toast">
-        <div v-for="badge in badgeToast" :key="badge.id" class="badge-toast__item">
-          <AppIcon name="trophy" :size="18" />
-          <span v-if="badge.id.startsWith('family-')">
-            <strong>Famille complétée !</strong>
-            <small>{{ badge.name }}</small>
-          </span>
-          <span v-else>
-            <strong>Badge débloqué : {{ badge.name }}</strong>
-            <small>{{ badge.desc }}</small>
-          </span>
+    <div v-if="badgeToast.length" class="badge-stamp-layer">
+      <!-- Distorts the stamp's edges via feDisplacementMap so it reads
+           as a rough ink impression instead of a clean vector shape. -->
+      <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+        <filter id="badge-stamp-ink">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.012 0.05"
+            numOctaves="2"
+            seed="7"
+            result="noise"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="10"
+            xChannelSelector="R"
+            yChannelSelector="G"
+          />
+        </filter>
+      </svg>
+      <transition-group name="badge-stamp" tag="div" class="badge-stamp-stack">
+        <div
+          v-for="(badge, i) in badgeToast"
+          :key="badge.id"
+          class="badge-stamp"
+          :style="{ '--stamp-delay': `${i * 0.2}s` }"
+        >
+          <div class="badge-stamp__shape" aria-hidden="true">
+            <div class="badge-stamp__ink" />
+          </div>
+          <div class="badge-stamp__content">
+            <div class="badge-stamp__icon">
+              <AppIcon name="trophy" :size="34" />
+            </div>
+            <div v-if="badge.id.startsWith('family-')" class="badge-stamp__text">
+              <strong>Famille complétée !</strong>
+              <span>{{ badge.name }}</span>
+            </div>
+            <div v-else class="badge-stamp__text">
+              <strong>{{ badge.name }}</strong>
+              <span>{{ badge.desc }}</span>
+            </div>
+          </div>
         </div>
-      </div>
-    </transition>
+      </transition-group>
+    </div>
   </section>
 </template>
 
@@ -566,55 +598,183 @@ function onReelStopped() {
   opacity: 0;
 }
 
-.badge-toast {
+.badge-stamp-layer {
   position: fixed;
-  top: 14px;
-  left: 50%;
-  transform: translateX(-50%);
+  inset: 0;
   z-index: 30;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
 }
 
-.badge-toast__item {
+.badge-stamp-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.badge-stamp {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  border-radius: 12px;
-  border: 1px solid rgba(var(--fg-rgb), 0.6);
-  background: rgba(var(--bg-0-rgb), 0.94);
-  box-shadow: var(--glow-red);
-  color: var(--red-hi);
-  text-align: left;
+  justify-content: center;
+  width: min(78vw, 340px);
+  aspect-ratio: 1;
+  animation: badge-stamp-slam 1s var(--stamp-delay, 0s) cubic-bezier(0.22, 0.68, 0.32, 1)
+      both,
+    badge-stamp-shake 0.5s calc(var(--stamp-delay, 0s) + 1s) ease-out;
 }
 
-.badge-toast__item span {
+/* Everything that should look like rough-edged ink — clipped to a
+   perfect circle, then roughened by the SVG filter. Kept separate from
+   the text below so distorting it never touches the actual letters. */
+.badge-stamp__shape {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 6px solid var(--red-hi);
+  outline: 2px solid var(--red-hi);
+  outline-offset: -14px;
+  background: rgba(var(--bg-0-rgb), 0.96);
+  box-shadow: var(--glow-red);
+  filter: url(#badge-stamp-ink);
+  animation: badge-stamp-glow 1.8s calc(var(--stamp-delay, 0s) + 1.5s) ease-in-out infinite;
+}
+
+/* A second, slightly offset outline behind the main one — the classic
+   double-struck look of a rubber stamp that didn't land perfectly
+   flush the first time. */
+.badge-stamp__shape::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: inherit;
+  border: 3px solid var(--red-hi);
+  opacity: 0.35;
+  transform: rotate(4deg) scale(1.03);
+  pointer-events: none;
+}
+
+/* Uneven ink coverage — a rubber stamp never lays down a perfectly
+   flat, uniform color, some patches always come out lighter/heavier. */
+.badge-stamp__ink {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  opacity: 0.5;
+  background-image: radial-gradient(
+      circle at 18% 22%,
+      rgba(var(--fg-rgb), 0.22) 0%,
+      transparent 32%
+    ),
+    radial-gradient(circle at 82% 15%, rgba(var(--fg-rgb), 0.16) 0%, transparent 28%),
+    radial-gradient(circle at 75% 78%, rgba(var(--fg-rgb), 0.2) 0%, transparent 34%),
+    radial-gradient(circle at 12% 80%, rgba(var(--fg-rgb), 0.14) 0%, transparent 26%),
+    radial-gradient(circle at 50% 50%, transparent 55%, rgba(var(--bg-0-rgb), 0.5) 100%);
+}
+
+/* The actual readable content — sits above the ink layer, completely
+   untouched by its filter/distortion, so text always stays crisp. */
+.badge-stamp__content {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 30px 26px;
+  text-align: center;
 }
 
-.badge-toast__item strong {
+.badge-stamp__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: 3px solid var(--red-hi);
+  color: var(--red-hi);
+  background: linear-gradient(135deg, rgba(var(--fg-rgb), 0.12), transparent);
+}
+
+.badge-stamp__text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.badge-stamp__text strong {
   font-family: var(--font-display);
-  font-size: 13px;
-  letter-spacing: 0.06em;
+  font-size: 26px;
+  line-height: 1.1;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
+  color: var(--red-hi);
+  text-shadow: var(--glow-red-hi);
 }
 
-.badge-toast__item small {
+.badge-stamp__text span {
   color: var(--text-dim);
-  font-size: 13px;
+  font-size: 14px;
+  max-width: 220px;
 }
 
-.badge-toast-enter-active,
-.badge-toast-leave-active {
-  transition: opacity 0.3s ease, transform 0.3s ease;
+@keyframes badge-stamp-slam {
+  0% {
+    opacity: 0;
+    transform: scale(5) translateY(-220px) rotate(-26deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.92) translateY(0) rotate(-4deg);
+  }
+  80% {
+    transform: scale(1.04) translateY(0) rotate(-4deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0) rotate(-4deg);
+  }
 }
 
-.badge-toast-enter-from,
-.badge-toast-leave-to {
+@keyframes badge-stamp-shake {
+  0%,
+  100% {
+    transform: scale(1) rotate(-4deg);
+  }
+  25% {
+    transform: scale(1.03) rotate(-6deg);
+  }
+  50% {
+    transform: scale(0.99) rotate(-2deg);
+  }
+  75% {
+    transform: scale(1.01) rotate(-4.5deg);
+  }
+}
+
+@keyframes badge-stamp-glow {
+  0%,
+  100% {
+    box-shadow: var(--glow-red);
+  }
+  50% {
+    box-shadow: var(--glow-red-hi);
+  }
+}
+
+.badge-stamp-leave-active {
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.badge-stamp-leave-to {
   opacity: 0;
-  transform: translateX(-50%) translateY(-14px);
+  transform: scale(0.85) rotate(-4deg);
 }
 </style>

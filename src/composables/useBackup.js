@@ -48,6 +48,24 @@ export function useBackup() {
     return Date.now() - new Date(collection.lastBackupAt).getTime() > BACKUP_REMINDER_MS;
   });
 
+  // Separate, gentler nudge: once per calendar month, the end-of-session
+  // recap offers a one-tap "Envoyer la sauvegarde" — shown regardless of
+  // whether the 7-day reminder above has already fired, and marked seen
+  // as soon as it's shown (not only once acted on), so it doesn't nag
+  // for the rest of the month either way.
+  function currentMonthKey() {
+    return new Date().toISOString().slice(0, 7); // "YYYY-MM"
+  }
+
+  const showMonthlyBackupPrompt = computed(() => {
+    const hasData = collection.lands.length > 0 || collection.landedTotal > 0;
+    return hasData && collection.lastMonthlyPromptMonth !== currentMonthKey();
+  });
+
+  function markMonthlyPromptShown() {
+    collection.lastMonthlyPromptMonth = currentMonthKey();
+  }
+
   /**
    * Tries the native share sheet first (Mail, AirDrop, Files, whatever
    * the player picks, with the actual JSON file attached) — this is
@@ -115,6 +133,8 @@ export function useBackup() {
   return {
     lastBackupAt,
     needsBackupReminder,
+    showMonthlyBackupPrompt,
+    markMonthlyPromptShown,
     exportBackup,
     restoreBackup,
   };

@@ -6,6 +6,7 @@ import StartScreen from "./components/StartScreen.vue";
 import GameScreen from "./components/GameScreen.vue";
 import GameOverScreen from "./components/GameOverScreen.vue";
 import SessionReportScreen from "./components/SessionReportScreen.vue";
+import CareerCompleteScreen from "./components/CareerCompleteScreen.vue";
 import SettingsPanel from "./components/SettingsPanel.vue";
 import TricktionaryPanel from "./components/TricktionaryPanel.vue";
 import AboutPanel from "./components/AboutPanel.vue";
@@ -179,6 +180,7 @@ const openPanel = ref(requestedPanel ?? null);
     />
     <GameScreen v-else-if="state.screen === 'game'" />
     <SessionReportScreen v-else-if="state.screen === 'sessionReport'" />
+    <CareerCompleteScreen v-else-if="state.screen === 'careerComplete'" />
     <GameOverScreen v-else />
   </main>
 

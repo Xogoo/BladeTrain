@@ -51,6 +51,11 @@ const state = reactive({
   // picks "next family" or "keep going free" (see continueFreePlay /
   // nextCareerFamily below) rather than the switch happening unnoticed.
   familyJustCompleted: null,
+  // Set instead of familyJustCompleted when the family that just
+  // finished was the LAST one of its whole Career track — triggers the
+  // full-screen CareerCompleteScreen (state.screen = "careerComplete")
+  // rather than the regular pause panel. { track, badge } | null.
+  careerJustCompleted: null,
 
   // group (S.K.A.T.E) state
   players: [], // { name, letters }
@@ -96,6 +101,7 @@ export function useGame() {
     state.activeFamilyId = null;
     state.activeFamilyEntryIndex = null;
     state.familyJustCompleted = null;
+    state.careerJustCompleted = null;
     state.screen = "game";
 
     if (mode === "solo") {
@@ -131,6 +137,7 @@ export function useGame() {
     state.activeFamilyId = null;
     state.activeFamilyEntryIndex = null;
     state.familyJustCompleted = null;
+    state.careerJustCompleted = null;
     state.screen = "game";
     state.spinsTotal = Infinity;
     state.sessionId = collection.startSession();
@@ -157,6 +164,7 @@ export function useGame() {
     state.activeFamilyId = familyId;
     state.activeFamilyEntryIndex = null;
     state.familyJustCompleted = null;
+    state.careerJustCompleted = null;
     if (restart || collection.isFamilyComplete(familyId)) {
       collection.resetFamilyProgress(familyId);
     }
@@ -312,6 +320,21 @@ export function useGame() {
     }
     state.newBadges = badges;
     if (justCompletedFamily) {
+      // The last family of a whole Career track finishing is a bigger
+      // moment than a regular one — it gets its own full-screen
+      // takeover instead of the usual pause-and-pick panel, since
+      // there's no "next family" to offer anyway.
+      const careerBadge = justCompletedFamily.track
+        ? collection.awardCareerBadgeIfComplete(justCompletedFamily.track)
+        : null;
+      if (careerBadge) {
+        state.careerJustCompleted = {
+          track: justCompletedFamily.track,
+          badge: careerBadge,
+        };
+        state.screen = "careerComplete";
+        return;
+      }
       // Pause here — don't draw a next (unrelated) spin until the
       // player explicitly chooses what happens next.
       state.familyJustCompleted = justCompletedFamily;
@@ -330,6 +353,7 @@ export function useGame() {
   // going as normal free solo play (what used to happen automatically).
   const continueFreePlay = (settings) => {
     state.familyJustCompleted = null;
+    state.careerJustCompleted = null;
     nextSpin(settings);
   };
 
@@ -343,6 +367,7 @@ export function useGame() {
     }
     const next = nextFamilyInOrder(completed);
     state.familyJustCompleted = null;
+    state.careerJustCompleted = null;
     if (next) {
       startFamilySession(next.id, settings);
     } else {
@@ -384,6 +409,7 @@ export function useGame() {
     state.phase = "idle";
     state.spin = null;
     state.newBadges = [];
+    state.careerJustCompleted = null;
   };
 
   return {

@@ -1,9 +1,34 @@
 <script setup>
+import { onMounted, ref } from "vue";
 import AppIcon from "./AppIcon.vue";
 import SessionSummary from "./SessionSummary.vue";
 import { useGame } from "../composables/useGame.js";
+import { useBackup } from "../composables/useBackup.js";
 
 const { state, goToStart } = useGame();
+const { showMonthlyBackupPrompt, markMonthlyPromptShown, exportBackup } = useBackup();
+
+// Shown at most once per calendar month, right here at the end of a
+// session — marked seen as soon as this screen appears (not only once
+// acted on), so it doesn't keep coming back for the rest of the month
+// either way.
+const showBackupPrompt = ref(false);
+const backupStatus = ref("");
+onMounted(() => {
+  if (showMonthlyBackupPrompt.value) {
+    showBackupPrompt.value = true;
+    markMonthlyPromptShown();
+  }
+});
+
+async function sendMonthlyBackup() {
+  const result = await exportBackup();
+  if (result.method === "cancelled") {
+    return;
+  }
+  backupStatus.value =
+    result.method === "share" ? "Sauvegarde envoyée !" : "Sauvegarde téléchargée !";
+}
 </script>
 
 <template>
@@ -12,6 +37,17 @@ const { state, goToStart } = useGame();
 
     <div class="report__body panel">
       <SessionSummary v-if="state.lastSessionId" :session-id="state.lastSessionId" />
+    </div>
+
+    <div v-if="showBackupPrompt" class="backup-prompt panel">
+      <AppIcon name="share" :size="18" />
+      <div class="backup-prompt__text">
+        <strong>Nouveau mois — pense à ta sauvegarde !</strong>
+        <span>Garde ta progression en sécurité en l'envoyant quelque part.</span>
+      </div>
+      <button class="btn btn--ghost backup-prompt__btn" @click="sendMonthlyBackup">
+        {{ backupStatus || "Envoyer la sauvegarde" }}
+      </button>
     </div>
 
     <button class="btn btn--go report__back" @click="goToStart()">
@@ -41,6 +77,42 @@ const { state, goToStart } = useGame();
   width: 100%;
   padding: 18px;
   text-align: left;
+}
+
+.backup-prompt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  text-align: left;
+  color: var(--red-hi);
+}
+
+.backup-prompt__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.backup-prompt__text strong {
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.backup-prompt__text span {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.backup-prompt__btn {
+  flex: none;
+  font-size: 13px;
+  padding: 10px 14px;
+  white-space: nowrap;
 }
 
 .report__back {

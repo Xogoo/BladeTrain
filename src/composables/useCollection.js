@@ -70,6 +70,9 @@ export const BADGES = [
     name: family.badgeName || family.name,
     desc: `Termine la famille "${family.name}"`,
   })),
+  // The big one: every family of a whole Career track, in order.
+  { id: "career-normal", name: "Blade Runner", desc: "Termine les 19 familles de la Carrière Normal" },
+  { id: "career-switch", name: "Switchblade", desc: "Termine les 19 familles de la Carrière Switch" },
 ];
 
 const SOUL_PLATE_GRINDS = GRINDS.filter((g) => !g.isGroove && !g.isSoulGroove);
@@ -107,6 +110,10 @@ function defaultCollection() {
     // only lives in this device's localStorage otherwise, see
     // useBackup.js. null means "never backed up".
     lastBackupAt: null,
+    // "YYYY-MM" of the last time the end-of-session backup prompt was
+    // shown — once per calendar month, regardless of whether the
+    // player actually exported when it appeared. null means "never".
+    lastMonthlyPromptMonth: null,
     // Family training progress: which entries (by index into
     // family.entries) have been landed so far — drawn at random among
     // whatever's left, not in a fixed order (see useGame.js). completedAt
@@ -235,6 +242,31 @@ function careerProgress(track) {
   }
   const percent = total ? Math.round((landed / total) * 100) : 0;
   return { landed, total, percent };
+}
+
+/** Every family of that track finished — the whole Career track. */
+function isCareerComplete(track) {
+  const families = FAMILIES.filter((family) => family.track === track);
+  return families.length > 0 && families.every((family) => isFamilyComplete(family.id));
+}
+
+/**
+ * Call right after a family completes. If that was the LAST family
+ * needed to finish the whole track, awards the career badge (once) and
+ * returns it — else returns null, same "newly earned or not" shape as
+ * advanceFamilyProgress's own return value, so useGame.js can treat
+ * both the same way.
+ */
+function awardCareerBadgeIfComplete(track) {
+  if (!isCareerComplete(track)) {
+    return null;
+  }
+  const badgeId = `career-${track}`;
+  if (collection.badges[badgeId]) {
+    return null;
+  }
+  collection.badges[badgeId] = new Date().toISOString();
+  return BADGES.find((b) => b.id === badgeId) || null;
 }
 
 /**
@@ -704,6 +736,8 @@ export function useCollection() {
     isFamilyComplete,
     familyRemainingIndices,
     careerProgress,
+    isCareerComplete,
+    awardCareerBadgeIfComplete,
     advanceFamilyProgress,
     resetFamilyProgress,
     grindLandedCount,
