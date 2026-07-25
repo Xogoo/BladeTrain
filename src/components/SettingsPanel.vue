@@ -38,9 +38,40 @@ const {
   setSwitchUpGrind,
   setAllSwitchUpGrinds,
   setSwitchUpGrindsByType,
+  savePreset,
+  applyPreset,
+  deletePreset,
 } = useSettings();
 
 const { lastBackupAt, exportBackup, restoreBackup } = useBackup();
+
+// Presets: pick one from the dropdown to reapply it immediately: type
+// a name and tap Save to snapshot the current trick/grind toggles.
+const selectedPresetId = ref("");
+const newPresetName = ref("");
+
+function onSelectPreset() {
+  if (selectedPresetId.value) {
+    applyPreset(selectedPresetId.value);
+  }
+}
+
+function onSavePreset() {
+  if (!newPresetName.value.trim()) {
+    return;
+  }
+  const preset = savePreset(newPresetName.value);
+  newPresetName.value = "";
+  selectedPresetId.value = preset.id;
+}
+
+function onDeletePreset() {
+  if (!selectedPresetId.value) {
+    return;
+  }
+  deletePreset(selectedPresetId.value);
+  selectedPresetId.value = "";
+}
 
 const backupStatus = ref(""); // shown right after an export/restore attempt
 const restoreInput = ref(null);
@@ -255,6 +286,39 @@ const grindList = [
     </div>
     <p class="hint">{{ formatBackupDate(lastBackupAt) }}</p>
     <p v-if="backupStatus" class="hint hint--status">{{ backupStatus }}</p>
+
+    <h3 class="section-title">Réglages sauvegardés</h3>
+    <p class="hint hint--top">
+      Sauvegarde une combinaison de tricks/grinds sous un nom, pour la
+      reprendre en un tap plutôt que de tout recocher.
+    </p>
+    <div v-if="settings.presets.length" class="preset-picker">
+      <select class="select" v-model="selectedPresetId" @change="onSelectPreset">
+        <option value="" disabled>Choisis un réglage sauvegardé</option>
+        <option v-for="preset in settings.presets" :key="preset.id" :value="preset.id">
+          {{ preset.name }}
+        </option>
+      </select>
+      <button
+        class="btn btn--ghost preset-picker__delete"
+        :disabled="!selectedPresetId"
+        @click="onDeletePreset"
+      >
+        Supprimer
+      </button>
+    </div>
+    <div class="preset-save">
+      <input
+        type="text"
+        class="select"
+        placeholder="Nom du réglage (ex: Backslide to AO Acid)"
+        v-model="newPresetName"
+        @keyup.enter="onSavePreset"
+      />
+      <button class="btn" :disabled="!newPresetName.trim()" @click="onSavePreset">
+        Sauvegarder ces réglages
+      </button>
+    </div>
 
     <h3 class="section-title">{{ presetTitle }}</h3>
     <div class="levels">
@@ -540,6 +604,46 @@ const grindList = [
 }
 .hint--status {
   color: var(--red-hi);
+}
+
+.preset-picker {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 10px;
+}
+.preset-picker .select {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: 15px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg-1);
+  color: var(--text);
+}
+.preset-picker .select option {
+  background: var(--bg-1);
+  color: var(--text);
+}
+.preset-picker__delete {
+  flex: none;
+  font-size: 13px;
+}
+
+.preset-save {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.preset-save input {
+  width: 100%;
+  font-size: 15px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg-1);
+  color: var(--text);
 }
 
 .actions {

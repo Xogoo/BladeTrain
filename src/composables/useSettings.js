@@ -233,6 +233,10 @@ function defaultSettings() {
     // other mode's is stored here and swapped in on mode change, so solo
     // and group each keep their own custom setup.
     modeConfigs: {},
+    // Named snapshots of tricks/grinds/switchUpGrinds only — save a
+    // fiddly combo (like a specific switch-up setup) once, reapply it
+    // in one tap instead of re-checking a dozen boxes every time.
+    presets: [], // { id, name, tricks, grinds, switchUpGrinds }
   };
 }
 
@@ -265,6 +269,9 @@ function loadSettings() {
     }
     if (!merged.modeConfigs || typeof merged.modeConfigs !== "object") {
       merged.modeConfigs = {};
+    }
+    if (!Array.isArray(merged.presets)) {
+      merged.presets = [];
     }
     return merged;
   } catch {
@@ -423,6 +430,39 @@ export function useSettings() {
   const reelSpeedMs = () =>
     (REEL_SPEEDS.find((s) => s.id === settings.reelSpeed) ?? REEL_SPEEDS[2]).ms;
 
+  /** Snapshot the current tricks/grinds/switchUpGrinds under a name. */
+  function savePreset(name) {
+    const preset = {
+      id: `${Date.now()}`,
+      name: name.trim() || "Sans nom",
+      tricks: JSON.parse(JSON.stringify(settings.tricks)),
+      grinds: JSON.parse(JSON.stringify(settings.grinds)),
+      switchUpGrinds: JSON.parse(JSON.stringify(settings.switchUpGrinds)),
+    };
+    settings.presets.push(preset);
+    return preset;
+  }
+
+  /** Reapply a saved snapshot — everything else (mode, level, players,
+   * theme...) is left untouched. */
+  function applyPreset(id) {
+    const preset = settings.presets.find((p) => p.id === id);
+    if (!preset) {
+      return;
+    }
+    settings.tricks = { ...ALL_TRICKS_OFF, ...preset.tricks };
+    settings.grinds = { ...preset.grinds };
+    settings.switchUpGrinds = { ...preset.switchUpGrinds };
+    settings.level = CUSTOM_LEVEL;
+  }
+
+  function deletePreset(id) {
+    const index = settings.presets.findIndex((p) => p.id === id);
+    if (index !== -1) {
+      settings.presets.splice(index, 1);
+    }
+  }
+
   return {
     settings,
     applyLevel,
@@ -430,6 +470,9 @@ export function useSettings() {
     reset,
     levelName,
     reelSpeedMs,
+    savePreset,
+    applyPreset,
+    deletePreset,
     grindEnabled,
     setGrind,
     setAllGrinds,

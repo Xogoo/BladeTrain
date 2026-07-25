@@ -18,7 +18,7 @@ import { useBackup } from "../composables/useBackup.js";
 const emit = defineEmits(["open-settings"]);
 
 const { settings, applyLevel } = useSettings();
-const { startGame, startFamilySession } = useGame();
+const { startGame, startFamilySession, hasOpenSessionToday, endOpenSession } = useGame();
 const { familyIndex, isFamilyComplete, careerProgress, resetCareerProgress } = useCollection();
 const { needsBackupReminder, exportBackup } = useBackup();
 
@@ -234,6 +234,11 @@ function removePlayer(index) {
     <div v-if="needsBackupReminder" class="backup-reminder panel">
       <span>Ça fait un moment — tu sauvegardes ta progression ?</span>
       <button class="btn" @click="exportBackup">Sauvegarder maintenant</button>
+    </div>
+
+    <div v-if="hasOpenSessionToday" class="backup-reminder panel">
+      <span>Une session est encore en cours.</span>
+      <button class="btn" @click="endOpenSession">Terminer la session</button>
     </div>
   </section>
 

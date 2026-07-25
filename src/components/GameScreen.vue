@@ -72,6 +72,19 @@ watch(
 );
 
 // Badges earned by the last landed trick pop up as a short toast.
+// "Terminer la session/partie" needs a tap-again-to-confirm, same
+// pattern as the reset buttons elsewhere — too easy to hit by accident
+// mid-session otherwise, and there's no undo once it's ended.
+const confirmingEndSession = ref(false);
+function onEndSessionClick() {
+  if (!confirmingEndSession.value) {
+    confirmingEndSession.value = true;
+    return;
+  }
+  confirmingEndSession.value = false;
+  giveUp();
+}
+
 const badgeToast = ref([]);
 let badgeToastTimer = null;
 watch(
@@ -185,8 +198,14 @@ function onReelStopped() {
               </button>
             </div>
             <div class="result__actions result__actions--secondary">
-              <button class="btn btn--ghost" @click="giveUp()">
-                <AppIcon name="flag" :size="16" /> Terminer la session
+              <button
+                class="btn btn--ghost"
+                :class="{ 'btn--confirm': confirmingEndSession }"
+                @click="onEndSessionClick()"
+                @blur="confirmingEndSession = false"
+              >
+                <AppIcon name="flag" :size="16" />
+                {{ confirmingEndSession ? "Retape pour confirmer" : "Terminer la session" }}
               </button>
             </div>
           </template>
@@ -220,8 +239,14 @@ function onReelStopped() {
               </button>
             </div>
             <div class="result__actions result__actions--secondary">
-              <button class="btn btn--ghost" @click="giveUp()">
-                <AppIcon name="flag" :size="16" /> Terminer la session
+              <button
+                class="btn btn--ghost"
+                :class="{ 'btn--confirm': confirmingEndSession }"
+                @click="onEndSessionClick()"
+                @blur="confirmingEndSession = false"
+              >
+                <AppIcon name="flag" :size="16" />
+                {{ confirmingEndSession ? "Retape pour confirmer" : "Terminer la session" }}
               </button>
               <button
                 class="btn btn--ghost"
@@ -265,8 +290,14 @@ function onReelStopped() {
             </button>
           </div>
           <div class="result__actions result__actions--secondary">
-            <button class="btn btn--ghost" @click="giveUp()">
-              <AppIcon name="flag" :size="16" /> Terminer la partie
+            <button
+              class="btn btn--ghost"
+              :class="{ 'btn--confirm': confirmingEndSession }"
+              @click="onEndSessionClick()"
+              @blur="confirmingEndSession = false"
+            >
+              <AppIcon name="flag" :size="16" />
+              {{ confirmingEndSession ? "Retape pour confirmer" : "Terminer la partie" }}
             </button>
           </div>
         </template>
@@ -438,6 +469,12 @@ function onReelStopped() {
 
 .result__speak:hover {
   transform: scale(1.15);
+}
+
+.btn--confirm {
+  color: var(--red-hi);
+  border-color: rgba(var(--fg-rgb), 0.6);
+  box-shadow: 0 0 10px rgba(var(--fg-rgb), 0.2);
 }
 
 .family-pause {

@@ -89,28 +89,55 @@ export function useGame() {
     state.activeFamilyId ? familyById(state.activeFamilyId) : null
   );
 
+  // Switching what you're training (Custom, a family, review mode, a
+  // different family...) used to always start a brand new session,
+  // fragmenting Historique into lots of near-empty rows every time you
+  // changed your mind mid-sitting. Now it only truly starts fresh if
+  // there's no session already open — otherwise everything you do
+  // before actually tapping "Terminer la session" keeps accumulating
+  // into that same one. Returns true if this call started a fresh one.
+  function beginOrContinueSoloSession() {
+    const isFresh = !state.sessionId;
+    if (isFresh) {
+      state.points = 0;
+      state.spinsUsed = 0;
+      state.tricks = [];
+      state.skipped = [];
+      state.usedGrinds = [];
+      state.newBadges = [];
+      state.sessionId = collection.startSession();
+    }
+    return isFresh;
+  }
+
   const startGame = (settings, mode = settings.mode || "group") => {
     state.mode = mode;
+    state.activeFamilyId = null;
+    state.activeFamilyEntryIndex = null;
+    state.familyJustCompleted = null;
+    state.careerJustCompleted = null;
+    state.lockedPairs = null;
+    state.screen = "game";
+
+    if (mode === "solo") {
+      state.spinsTotal = Infinity;
+      beginOrContinueSoloSession();
+      nextSpin(settings);
+      return;
+    }
+
+    // Group mode always starts a clean slate — and closes out any solo
+    // session left dangling open rather than abandoning it silently.
+    if (state.sessionId) {
+      collection.endSession(state.sessionId);
+      state.sessionId = null;
+    }
     state.points = 0;
     state.spinsUsed = 0;
     state.tricks = [];
     state.skipped = [];
     state.usedGrinds = [];
     state.newBadges = [];
-    state.lockedPairs = null;
-    state.activeFamilyId = null;
-    state.activeFamilyEntryIndex = null;
-    state.familyJustCompleted = null;
-    state.careerJustCompleted = null;
-    state.screen = "game";
-
-    if (mode === "solo") {
-      state.spinsTotal = Infinity;
-      state.sessionId = collection.startSession();
-      nextSpin(settings);
-      return;
-    }
-
     state.players = settings.players.map((name, i) => ({
       name: String(name).trim() || `Player ${i + 1}`,
       letters: 0,
@@ -127,12 +154,6 @@ export function useGame() {
    */
   const startReviewSession = (pairs, settings) => {
     state.mode = "solo";
-    state.points = 0;
-    state.spinsUsed = 0;
-    state.tricks = [];
-    state.skipped = [];
-    state.usedGrinds = [];
-    state.newBadges = [];
     state.lockedPairs = pairs;
     state.activeFamilyId = null;
     state.activeFamilyEntryIndex = null;
@@ -140,7 +161,7 @@ export function useGame() {
     state.careerJustCompleted = null;
     state.screen = "game";
     state.spinsTotal = Infinity;
-    state.sessionId = collection.startSession();
+    beginOrContinueSoloSession();
     nextSpin(settings);
   };
 
@@ -154,12 +175,6 @@ export function useGame() {
    */
   const startFamilySession = (familyId, settings, { restart = false } = {}) => {
     state.mode = "solo";
-    state.points = 0;
-    state.spinsUsed = 0;
-    state.tricks = [];
-    state.skipped = [];
-    state.usedGrinds = [];
-    state.newBadges = [];
     state.lockedPairs = null;
     state.activeFamilyId = familyId;
     state.activeFamilyEntryIndex = null;
@@ -170,7 +185,7 @@ export function useGame() {
     }
     state.screen = "game";
     state.spinsTotal = Infinity;
-    state.sessionId = collection.startSession();
+    beginOrContinueSoloSession();
     nextSpin(settings);
   };
 
@@ -412,6 +427,45 @@ export function useGame() {
     state.careerJustCompleted = null;
   };
 
+  /**
+   * There's no way to run code while the app is closed, so "at
+   * midnight" really means "next time the Start screen is shown" — if
+   * a solo session was left dangling open from a PREVIOUS calendar day
+   * (forgot to tap "Terminer la session"), it's quietly closed out
+   * here instead of silently growing forever. A session still open
+   * from TODAY is left alone — jumping back into it is likely, and the
+   * Start screen offers its own manual "Terminer" button for that case
+   * (see hasOpenSessionToday below).
+   */
+  function closeStaleSessionIfNeeded() {
+    if (!state.sessionId) {
+      return;
+    }
+    const session = collection.sessionById(state.sessionId);
+    if (!session) {
+      state.sessionId = null;
+      return;
+    }
+    const startedDay = session.startedAt.slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10);
+    if (startedDay !== today) {
+      collection.endSession(state.sessionId);
+      state.lastSessionId = state.sessionId;
+      state.sessionId = null;
+    }
+  }
+
+  const hasOpenSessionToday = computed(() => state.sessionId !== null);
+
+  /** Manual escape hatch from the Start screen for a same-day session
+   * left open (didn't want to lose it automatically, but also don't
+   * want to jump back into it right now). */
+  function endOpenSession() {
+    if (state.sessionId) {
+      giveUp();
+    }
+  }
+
   return {
     state,
     spinsLeft,
@@ -433,5 +487,8 @@ export function useGame() {
     addTry,
     giveUp,
     goToStart,
+    closeStaleSessionIfNeeded,
+    hasOpenSessionToday,
+    endOpenSession,
   };
 }

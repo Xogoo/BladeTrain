@@ -16,8 +16,22 @@ import { useGame } from "./composables/useGame.js";
 import { useSettings } from "./composables/useSettings.js";
 import { useSpeech } from "./composables/useSpeech.js";
 
-const { state, goToStart } = useGame();
+const { state, goToStart, closeStaleSessionIfNeeded } = useGame();
 const { settings } = useSettings();
+
+// A solo session left dangling open from a previous day (forgot to tap
+// "Terminer la session") gets quietly closed out the next time the
+// Start screen is shown — there's no way to run code while the app is
+// closed, so this is the closest honest equivalent to "at midnight".
+watch(
+  () => state.screen,
+  (screen) => {
+    if (screen === "start") {
+      closeStaleSessionIfNeeded();
+    }
+  },
+  { immediate: true }
+);
 
 // Real light/dark palette swap — see .theme-inverted in base.css. Lives
 // on <body> since it needs to cover the ambient background gradient

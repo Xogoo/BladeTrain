@@ -523,3 +523,106 @@ function scoreSpin(reels) {
     0
   );
 }
+// Exact count of every distinct trick name these settings can produce
+// — same candidate-building logic as generateSpin above, just walked
+// exhaustively instead of picking one weighted winner. Used by the
+// Réglages "Aperçu des tricks possibles" preview, so it always shows
+// the real number instead of a sample that varies run to run.
+//
+// Some setting combinations (esp. with Switch up on and many grinds
+// enabled) can multiply out to a huge space — `cap` bails out of exact
+// enumeration once it's clearly not worth finishing, and the caller
+// falls back to sampling (see enumeratePossibleTricksSample below).
+const ENUMERATE_CAP = 6000;
+
+export function enumeratePossibleTricks(
+  settings,
+  grindToggles,
+  switchUpGrindToggles,
+  { cap = ENUMERATE_CAP } = {}
+) {
+  const grindPool = grindCandidates(settings, [], null, grindToggles);
+  const names = new Set();
+  let truncated = false;
+  let count = 0;
+
+  outer: for (const grind of grindPool) {
+    const variationOutcomes = hasVariationReel(settings)
+      ? variationCandidates(grind, settings)
+      : [null];
+    const approachOutcomes = hasApproachReel(settings)
+      ? approachCandidates(grind, settings)
+      : [null];
+    const spinOffOutcomes = spinOffCandidates(grind, settings);
+
+    let switchUpPool = [];
+    if (hasSwitchUpReel(settings)) {
+      switchUpPool = grindCandidates(
+        settings,
+        [],
+        null,
+        switchUpGrindToggles !== null ? switchUpGrindToggles : grindToggles
+      ).filter((candidate) => candidate.name !== grind.name);
+      if (switchUpPool.length === 0) {
+        switchUpPool = grindCandidates(
+          settings,
+          [],
+          null,
+          switchUpGrindToggles !== null ? switchUpGrindToggles : grindToggles
+        );
+      }
+    }
+    // [{ switchUp, switchSpin, switchUpVariation }], or a single
+    // all-null entry when Switch up is off entirely.
+    const switchUpBranches = hasSwitchUpReel(settings)
+      ? switchUpPool.flatMap((switchUp) => {
+          const switchSpinOutcomes = hasSwitchSpinReel(settings)
+            ? switchSpinCandidates(grind, switchUp, settings)
+            : [null];
+          const switchUpVariationOutcomes = hasVariationReel(settings, true)
+            ? variationCandidates(switchUp, settings, true)
+            : [null];
+          const branches = [];
+          for (const switchSpin of switchSpinOutcomes) {
+            for (const switchUpVariation of switchUpVariationOutcomes) {
+              branches.push({ switchUp, switchSpin, switchUpVariation });
+            }
+          }
+          return branches;
+        })
+      : [{ switchUp: null, switchSpin: null, switchUpVariation: null }];
+
+    for (const variation of variationOutcomes) {
+      for (const approach of approachOutcomes) {
+        const spinToOutcomes = spinToCandidates(grind, approach, settings);
+        for (const spinTo of spinToOutcomes) {
+          for (const spinOff of spinOffOutcomes) {
+            for (const branch of switchUpBranches) {
+              count += 1;
+              if (count > cap) {
+                truncated = true;
+                break outer;
+              }
+              const reels = [
+                { name: "Approach", winner: approach },
+                { name: "SpinTo", winner: spinTo },
+                { name: "Grind", winner: grind },
+                { name: "GrindVariation", winner: variation },
+                { name: "SwitchSpin", winner: branch.switchSpin },
+                { name: "SwitchUp", winner: branch.switchUp },
+                { name: "SwitchUpVariation", winner: branch.switchUpVariation },
+                { name: "SpinOff", winner: spinOff },
+              ];
+              names.add(nameTrick(reels).parsed);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return {
+    names: [...names].sort((a, b) => a.localeCompare(b)),
+    exact: !truncated,
+  };
+}
