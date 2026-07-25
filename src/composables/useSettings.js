@@ -235,7 +235,10 @@ function defaultSettings() {
     modeConfigs: {},
     // Named snapshots of tricks/grinds/switchUpGrinds only — save a
     // fiddly combo (like a specific switch-up setup) once, reapply it
-    // in one tap instead of re-checking a dozen boxes every time.
+    // in one tap instead of re-checking a dozen boxes every time. Also
+    // what the Solo screen's "Familles perso" picker lists — a
+    // personal "family" here just means "start Custom with this exact
+    // filter already applied".
     presets: [], // { id, name, tricks, grinds, switchUpGrinds }
   };
 }

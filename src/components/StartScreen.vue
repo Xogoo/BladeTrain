@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import AppIcon from "./AppIcon.vue";
 import {
   CUSTOM_LEVEL,
@@ -17,7 +17,7 @@ import { useBackup } from "../composables/useBackup.js";
 
 const emit = defineEmits(["open-settings"]);
 
-const { settings, applyLevel } = useSettings();
+const { settings, applyLevel, applyPreset } = useSettings();
 const { startGame, startFamilySession, hasOpenSessionToday, endOpenSession } = useGame();
 const { familyIndex, isFamilyComplete, careerProgress, resetCareerProgress } = useCollection();
 const { needsBackupReminder, exportBackup } = useBackup();
@@ -25,7 +25,7 @@ const { needsBackupReminder, exportBackup } = useBackup();
 // Solo has two real choices now: a free Custom session, or training one
 // specific family (picked below). Not tied to settings.level — Custom
 // already covers that; this just decides what "Démarrer la session" does.
-const soloSection = ref("custom"); // 'custom' | 'family'
+const soloSection = ref("custom"); // 'custom' | 'family' | 'personal'
 // FAMILIES is defined in an arbitrary creation order — sorted here by
 // tier (career difficulty order) so this dropdown reads the same way
 // as the Carrière path, instead of whatever order they were added in.
@@ -43,6 +43,22 @@ const selectedFamilyDone = computed(() =>
   selectedFamily.value ? isFamilyComplete(selectedFamily.value.id) : false
 );
 
+// Personal (player-built) families — really just a saved settings
+// preset (see Réglages > Réglages sauvegardés / the "Sauvegarder ces
+// réglages" button on the tricks preview) applied automatically before
+// starting a normal Custom session — "training a personal family" here
+// means "Custom, with this exact filter already dialed in".
+const selectedPresetId = ref(null);
+watch(
+  () => settings.presets,
+  (list) => {
+    if (!list.some((p) => p.id === selectedPresetId.value)) {
+      selectedPresetId.value = list[0]?.id ?? null;
+    }
+  },
+  { immediate: true, deep: true }
+);
+
 function chooseSoloSection(section) {
   soloSection.value = section;
 }
@@ -52,6 +68,11 @@ function startSoloSession() {
     startFamilySession(selectedFamily.value.id, settings, {
       restart: selectedFamilyDone.value,
     });
+  } else if (soloSection.value === "personal") {
+    if (selectedPresetId.value) {
+      applyPreset(selectedPresetId.value);
+    }
+    startGame(settings);
   } else {
     startGame(settings);
   }
@@ -376,7 +397,14 @@ function removePlayer(index) {
             :class="{ 'pill--active': soloSection === 'family' }"
             @click="chooseSoloSection('family')"
           >
-            Famille de tricks
+            Familles de tricks
+          </button>
+          <button
+            class="pill"
+            :class="{ 'pill--active': soloSection === 'personal' }"
+            @click="chooseSoloSection('personal')"
+          >
+            Familles perso
           </button>
         </template>
         <template v-else>
@@ -414,6 +442,28 @@ function removePlayer(index) {
       <p class="setup__hint">
         Un trick précis à la fois, dans l'ordre — il faut le réussir pour
         passer au suivant.
+      </p>
+    </div>
+
+    <div
+      v-if="settings.mode === 'solo' && soloSection === 'personal'"
+      class="setup__section"
+    >
+      <span class="setup__label">Choisis une famille perso</span>
+      <div v-if="settings.presets.length" class="family-picker">
+        <select class="select" v-model="selectedPresetId">
+          <option v-for="preset in settings.presets" :key="preset.id" :value="preset.id">
+            {{ preset.name }}
+          </option>
+        </select>
+      </div>
+      <p v-else class="setup__hint">
+        Aucune famille perso pour l'instant — sauvegarde une combinaison de
+        réglages depuis Réglages ou l'aperçu des tricks possibles pour la
+        retrouver ici.
+      </p>
+      <p class="setup__hint">
+        Lance une session Custom avec exactement ces réglages déjà appliqués.
       </p>
     </div>
 
@@ -468,7 +518,11 @@ function removePlayer(index) {
       </div>
     </template>
 
-    <button class="btn btn--go setup__go" @click="settings.mode === 'solo' ? startSoloSession() : startGame(settings)">
+    <button
+      class="btn btn--go setup__go"
+      :disabled="settings.mode === 'solo' && soloSection === 'personal' && !selectedPresetId"
+      @click="settings.mode === 'solo' ? startSoloSession() : startGame(settings)"
+    >
       <AppIcon name="play" :size="20" />
       {{ settings.mode === "solo" ? "Démarrer la session" : "Démarrer la partie" }}
     </button>
