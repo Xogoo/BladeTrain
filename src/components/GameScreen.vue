@@ -143,10 +143,16 @@ watch(
     // ever doesn't complete for any reason — e.g. resuming a session
     // right after returning from the Start screen, where the component
     // remounts fresh mid-flight — the result screen (and its Blade!/
-    // Passer buttons) would otherwise never appear, leaving the session
-    // stuck with no way to continue. This forces it through once a
-    // generous margin past the reels' own total spin time has passed,
-    // regardless of what actually went wrong upstream.
+    // Passer buttons, and the bottom nav, which stays disabled while
+    // phase is "spinning") would otherwise never come back, leaving the
+    // session stuck with no way to continue. This forces it through
+    // once a generous margin past the reels' own total spin time has
+    // passed, regardless of what actually went wrong upstream.
+    // `immediate: true` matters here specifically for that remount
+    // case: state.spinId was already bumped by the nextSpin() call
+    // that happened just before this component (re)mounted, so without
+    // it this watcher would only ever arm for the *next* spin and miss
+    // arming for the one already in flight when the session resumed.
     window.clearTimeout(settleFailsafeTimer);
     const maxSettleMs = reelSpeedMs() * 4 + 4000;
     settleFailsafeTimer = window.setTimeout(() => {
@@ -154,7 +160,8 @@ watch(
         onReelsSettled();
       }
     }, maxSettleMs);
-  }
+  },
+  { immediate: true }
 );
 
 function onReelStopped() {
