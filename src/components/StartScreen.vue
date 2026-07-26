@@ -17,7 +17,7 @@ import { useBackup } from "../composables/useBackup.js";
 
 const emit = defineEmits(["open-settings"]);
 
-const { settings, applyLevel, applyPreset } = useSettings();
+const { settings, applyLevel, applyPreset, deletePreset } = useSettings();
 const { startGame, startFamilySession, hasOpenSessionToday, endOpenSession } = useGame();
 const { familyIndex, isFamilyComplete, careerProgress, resetCareerProgress } = useCollection();
 const { needsBackupReminder, exportBackup } = useBackup();
@@ -61,6 +61,19 @@ watch(
 
 function chooseSoloSection(section) {
   soloSection.value = section;
+}
+
+const confirmingPresetDelete = ref(false);
+function onDeletePreset() {
+  if (!selectedPresetId.value) {
+    return;
+  }
+  if (!confirmingPresetDelete.value) {
+    confirmingPresetDelete.value = true;
+    return;
+  }
+  deletePreset(selectedPresetId.value);
+  confirmingPresetDelete.value = false;
 }
 
 function startSoloSession() {
@@ -456,6 +469,14 @@ function removePlayer(index) {
             {{ preset.name }}
           </option>
         </select>
+        <button
+          class="btn btn--ghost family-picker__delete"
+          :class="{ 'btn--confirm': confirmingPresetDelete }"
+          @click="onDeletePreset"
+          @blur="confirmingPresetDelete = false"
+        >
+          {{ confirmingPresetDelete ? "Confirmer ?" : "Supprimer" }}
+        </button>
       </div>
       <p v-else class="setup__hint">
         Aucune famille perso pour l'instant — sauvegarde une combinaison de
@@ -927,6 +948,18 @@ function removePlayer(index) {
   color: var(--red-hi);
   border-color: rgba(var(--fg-rgb), 0.6);
   box-shadow: 0 0 10px rgba(var(--fg-rgb), 0.2);
+}
+
+.btn--confirm {
+  color: var(--red-hi);
+  border-color: rgba(var(--fg-rgb), 0.6);
+  box-shadow: 0 0 10px rgba(var(--fg-rgb), 0.2);
+}
+
+.family-picker__delete {
+  flex: none;
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 .players {
