@@ -612,3 +612,17 @@ body.accent-indigo.theme-inverted {
   --glow-red: 0 0 12px rgba(67, 56, 202, 0.35), 0 0 30px rgba(67, 56, 202, 0.15);
   --glow-red-hi: 0 0 12px rgba(49, 46, 129, 0.45), 0 0 34px rgba(49, 46, 129, 0.2);
 }
+
+/* ---------- text size ---------- */
+/* The whole app is built in fixed px rather than rem, so scaling the
+   overall text/UI size uses a CSS zoom on <body> instead of touching
+   every font-size individually — zoom scales layout, spacing and text
+   together proportionally, same as pinch-zooming the page would.
+   "normal" needs no class (zoom: 1 is the default). Supported by
+   Safari/WebKit, which is what this app actually runs on. */
+body.text-large {
+  zoom: 1.15;
+}
+body.text-xlarge {
+  zoom: 1.3;
+}

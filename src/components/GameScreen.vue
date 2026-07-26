@@ -30,6 +30,8 @@ const {
   rerollTrick,
   landTrick,
   skipTrick,
+  canUndo,
+  undoLastAction,
   nextFamilyInOrder,
   continueFreePlay,
   nextCareerFamily,
@@ -143,7 +145,16 @@ function onReelStopped() {
 </script>
 
 <template>
-  <section class="game">
+  <section class="game" :class="{ 'game--focus': settings.focusMode }">
+    <button
+      class="focus-toggle"
+      :aria-label="settings.focusMode ? 'Quitter le mode Focus' : 'Activer le mode Focus'"
+      @click="settings.focusMode = !settings.focusMode"
+    >
+      <AppIcon :name="settings.focusMode ? 'close' : 'zap'" :size="16" />
+      {{ settings.focusMode ? "Quitter" : "Focus" }}
+    </button>
+
     <div v-if="!isSolo" class="roster">
       <div
         v-for="(player, i) in state.players"
@@ -174,6 +185,11 @@ function onReelStopped() {
             <AppIcon name="sound" :size="20" />
           </button>
         </div>
+
+        <button v-if="canUndo" class="undo-btn" @click="undoLastAction()">
+          <AppIcon name="forward" :size="14" style="transform: scaleX(-1)" /> Annuler
+          {{ isSolo ? "le dernier trick" : "la dernière action" }}
+        </button>
 
         <!-- solo: land or skip, build the collection -->
         <template v-if="isSolo">
@@ -304,6 +320,10 @@ function onReelStopped() {
       </div>
     </transition>
 
+    <div v-if="settings.focusMode && !isResult" class="focus-spinning">
+      Ça tourne&hellip;
+    </div>
+
     <div class="machine panel">
       <div class="machine__lights" aria-hidden="true">
         <span v-for="i in 14" :key="i" :style="{ '--i': i }" />
@@ -388,6 +408,100 @@ function onReelStopped() {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  position: relative;
+}
+
+/* Always reachable in a corner, in or out of Focus mode — big enough
+   to tap without precision (gloves, phone on the ground, one hand). */
+.undo-btn {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.game--focus .undo-btn {
+  font-size: 15px;
+  padding: 12px 18px;
+}
+
+.focus-toggle {
+  position: fixed;
+  top: 10px;
+  right: 12px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: rgba(var(--bg-0-rgb), 0.85);
+  color: var(--red-hi);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* Focus mode: just the trick name (big) and the two main buttons
+   (big) — everything else that isn't essential while handling the
+   phone mid-session gets out of the way. */
+.game--focus .roster,
+.game--focus .machine,
+.game--focus .result__score,
+.game--focus .result__actions--secondary,
+.game--focus .result__speak {
+  display: none;
+}
+
+.game--focus {
+  padding-top: 70px;
+  min-height: 100dvh;
+  justify-content: center;
+}
+
+.game--focus .result__name {
+  font-size: clamp(32px, 9vw, 52px);
+  text-align: center;
+}
+
+.game--focus .result__tries {
+  flex-direction: column;
+  gap: 10px;
+}
+
+.game--focus .result__tries-label {
+  font-size: 16px;
+}
+
+.game--focus .result__tries-btn {
+  width: 100%;
+  padding: 18px;
+  font-size: 17px;
+}
+
+.game--focus .result__actions {
+  flex-direction: column;
+}
+
+.game--focus .result__actions .btn {
+  width: 100%;
+  padding: 26px;
+  font-size: 20px;
+}
+
+.focus-spinning {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 28px;
+  color: var(--text-dim);
 }
 
 .machine {

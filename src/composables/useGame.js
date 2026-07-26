@@ -1,4 +1,4 @@
-import { computed, reactive } from "vue";
+import { computed, reactive, ref } from "vue";
 import { generateSpin } from "../game/trickGenerator.js";
 import { FAMILIES, resolveFamily } from "../game/families.js";
 import { useCollection } from "./useCollection.js";
@@ -77,6 +77,40 @@ function resolveFamilyById(familyId) {
   return familyId ? resolveFamily(familyId, settingsApi.settings.customFamilies) : null;
 }
 
+// Undo, for a mistapped Blade!/Passer/Loupé/Réussi — a full snapshot of
+// both state and the collection right before the action mutates
+// anything, restored wholesale rather than trying to surgically
+// reverse each individual side effect (score, family progress, badges,
+// session counts, streak...). Simpler and far less error-prone than
+// hand-unwinding all of that, and cheap enough at this app's scale.
+// Single-level only: taking a new snapshot overwrites the old one, and
+// it's cleared outright whenever a session starts/ends, so there's
+// never a stale snapshot from a different session to accidentally
+// restore.
+let undoSnapshot = ref(null);
+
+function captureUndoSnapshot() {
+  undoSnapshot.value = {
+    state: JSON.parse(JSON.stringify(state)),
+    collection: JSON.parse(JSON.stringify(collection.collection)),
+  };
+}
+
+function clearUndoSnapshot() {
+  undoSnapshot.value = null;
+}
+
+const canUndo = computed(() => undoSnapshot.value !== null);
+
+function undoLastAction() {
+  if (!undoSnapshot.value) {
+    return;
+  }
+  Object.assign(state, undoSnapshot.value.state);
+  Object.assign(collection.collection, undoSnapshot.value.collection);
+  undoSnapshot.value = null;
+}
+
 const activeIndices = () =>
   state.players
     .map((player, index) => ({ player, index }))
@@ -114,6 +148,7 @@ export function useGame() {
       state.usedGrinds = [];
       state.newBadges = [];
       state.sessionId = collection.startSession();
+      clearUndoSnapshot();
     }
     return isFresh;
   }
@@ -311,6 +346,7 @@ export function useGame() {
   };
 
   const landTrick = (settings) => {
+    captureUndoSnapshot();
     state.points += state.spin.score;
     state.tricks.push(currentTrick());
     const activeFamilyForLand = state.activeFamilyId
@@ -406,6 +442,7 @@ export function useGame() {
   };
 
   const skipTrick = (settings) => {
+    captureUndoSnapshot();
     state.skipped.push(currentTrick());
     if (state.mode === "solo") {
       const family = state.activeFamilyId ? resolveFamilyById(state.activeFamilyId) : null;
@@ -426,6 +463,7 @@ export function useGame() {
   // Solo sessions have no game over: ending one shows the session
   // report instead of just bouncing back to the start screen.
   const giveUp = () => {
+    clearUndoSnapshot();
     if (state.mode === "solo") {
       if (state.sessionId) {
         collection.endSession(state.sessionId);
@@ -501,6 +539,8 @@ export function useGame() {
     rerollTrick,
     landTrick,
     skipTrick,
+    canUndo,
+    undoLastAction,
     nextFamilyInOrder,
     continueFreePlay,
     nextCareerFamily,

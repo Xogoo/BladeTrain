@@ -10,6 +10,7 @@ import {
   CUSTOM_LEVEL,
   REEL_SPEEDS,
   ACCENT_COLORS,
+  FONT_SIZES,
   useSettings,
 } from "../composables/useSettings.js";
 import { useBackup } from "../composables/useBackup.js";
@@ -214,6 +215,21 @@ const grindList = [
           :title="accent.name"
           @click="settings.accentColor = accent.id"
         />
+      </div>
+    </div>
+
+    <div class="option option--inline accent-picker">
+      <span>Taille du texte</span>
+      <div class="levels">
+        <button
+          v-for="size in FONT_SIZES"
+          :key="size.id"
+          class="btn"
+          :class="{ 'btn--primary': settings.fontSize === size.id }"
+          @click="settings.fontSize = size.id"
+        >
+          {{ size.name }}
+        </button>
       </div>
     </div>
 

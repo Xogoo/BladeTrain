@@ -60,6 +60,23 @@ watch(
   { immediate: true }
 );
 
+// Overall text/UI size — "normal" is the default and needs no class
+// (zoom: 1), see body.text-* in base.css.
+watch(
+  () => settings.fontSize,
+  (size) => {
+    document.body.classList.forEach((cls) => {
+      if (cls.startsWith("text-")) {
+        document.body.classList.remove(cls);
+      }
+    });
+    if (size && size !== "normal") {
+      document.body.classList.add(`text-${size}`);
+    }
+  },
+  { immediate: true }
+);
+
 // All audio (speech samples, announcer, title music) is decoded before
 // the app shows, behind an intro screen of at least INTRO_MIN_MS.
 const {
@@ -180,7 +197,7 @@ const openPanel = ref(requestedPanel ?? null);
     @after-enter="unlockScroll"
   >
   <div v-if="showApp" class="app-shell">
-  <header v-if="state.screen !== 'start'" class="app-header">
+  <header v-if="state.screen !== 'start' && !(settings.focusMode && state.screen === 'game')" class="app-header">
     <button class="app-header__logo" aria-label="Accueil" @click="goToStart()">
       <span class="app-header__logo-text">BLADE</span>
     </button>
@@ -198,7 +215,7 @@ const openPanel = ref(requestedPanel ?? null);
     <GameOverScreen v-else />
   </main>
 
-  <nav class="app-nav">
+  <nav v-if="!(settings.focusMode && state.screen === 'game')" class="app-nav">
     <button
       class="app-nav__btn"
       :disabled="state.phase === 'spinning'"
