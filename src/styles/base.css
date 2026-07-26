@@ -620,9 +620,30 @@ body.accent-indigo.theme-inverted {
    together proportionally, same as pinch-zooming the page would.
    "normal" needs no class (zoom: 1 is the default). Supported by
    Safari/WebKit, which is what this app actually runs on. */
-body.text-large {
-  zoom: 1.15;
-}
+/* ---------- text size ---------- */
+/* The whole app is built in fixed px rather than rem, so scaling the
+   overall text/UI size uses a CSS zoom instead of touching every
+   font-size individually. Applied to .app-shell (not body directly) —
+   zoom re-runs layout at the given magnification, so if the shell kept
+   its normal 100%-of-viewport width, everything inside would be laid
+   out 15-30% too wide for that same box and spill into horizontal
+   scrolling (rows that already reach close to the edge at normal size,
+   like a settings toggle list, are exactly where this showed up).
+   Shrinking the shell's width by the inverse of the zoom factor first
+   means the post-zoom rendered result lands back at exactly 100% —
+   bigger text and touch targets, same width, no side-scroll. The
+   overflow-x belt-and-braces below is only a safety net in case any
+   single element still doesn't rewrap in time.
+   "normal" needs no class (zoom: 1 is the default). */
+body.text-large,
 body.text-xlarge {
+  overflow-x: hidden;
+}
+body.text-large .app-shell {
+  zoom: 1.15;
+  width: calc(100% / 1.15);
+}
+body.text-xlarge .app-shell {
   zoom: 1.3;
+  width: calc(100% / 1.3);
 }

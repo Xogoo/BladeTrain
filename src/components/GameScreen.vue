@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import AppIcon from "./AppIcon.vue";
 import SlotReel from "./SlotReel.vue";
 import TrickExplainPanel from "./TrickExplainPanel.vue";
@@ -62,6 +62,10 @@ onMounted(() => {
 
 const openPanel = ref(null); // 'explain' | 'tricklist' | null
 const stoppedReels = ref(0);
+
+onUnmounted(() => {
+  window.clearTimeout(settleFailsafeTimer);
+});
 
 // Read the trick aloud once the reels have settled.
 watch(
@@ -128,11 +132,28 @@ function lettersOf(player) {
   return LETTERS.slice(0, player.letters).split("").join(" ");
 }
 
+let settleFailsafeTimer = null;
 watch(
   () => state.spinId,
   () => {
     stoppedReels.value = 0;
     openPanel.value = null;
+    // Safety net: normally every visible reel's "stopped" event adds up
+    // to onReelsSettled() flipping the phase to "result". If that chain
+    // ever doesn't complete for any reason — e.g. resuming a session
+    // right after returning from the Start screen, where the component
+    // remounts fresh mid-flight — the result screen (and its Blade!/
+    // Passer buttons) would otherwise never appear, leaving the session
+    // stuck with no way to continue. This forces it through once a
+    // generous margin past the reels' own total spin time has passed,
+    // regardless of what actually went wrong upstream.
+    window.clearTimeout(settleFailsafeTimer);
+    const maxSettleMs = reelSpeedMs() * 4 + 4000;
+    settleFailsafeTimer = window.setTimeout(() => {
+      if (state.phase === "spinning") {
+        onReelsSettled();
+      }
+    }, maxSettleMs);
   }
 );
 
@@ -433,7 +454,7 @@ function onReelStopped() {
 
 .focus-toggle {
   position: fixed;
-  top: 10px;
+  top: calc(env(safe-area-inset-top) + 10px);
   right: 12px;
   z-index: 20;
   display: flex;
