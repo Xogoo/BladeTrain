@@ -3,7 +3,7 @@ import { computed, ref } from "vue";
 import AppModal from "./AppModal.vue";
 import AppIcon from "./AppIcon.vue";
 import { GRINDS } from "../game/trickData.js";
-import { BADGES, useCollection } from "../composables/useCollection.js";
+import { useCollection } from "../composables/useCollection.js";
 import { useGame } from "../composables/useGame.js";
 import { useSettings } from "../composables/useSettings.js";
 
@@ -15,6 +15,7 @@ const {
   landedGrindCount,
   totalGrinds,
   grindProgressPercent,
+  allBadges,
   earnedBadges,
   hasBadge,
   grindLandedCount,
@@ -90,7 +91,7 @@ function startReview() {
         <span class="stat__label">total réussi</span>
       </div>
       <div class="stat">
-        <span class="stat__value">{{ earnedBadges.length }}/{{ BADGES.length }}</span>
+        <span class="stat__value">{{ earnedBadges.length }}/{{ allBadges.length }}</span>
         <span class="stat__label">badges</span>
       </div>
     </div>
@@ -159,7 +160,7 @@ function startReview() {
     <h3 class="section-title">Badges</h3>
     <div class="badges">
       <div
-        v-for="badge in BADGES"
+        v-for="badge in allBadges"
         :key="badge.id"
         class="badge-card"
         :class="{ 'badge-card--earned': hasBadge(badge.id) }"

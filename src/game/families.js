@@ -311,6 +311,32 @@ export function familyById(id) {
   return FAMILIES.find((family) => family.id === id) || null;
 }
 
+// Same lookup as familyById, but also checks a list of player-built
+// families (settings.customFamilies — see useSettings.js) and wraps one
+// in the same shape as a built-in family ({ id, name, entries, ... }),
+// so useGame.js/useCollection.js can treat both identically without
+// caring which kind a given id belongs to. Custom families have no
+// track/tier — Career progression only ever applies to the built-in
+// ones — and their own name doubles as their badge name.
+export function resolveFamily(id, customFamilies = []) {
+  const builtin = familyById(id);
+  if (builtin) {
+    return builtin;
+  }
+  const custom = customFamilies.find((family) => family.id === id);
+  if (!custom) {
+    return null;
+  }
+  return {
+    id: custom.id,
+    name: custom.name,
+    entries: custom.entries,
+    track: null,
+    tier: null,
+    badgeName: custom.name,
+  };
+}
+
 // A stable signature for one family entry — its actual content, not
 // its position in family.entries. Used to track "has this exact trick
 // been landed" in a way that survives a family's composition changing
@@ -322,5 +348,9 @@ export function familyEntryKey(entry) {
     entry.variationName,
     entry.approach,
     entry.spinToName || "",
+    entry.spinOffName || "",
+    entry.switchUpGrindName || "",
+    entry.switchUpVariationName || "",
+    entry.switchSpinName || "",
   ].join("|");
 }

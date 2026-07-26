@@ -149,6 +149,7 @@ const sessionDuration = computed(() => {
   align-items: center;
   gap: 2px;
   min-width: 64px;
+  max-width: 120px;
 }
 
 .scoreboard__caption {
@@ -158,6 +159,10 @@ const sessionDuration = computed(() => {
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-dim);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .scoreboard__value {

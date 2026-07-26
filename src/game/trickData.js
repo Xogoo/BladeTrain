@@ -117,7 +117,6 @@ export const SPINS_OFF_SOUL = [
 
 export const SPINS_OFF_GROOVE = [
   { name: "Forwards", weight: EASY, score: 0 },
-  { name: "Fakie", weight: EASY, score: 0 },
   { name: "270", weight: 1, score: 2 },
   { name: "450", weight: 1, score: 3 },
   { name: "630", weight: 1, score: 4 },

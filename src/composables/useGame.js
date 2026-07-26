@@ -1,7 +1,8 @@
 import { computed, reactive } from "vue";
 import { generateSpin } from "../game/trickGenerator.js";
-import { FAMILIES, familyById } from "../game/families.js";
+import { FAMILIES, resolveFamily } from "../game/families.js";
 import { useCollection } from "./useCollection.js";
+import { useSettings } from "./useSettings.js";
 
 // Group mode is S.K.A.T.E with the letters A.I.G.H.T: bail a trick and
 // you collect the next letter; five letters and you are out.
@@ -66,6 +67,15 @@ const state = reactive({
 });
 
 const collection = useCollection();
+const settingsApi = useSettings();
+
+// Resolves either a built-in family (families.js) or a player-built one
+// (settings.customFamilies) by id — see resolveFamily in families.js.
+// Named settingsApi (not settings) so it never shadows the `settings`
+// parameter most functions below already take from their own caller.
+function resolveFamilyById(familyId) {
+  return familyId ? resolveFamily(familyId, settingsApi.settings.customFamilies) : null;
+}
 
 const activeIndices = () =>
   state.players
@@ -85,9 +95,7 @@ export function useGame() {
   const onLastLetter = computed(
     () => (currentPlayer.value?.letters ?? 0) === LETTERS.length - 1
   );
-  const activeFamily = computed(() =>
-    state.activeFamilyId ? familyById(state.activeFamilyId) : null
-  );
+  const activeFamily = computed(() => resolveFamilyById(state.activeFamilyId));
 
   // Switching what you're training (Custom, a family, review mode, a
   // different family...) used to always start a brand new session,
@@ -218,7 +226,7 @@ export function useGame() {
     state.tries = 1;
     // Solo trains you: never-landed and often-skipped grinds come up more.
     const bias = state.mode === "solo" ? collection.grindBias() : null;
-    const family = state.activeFamilyId ? familyById(state.activeFamilyId) : null;
+    const family = resolveFamilyById(state.activeFamilyId);
     let forcedTrick = null;
     if (family) {
       const remaining = collection.familyRemainingIndices(
@@ -305,23 +313,30 @@ export function useGame() {
   const landTrick = (settings) => {
     state.points += state.spin.score;
     state.tricks.push(currentTrick());
+    const activeFamilyForLand = state.activeFamilyId
+      ? resolveFamilyById(state.activeFamilyId)
+      : null;
+    const activeEntryForLand =
+      activeFamilyForLand && state.activeFamilyEntryIndex !== null
+        ? activeFamilyForLand.entries[state.activeFamilyEntryIndex]
+        : null;
     let badges =
       state.mode === "solo"
         ? collection.recordLand(
             state.spin,
             state.tries,
             state.sessionId,
-            state.activeFamilyId
+            state.activeFamilyId,
+            activeEntryForLand
           )
         : [];
     let justCompletedFamily = null;
     if (state.activeFamilyId) {
-      const family = familyById(state.activeFamilyId);
+      const family = activeFamilyForLand;
       if (family && state.activeFamilyEntryIndex !== null) {
         const familyBadge = collection.advanceFamilyProgress(
-          state.activeFamilyId,
-          family.entries[state.activeFamilyEntryIndex],
-          family.entries
+          family,
+          family.entries[state.activeFamilyEntryIndex]
         );
         if (familyBadge) {
           badges = [...badges, familyBadge];
@@ -393,7 +408,12 @@ export function useGame() {
   const skipTrick = (settings) => {
     state.skipped.push(currentTrick());
     if (state.mode === "solo") {
-      collection.recordSkip(state.spin, state.sessionId);
+      const family = state.activeFamilyId ? resolveFamilyById(state.activeFamilyId) : null;
+      const entry =
+        family && state.activeFamilyEntryIndex !== null
+          ? family.entries[state.activeFamilyEntryIndex]
+          : null;
+      collection.recordSkip(state.spin, state.sessionId, state.activeFamilyId, entry);
     }
     nextSpin(settings);
   };

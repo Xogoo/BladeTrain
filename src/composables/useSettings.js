@@ -208,7 +208,7 @@ function defaultSettings() {
     mode: "solo", // solo | group
     level: 1,
     players: ["Joueur 1", "Joueur 2"],
-    reelSpeed: "normal",
+    reelSpeed: "fast",
     introMusic: false,
     // Quick test toggle: swaps to a real light palette — see
     // .theme-inverted in base.css.
@@ -233,13 +233,14 @@ function defaultSettings() {
     // other mode's is stored here and swapped in on mode change, so solo
     // and group each keep their own custom setup.
     modeConfigs: {},
-    // Named snapshots of tricks/grinds/switchUpGrinds only — save a
-    // fiddly combo (like a specific switch-up setup) once, reapply it
-    // in one tap instead of re-checking a dozen boxes every time. Also
-    // what the Solo screen's "Familles perso" picker lists — a
-    // personal "family" here just means "start Custom with this exact
-    // filter already applied".
-    presets: [], // { id, name, tricks, grinds, switchUpGrinds }
+    // Player-built families — same shape as the built-in ones in
+    // families.js ({ id, name, entries }), just created by the player
+    // from a settings combo instead of shipped with the app (see
+    // TrickPreviewPanel.vue, "Créer une famille perso" — the exact
+    // trick list comes from enumeratePossibleTricks, so it only exists
+    // as a real, trainable family once that combo's list is known to
+    // be exact, not an estimate).
+    customFamilies: [], // { id, name, entries: [{ grindName, variationName, approach, spinToName, spinOffName, switchUpGrindName, switchUpVariationName, switchSpinName }] }
   };
 }
 
@@ -273,8 +274,8 @@ function loadSettings() {
     if (!merged.modeConfigs || typeof merged.modeConfigs !== "object") {
       merged.modeConfigs = {};
     }
-    if (!Array.isArray(merged.presets)) {
-      merged.presets = [];
+    if (!Array.isArray(merged.customFamilies)) {
+      merged.customFamilies = [];
     }
     return merged;
   } catch {
@@ -431,38 +432,24 @@ export function useSettings() {
     LEVELS.find((l) => l.id === id)?.name ?? "";
 
   const reelSpeedMs = () =>
-    (REEL_SPEEDS.find((s) => s.id === settings.reelSpeed) ?? REEL_SPEEDS[2]).ms;
+    (REEL_SPEEDS.find((s) => s.id === settings.reelSpeed) ?? REEL_SPEEDS[3]).ms;
 
-  /** Snapshot the current tricks/grinds/switchUpGrinds under a name. */
-  function savePreset(name) {
-    const preset = {
-      id: `${Date.now()}`,
+  /** Turn a verified list of exact trick entries (see
+   * enumeratePossibleTricks) into a real, trainable personal family. */
+  function saveCustomFamily(name, entries) {
+    const family = {
+      id: `custom-${Date.now()}`,
       name: name.trim() || "Sans nom",
-      tricks: JSON.parse(JSON.stringify(settings.tricks)),
-      grinds: JSON.parse(JSON.stringify(settings.grinds)),
-      switchUpGrinds: JSON.parse(JSON.stringify(settings.switchUpGrinds)),
+      entries: JSON.parse(JSON.stringify(entries)),
     };
-    settings.presets.push(preset);
-    return preset;
+    settings.customFamilies.push(family);
+    return family;
   }
 
-  /** Reapply a saved snapshot — everything else (mode, level, players,
-   * theme...) is left untouched. */
-  function applyPreset(id) {
-    const preset = settings.presets.find((p) => p.id === id);
-    if (!preset) {
-      return;
-    }
-    settings.tricks = { ...ALL_TRICKS_OFF, ...preset.tricks };
-    settings.grinds = { ...preset.grinds };
-    settings.switchUpGrinds = { ...preset.switchUpGrinds };
-    settings.level = CUSTOM_LEVEL;
-  }
-
-  function deletePreset(id) {
-    const index = settings.presets.findIndex((p) => p.id === id);
+  function deleteCustomFamily(id) {
+    const index = settings.customFamilies.findIndex((f) => f.id === id);
     if (index !== -1) {
-      settings.presets.splice(index, 1);
+      settings.customFamilies.splice(index, 1);
     }
   }
 
@@ -473,9 +460,8 @@ export function useSettings() {
     reset,
     levelName,
     reelSpeedMs,
-    savePreset,
-    applyPreset,
-    deletePreset,
+    saveCustomFamily,
+    deleteCustomFamily,
     grindEnabled,
     setGrind,
     setAllGrinds,

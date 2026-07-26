@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref, watch } from "vue";
 import AppIcon from "./AppIcon.vue";
+import FamilyHistoryPanel from "./FamilyHistoryPanel.vue";
 import {
   CUSTOM_LEVEL,
   LEVELS,
@@ -17,77 +18,77 @@ import { useBackup } from "../composables/useBackup.js";
 
 const emit = defineEmits(["open-settings"]);
 
-const { settings, applyLevel, applyPreset, deletePreset } = useSettings();
+const { settings, applyLevel, saveCustomFamily, deleteCustomFamily } = useSettings();
 const { startGame, startFamilySession, hasOpenSessionToday, endOpenSession } = useGame();
 const { familyIndex, isFamilyComplete, careerProgress, resetCareerProgress } = useCollection();
 const { needsBackupReminder, exportBackup } = useBackup();
 
-// Solo has two real choices now: a free Custom session, or training one
-// specific family (picked below). Not tied to settings.level — Custom
-// already covers that; this just decides what "Démarrer la session" does.
-const soloSection = ref("custom"); // 'custom' | 'family' | 'personal'
+function startSoloSession() {
+  startGame(settings);
+}
+
+function familyPercent(family) {
+  return family.entries.length
+    ? Math.round((familyIndex(family.id) / family.entries.length) * 100)
+    : 0;
+}
+
+// What each <select> option actually shows — native <option> elements
+// can't hold rich markup, so the done/not-done color and the percent
+// both have to live in this one plain-text label.
+function familyOptionLabel(family) {
+  return isFamilyComplete(family.id)
+    ? `${familyBaseName(family.name)} — Terminée ✓`
+    : `${familyBaseName(family.name)} — ${familyPercent(family)}%`;
+}
+function familyOptionColor(family) {
+  return isFamilyComplete(family.id) ? "var(--green-hi)" : "var(--danger-hi)";
+}
+
+// Famille mode: built-in ("Familles de tricks") or personal
+// ("Familles perso") — same picker pattern, same training mechanism
+// (startFamilySession), just two different lists.
+const familySection = ref("builtin"); // 'builtin' | 'personal'
+function chooseFamilySection(section) {
+  familySection.value = section;
+}
+
 // FAMILIES is defined in an arbitrary creation order — sorted here by
 // tier (career difficulty order) so this dropdown reads the same way
 // as the Carrière path, instead of whatever order they were added in.
-const soloFamilyOptions = computed(() =>
-  [...FAMILIES].sort((a, b) => a.tier - b.tier)
-);
-const selectedFamilyId = ref(FAMILIES[0]?.id ?? null);
-const selectedFamily = computed(
-  () => FAMILIES.find((f) => f.id === selectedFamilyId.value) || null
-);
-const selectedFamilyStep = computed(() =>
-  selectedFamily.value ? familyIndex(selectedFamily.value.id) : 0
-);
-const selectedFamilyDone = computed(() =>
-  selectedFamily.value ? isFamilyComplete(selectedFamily.value.id) : false
-);
+const builtinFamilyOptions = computed(() => [...FAMILIES].sort((a, b) => a.tier - b.tier));
+const selectedBuiltinFamilyId = ref(FAMILIES[0]?.id ?? null);
 
-// Personal (player-built) families — really just a saved settings
-// preset (see Réglages > Réglages sauvegardés / the "Sauvegarder ces
-// réglages" button on the tricks preview) applied automatically before
-// starting a normal Custom session — "training a personal family" here
-// means "Custom, with this exact filter already dialed in".
-const selectedPresetId = ref(null);
+const selectedCustomFamilyId = ref(null);
 watch(
-  () => settings.presets,
+  () => settings.customFamilies,
   (list) => {
-    if (!list.some((p) => p.id === selectedPresetId.value)) {
-      selectedPresetId.value = list[0]?.id ?? null;
+    if (!list.some((f) => f.id === selectedCustomFamilyId.value)) {
+      selectedCustomFamilyId.value = list[0]?.id ?? null;
     }
   },
   { immediate: true, deep: true }
 );
 
-function chooseSoloSection(section) {
-  soloSection.value = section;
-}
-
-const confirmingPresetDelete = ref(false);
-function onDeletePreset() {
-  if (!selectedPresetId.value) {
+const confirmingFamilyDelete = ref(false);
+const showFamilyHistory = ref(false);
+function onDeleteCustomFamily() {
+  if (!selectedCustomFamilyId.value) {
     return;
   }
-  if (!confirmingPresetDelete.value) {
-    confirmingPresetDelete.value = true;
+  if (!confirmingFamilyDelete.value) {
+    confirmingFamilyDelete.value = true;
     return;
   }
-  deletePreset(selectedPresetId.value);
-  confirmingPresetDelete.value = false;
+  deleteCustomFamily(selectedCustomFamilyId.value);
+  confirmingFamilyDelete.value = false;
 }
 
-function startSoloSession() {
-  if (soloSection.value === "family" && selectedFamily.value) {
-    startFamilySession(selectedFamily.value.id, settings, {
-      restart: selectedFamilyDone.value,
-    });
-  } else if (soloSection.value === "personal") {
-    if (selectedPresetId.value) {
-      applyPreset(selectedPresetId.value);
-    }
-    startGame(settings);
-  } else {
-    startGame(settings);
+function startFamilyModeSession() {
+  const id =
+    familySection.value === "builtin" ? selectedBuiltinFamilyId.value : selectedCustomFamilyId.value;
+  if (id) {
+    startFamilySession(id, settings);
   }
 }
 
@@ -142,9 +143,10 @@ const zigzagPath = computed(() => {
 });
 
 // Family names carry their own "(Normal)"/"(Switch)" suffix (see
-// families.js) so they read fine on their own in the Solo picker — but
-// inside the career-track screen that's already the whole context, so
-// it's stripped here for a cleaner list.
+// families.js) — stripped here for the Famille/Carrière pickers, which
+// already make the track obvious from context. Personal family names
+// never have this suffix in the first place, so this is a harmless
+// no-op for those.
 function familyBaseName(name) {
   return name.replace(/ \((Normal|Switch)\)$/, "");
 }
@@ -187,6 +189,11 @@ const MODES = [
     tagline: "Session sans fin — construis ta collection de tricks",
   },
   {
+    id: "family",
+    name: "Famille",
+    tagline: "Entraîne une famille précise, intégrée ou perso",
+  },
+  {
     id: "career",
     name: "Carrière",
     tagline: "Deux progressions indépendantes — Normal et Switch",
@@ -198,7 +205,7 @@ const MODES = [
   },
 ];
 
-const step = ref("mode"); // 'mode' | 'career' | 'career-track' | 'setup'
+const step = ref("mode"); // 'mode' | 'family' | 'career' | 'career-track' | 'setup'
 
 const presetTitle = computed(() =>
   settings.mode === "solo" ? "Mode" : "Difficulté"
@@ -214,6 +221,11 @@ const { fadeOutMusic } = useSpeech();
 function chooseMode(modeId) {
   if (modeId === "career") {
     step.value = "career";
+    fadeOutMusic();
+    return;
+  }
+  if (modeId === "family") {
+    step.value = "family";
     fadeOutMusic();
     return;
   }
@@ -383,6 +395,114 @@ function removePlayer(index) {
     </div>
   </section>
 
+  <!-- step 1d: Famille — a builtin or personal family, straight into training -->
+  <section v-else-if="step === 'family'" class="start setup rise-in">
+    <div class="setup__top">
+      <button class="btn btn--ghost setup__back" @click="step = 'mode'">
+        &lsaquo; Retour
+      </button>
+    </div>
+    <h2 class="setup__title sticker-text">Famille</h2>
+
+    <div class="setup__section">
+      <div class="pills">
+        <button
+          class="pill"
+          :class="{ 'pill--active': familySection === 'builtin' }"
+          @click="chooseFamilySection('builtin')"
+        >
+          Familles de tricks
+        </button>
+        <button
+          class="pill"
+          :class="{ 'pill--active': familySection === 'personal' }"
+          @click="chooseFamilySection('personal')"
+        >
+          Familles perso
+        </button>
+      </div>
+    </div>
+
+    <div v-if="familySection === 'builtin'" class="setup__section">
+      <span class="setup__label">Choisis une famille</span>
+      <div class="family-picker">
+        <select class="select" v-model="selectedBuiltinFamilyId">
+          <option
+            v-for="family in builtinFamilyOptions"
+            :key="family.id"
+            :value="family.id"
+            :style="{ color: familyOptionColor(family) }"
+          >
+            {{ familyOptionLabel(family) }}
+          </option>
+        </select>
+        <button
+          class="btn btn--ghost family-picker__delete"
+          :disabled="!selectedBuiltinFamilyId"
+          @click="showFamilyHistory = true"
+        >
+          Historique
+        </button>
+      </div>
+      <p class="setup__hint">
+        Un trick précis à la fois, tiré au hasard parmi ceux pas encore
+        réussis — passer n'en tire juste un autre.
+      </p>
+    </div>
+
+    <div v-else class="setup__section">
+      <span class="setup__label">Choisis une famille perso</span>
+      <div v-if="settings.customFamilies.length" class="family-picker">
+        <select class="select" v-model="selectedCustomFamilyId">
+          <option
+            v-for="family in settings.customFamilies"
+            :key="family.id"
+            :value="family.id"
+            :style="{ color: familyOptionColor(family) }"
+          >
+            {{ familyOptionLabel(family) }}
+          </option>
+        </select>
+        <button
+          class="btn btn--ghost family-picker__delete"
+          :disabled="!selectedCustomFamilyId"
+          @click="showFamilyHistory = true"
+        >
+          Historique
+        </button>
+        <button
+          class="btn btn--ghost family-picker__delete"
+          :class="{ 'btn--confirm': confirmingFamilyDelete }"
+          @click="onDeleteCustomFamily"
+          @blur="confirmingFamilyDelete = false"
+        >
+          {{ confirmingFamilyDelete ? "Confirmer ?" : "Supprimer" }}
+        </button>
+      </div>
+      <p v-else class="setup__hint">
+        Aucune famille perso pour l'instant — crée-en une depuis l'aperçu des
+        tricks possibles (Réglages &gt; Terminé).
+      </p>
+    </div>
+
+    <FamilyHistoryPanel
+      v-if="showFamilyHistory"
+      :family-id="familySection === 'builtin' ? selectedBuiltinFamilyId : selectedCustomFamilyId"
+      @close="showFamilyHistory = false"
+    />
+
+    <button
+      class="btn btn--go setup__go"
+      :disabled="
+        (familySection === 'builtin' && !selectedBuiltinFamilyId) ||
+        (familySection === 'personal' && !selectedCustomFamilyId)
+      "
+      @click="startFamilyModeSession()"
+    >
+      <AppIcon name="play" :size="20" /> Démarrer la session
+    </button>
+  </section>
+
   <!-- step 2: difficulty + mode specifics + start -->
   <section v-else class="start setup rise-in">
     <div class="setup__top">
@@ -397,102 +517,25 @@ function removePlayer(index) {
     <div class="setup__section">
       <span class="setup__label">{{ presetTitle }}</span>
       <div class="pills">
-        <template v-if="settings.mode === 'solo'">
-          <button
-            class="pill"
-            :class="{ 'pill--active': soloSection === 'custom' }"
-            @click="chooseSoloSection('custom')"
-          >
-            Custom
-          </button>
-          <button
-            class="pill"
-            :class="{ 'pill--active': soloSection === 'family' }"
-            @click="chooseSoloSection('family')"
-          >
-            Familles de tricks
-          </button>
-          <button
-            class="pill"
-            :class="{ 'pill--active': soloSection === 'personal' }"
-            @click="chooseSoloSection('personal')"
-          >
-            Familles perso
-          </button>
-        </template>
-        <template v-else>
-          <button
-            v-for="level in presetLevels"
-            :key="level.id"
-            class="pill"
-            :class="{ 'pill--active': settings.level === level.id }"
-            :title="level.tagline"
-            @click="selectLevel(level.id)"
-          >
-            {{ level.name }}
-          </button>
-        </template>
-      </div>
-      <p v-if="settings.mode !== 'solo'" class="setup__hint">
-        {{ presetLevels.find((l) => l.id === settings.level)?.tagline }}
-      </p>
-      <p v-else-if="soloSection === 'custom'" class="setup__hint">Tes propres règles</p>
-    </div>
-
-    <div v-if="settings.mode === 'solo' && soloSection === 'family'" class="setup__section">
-      <span class="setup__label">Choisis une famille</span>
-      <div class="family-picker">
-        <select class="select" v-model="selectedFamilyId">
-          <option v-for="family in soloFamilyOptions" :key="family.id" :value="family.id">
-            {{ family.name }}
-          </option>
-        </select>
-        <span v-if="selectedFamily" class="family-picker__progress">
-          <template v-if="selectedFamilyDone">Terminée ✓</template>
-          <template v-else>{{ selectedFamilyStep }}/{{ selectedFamily.entries.length }}</template>
-        </span>
-      </div>
-      <p class="setup__hint">
-        Un trick précis à la fois, dans l'ordre — il faut le réussir pour
-        passer au suivant.
-      </p>
-    </div>
-
-    <div
-      v-if="settings.mode === 'solo' && soloSection === 'personal'"
-      class="setup__section"
-    >
-      <span class="setup__label">Choisis une famille perso</span>
-      <div v-if="settings.presets.length" class="family-picker">
-        <select class="select" v-model="selectedPresetId">
-          <option v-for="preset in settings.presets" :key="preset.id" :value="preset.id">
-            {{ preset.name }}
-          </option>
-        </select>
         <button
-          class="btn btn--ghost family-picker__delete"
-          :class="{ 'btn--confirm': confirmingPresetDelete }"
-          @click="onDeletePreset"
-          @blur="confirmingPresetDelete = false"
+          v-for="level in presetLevels"
+          :key="level.id"
+          class="pill"
+          :class="{ 'pill--active': settings.level === level.id }"
+          :title="level.tagline"
+          @click="selectLevel(level.id)"
         >
-          {{ confirmingPresetDelete ? "Confirmer ?" : "Supprimer" }}
+          {{ level.name }}
         </button>
       </div>
-      <p v-else class="setup__hint">
-        Aucune famille perso pour l'instant — sauvegarde une combinaison de
-        réglages depuis Réglages ou l'aperçu des tricks possibles pour la
-        retrouver ici.
-      </p>
       <p class="setup__hint">
-        Lance une session Custom avec exactement ces réglages déjà appliqués.
+        {{ presetLevels.find((l) => l.id === settings.level)?.tagline }}
       </p>
     </div>
 
     <p v-if="settings.mode === 'solo'" class="setup__hint setup__hint--standalone">
-      Pas de fin de partie — tourne aussi longtemps que tu veux.
-      <template v-if="soloSection === 'custom'">
-        Les roues favorisent les tricks que tu n'as pas encore réussis.
-      </template>
+      Pas de fin de partie — tourne aussi longtemps que tu veux. Les roues
+      favorisent les tricks que tu n'as pas encore réussis.
     </p>
 
     <template v-else>
@@ -541,7 +584,6 @@ function removePlayer(index) {
 
     <button
       class="btn btn--go setup__go"
-      :disabled="settings.mode === 'solo' && soloSection === 'personal' && !selectedPresetId"
       @click="settings.mode === 'solo' ? startSoloSession() : startGame(settings)"
     >
       <AppIcon name="play" :size="20" />

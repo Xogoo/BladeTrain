@@ -10,28 +10,28 @@ const props = defineProps({
 });
 const emit = defineEmits(["back", "start"]);
 
-const { savePreset } = useSettings();
-const newPresetName = ref("");
+const { saveCustomFamily } = useSettings();
+const newFamilyName = ref("");
 const saveStatus = ref("");
 
-function onSavePreset() {
-  if (!newPresetName.value.trim()) {
+function onCreateFamily() {
+  if (!newFamilyName.value.trim() || !sample.value.isExact) {
     return;
   }
-  savePreset(newPresetName.value);
-  saveStatus.value = `Enregistré : "${newPresetName.value.trim()}"`;
-  newPresetName.value = "";
+  saveCustomFamily(newFamilyName.value, sample.value.entries);
+  saveStatus.value = `Famille perso créée : "${newFamilyName.value.trim()}"`;
+  newFamilyName.value = "";
 }
 
 const MAX_SHOWN = 20;
 const SAMPLE_ROLLS = 400;
 
-// Try the real, exact count first — it's cheap for any settings a
-// player would realistically pick (a handful of grinds/variations).
-// Only settings broad enough to multiply out into the thousands (every
-// grind, every variation, switch up on, ...) fall back to sampling the
-// real generator many times and reporting "at least" instead, since
-// exhaustively enumerating those would be too slow to be worth it.
+// Try the real, exact count (and full entry list) first — cheap for
+// any settings a player would realistically pick. Only settings broad
+// enough to multiply out into the thousands fall back to sampling the
+// real generator many times for an "at least" estimate instead — that
+// case can't become a personal family (see onCreateFamily's guard),
+// since there's no reliable complete entry list to build one from.
 const sample = computed(() => {
   const exact = enumeratePossibleTricks(
     props.settings.tricks,
@@ -42,6 +42,7 @@ const sample = computed(() => {
     return {
       total: exact.names.length,
       shown: exact.names.slice(0, MAX_SHOWN),
+      entries: exact.entries,
       truncated: exact.names.length > MAX_SHOWN,
       isExact: true,
     };
@@ -62,6 +63,7 @@ const sample = computed(() => {
   return {
     total: all.length,
     shown: all.slice(0, MAX_SHOWN),
+    entries: [],
     truncated: true,
     isExact: false,
   };
@@ -95,13 +97,22 @@ const sample = computed(() => {
       <input
         type="text"
         class="select"
-        placeholder="Nom du réglage (ex: Backslide to AO Acid)"
-        v-model="newPresetName"
-        @keyup.enter="onSavePreset"
+        placeholder="Nom de la famille (ex: Backslide to AO Acid)"
+        v-model="newFamilyName"
+        :disabled="!sample.isExact"
+        @keyup.enter="onCreateFamily"
       />
-      <button class="btn btn--ghost" :disabled="!newPresetName.trim()" @click="onSavePreset">
-        Sauvegarder ces réglages
+      <button
+        class="btn btn--ghost"
+        :disabled="!newFamilyName.trim() || !sample.isExact"
+        @click="onCreateFamily"
+      >
+        Créer une famille perso
       </button>
+      <p v-if="!sample.isExact" class="preset-save__hint">
+        Impossible tant que la liste n'est pas exacte — resserre tes réglages
+        (moins de grinds/variations activés à la fois).
+      </p>
       <p v-if="saveStatus" class="preset-save__status">{{ saveStatus }}</p>
     </div>
 
@@ -156,6 +167,11 @@ const sample = computed(() => {
   border: 1px solid var(--line);
   background: var(--bg-1);
   color: var(--text);
+}
+.preset-save__hint {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 0;
 }
 .preset-save__status {
   font-size: 13px;

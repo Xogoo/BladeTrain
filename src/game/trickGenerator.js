@@ -66,13 +66,30 @@ export function generateSpin(
   let switchSpin = null;
   let switchUpVariationPool = [];
   let switchUpVariation = null;
-  // Family training only ever pins grind/variation/approach/spin-in/
-  // spin-out — a switch-up (2nd grind) is a whole extra trick bolted on
-  // that has nothing to do with what the family is training, so it's
-  // suppressed entirely here regardless of the player's own Switch up
-  // setting. Same reasoning as the spin-out fix above: forced tricks
-  // should draw ONLY the exact trick the family entry describes.
-  if (hasSwitchUpReel(settings) && !forcedTrick) {
+  if (forcedTrick && forcedTrick.switchUpGrindName) {
+    // A personal family built from "Aperçu des tricks possibles" can
+    // include a switch-up as part of the exact trick it's training —
+    // pin it precisely, same philosophy as the rest of a forced trick.
+    switchUp = GRINDS.find((g) => g.name === forcedTrick.switchUpGrindName) || null;
+    switchUpPool = switchUp ? [switchUp] : [];
+    if (switchUp) {
+      switchSpin =
+        baseSwitchSpinPool(grind, switchUp).find(
+          (s) => s.name === (forcedTrick.switchSpinName || "None")
+        ) || null;
+      switchSpinPool = switchSpin ? [switchSpin] : [];
+      switchUpVariation =
+        forcedTrick.switchUpVariationName && forcedTrick.switchUpVariationName !== "None"
+          ? variationByName(forcedTrick.switchUpVariationName)
+          : null;
+    }
+  } else if (hasSwitchUpReel(settings) && !forcedTrick) {
+    // Family training only ever pins grind/variation/approach/spin-in/
+    // spin-out — a switch-up (2nd grind) is a whole extra trick bolted
+    // on that has nothing to do with what the family is training
+    // (unless the entry explicitly specifies one — see above), so it's
+    // suppressed entirely here regardless of the player's own Switch
+    // up setting.
     switchUpPool = grindCandidates(
       settings,
       usedGrinds,
@@ -333,30 +350,20 @@ function spinToCandidates(grind, approach, settings) {
   const isFakie = approach ? approach.isFakie : false;
   let pool = baseSpinToPool(grind, isFakie);
   pool = filterSpinDirection(pool, settings);
-  // Training focus: with only Alley-oop (or only True) checked — or a
-  // specific degree checked with both directions still on — "None"
-  // still slips through for grinds that support a plain forward entry.
-  // Locking it removes that plain option, so every spin actually uses
-  // what was narrowed. Only kicks in when something was actually
-  // narrowed (direction and/or degree), not the unrestricted baseline.
-  if (
-    settings.trainingFocus &&
-    (!(settings.spinInAlleyOop && settings.spinInTrue) ||
-      hasAnyDegreeChecked(settings, "spinIn"))
-  ) {
-    const withoutNone = pool.filter((entry) => entry.name !== "None");
-    if (withoutNone.length > 0) {
-      pool = withoutNone;
-    }
-  }
+  // Degree checkboxes are applied before training focus tries to force
+  // a real rotation (see spinOffCandidates for the full story on why —
+  // same bug, same fix: doing it the other way around let training
+  // focus's "strip None" step get baked into the degree filter's own
+  // fallback pool, so an unchecked degree could come back anyway once
+  // it was the only thing left to fall back to).
+  pool = filterSpinDegrees(pool, settings, "spinIn");
   // Fall back to the unfiltered pool only when filtering left nothing
   // at all — happens on fakie-to-soul and groove-entry pools, which
-  // have no "None" option, so unchecking both directions would
-  // otherwise empty the Spin in reel entirely. When a "None" entry
-  // does survive (plain forward tricks: Soul, Makio, ...), that's a
-  // perfectly valid single-candidate pool — no fallback needed, since
-  // unchecking both directions is meant to still allow the no-spin
-  // version of the trick, just not Alley-oop/True specifically.
+  // have no "None" option, so unchecking both directions (or checking
+  // only a degree this grind type doesn't have) would otherwise empty
+  // the Spin in reel entirely. When a "None" entry does survive (plain
+  // forward tricks: Soul, Makio, ...), that's a perfectly valid
+  // single-candidate pool — no fallback needed.
   if (pool.length === 0) {
     pool =
       !grind.isGroove
@@ -369,7 +376,24 @@ function spinToCandidates(grind, approach, settings) {
           : SPINS_TO_GROOVE_FS
         : SPINS_TO_GROOVE_BS;
   }
-  return filterSpinDegrees(pool, settings, "spinIn");
+  // Training focus: with only Alley-oop (or only True) checked — or a
+  // specific degree checked with both directions still on — "None"
+  // still slips through for grinds that support a plain forward entry.
+  // Locking it removes that plain option, so every spin actually uses
+  // what was narrowed. Only kicks in when something was actually
+  // narrowed (direction and/or degree), not the unrestricted baseline,
+  // and only if something real is actually left afterwards.
+  if (
+    settings.trainingFocus &&
+    (!(settings.spinInAlleyOop && settings.spinInTrue) ||
+      hasAnyDegreeChecked(settings, "spinIn"))
+  ) {
+    const withoutNone = pool.filter((entry) => entry.name !== "None");
+    if (withoutNone.length > 0) {
+      pool = withoutNone;
+    }
+  }
+  return pool;
 }
 
 // Raw (unfiltered by settings) spin-out pool for a grind, and the
@@ -385,11 +409,25 @@ function neutralSpinOffName(grind) {
 }
 
 function spinOffCandidates(grind, settings) {
-  let pool = grind.isGroove ? SPINS_OFF_GROOVE : SPINS_OFF_SOUL;
-  // Same idea as Spin in: "None" (soul) / "Forwards" & "Fakie" (groove)
-  // are the no-rotation outcomes for this reel. With training focus on
-  // and at least one Spin out degree checked, drop them so a spin out
-  // is actually guaranteed instead of sometimes just not happening.
+  const basePool = grind.isGroove ? SPINS_OFF_GROOVE : SPINS_OFF_SOUL;
+  // Degree checkboxes are applied FIRST, against the full pool (which
+  // always includes the no-rotation defaults) — only once that's
+  // settled does training focus try to force a real rotation. Doing it
+  // the other way around (used to) meant: strip the defaults, THEN
+  // filter degrees, THEN fall back to "whatever was left before the
+  // degree filter" if that emptied out — and that fallback pool had
+  // already lost the defaults, so an unchecked degree (e.g. checking
+  // only 180 for a groove grind, which has no 180 at all) could come
+  // back anyway once 270/450 were the only things left to fall back
+  // to. Filtering degrees first means the safety net is always the
+  // full pool, defaults included.
+  let pool = filterSpinDegrees(basePool, settings, "spinOut");
+  // With training focus on and at least one Spin out degree checked,
+  // drop the no-rotation defaults so a spin out is actually guaranteed
+  // instead of sometimes just not happening — but only if something
+  // real is actually left; a grind whose only matching degree got
+  // excluded by the checkboxes should fall back to the plain default,
+  // not an emptied-out or wrong pool.
   if (settings.trainingFocus && hasAnyDegreeChecked(settings, "spinOut")) {
     const withoutDefault = pool.filter(
       (entry) => entry.name !== "None" && entry.name !== "Forwards" && entry.name !== "Fakie"
@@ -398,7 +436,7 @@ function spinOffCandidates(grind, settings) {
       pool = withoutDefault;
     }
   }
-  return filterSpinDegrees(pool, settings, "spinOut");
+  return pool;
 }
 
 // Same idea as filterSpinDirection, but for the rotation between the
@@ -426,6 +464,32 @@ function filterSwitchSpinDirection(pool, settings) {
 // not: same type (soul→soul or groove→groove) rotates like a normal
 // soul spin (180/360/540); different type (soul→groove or
 // groove→soul) uses the groove-equivalent cadence (270/450) instead.
+// Raw (unfiltered by settings) switch-spin pool for a (grind,
+// switchUpGrind) pair — used to resolve a forced/personal-family
+// switch-up's rotation by name, regardless of the player's own
+// direction/degree settings. Same shape as switchSpinCandidates'
+// internal pools, just without any of the settings-based narrowing.
+function baseSwitchSpinPool(grind, switchUpGrind) {
+  const sameType = grind.isGroove === switchUpGrind.isGroove;
+  return sameType
+    ? [
+        { name: "None", weight: 4, score: 0 },
+        { name: "Inspin 180", weight: 1, score: 1 },
+        { name: "Outspin 180", weight: 1, score: 1 },
+        { name: "Inspin 360", weight: 1, score: 2 },
+        { name: "Outspin 360", weight: 1, score: 2 },
+        { name: "Inspin 540", weight: 1, score: 3 },
+        { name: "Outspin 540", weight: 1, score: 3 },
+      ]
+    : [
+        { name: "None", weight: 4, score: 0 },
+        { name: "Inspin 270", weight: 1, score: 2 },
+        { name: "Outspin 270", weight: 1, score: 2 },
+        { name: "Inspin 450", weight: 1, score: 3 },
+        { name: "Outspin 450", weight: 1, score: 3 },
+      ];
+}
+
 function switchSpinCandidates(grind, switchUpGrind, settings) {
   const sameType = grind.isGroove === switchUpGrind.isGroove;
   let pool = sameType
@@ -468,9 +532,16 @@ function switchSpinCandidates(grind, switchUpGrind, settings) {
           { name: "Outspin 450", weight: 1, score: 3 },
         ];
   }
+  // Degree checkboxes are applied before training focus tries to force
+  // a real rotation — same bug/fix as spinOffCandidates and
+  // spinToCandidates above: doing it the other way around let training
+  // focus's "strip None" step get baked into the degree filter's own
+  // fallback pool.
+  pool = filterSpinDegrees(pool, settings, "spinBetween");
   // Same idea again: with training focus on and the direction and/or a
   // degree narrowed, force an actual rotation between the two grinds
-  // instead of sometimes landing on "no rotation between them".
+  // instead of sometimes landing on "no rotation between them" — only
+  // if something real is actually left afterwards.
   if (
     settings.trainingFocus &&
     (!(settings.spinBetweenAlleyOop && settings.spinBetweenTrue) ||
@@ -481,7 +552,7 @@ function switchSpinCandidates(grind, switchUpGrind, settings) {
       pool = withoutNone;
     }
   }
-  return filterSpinDegrees(pool, settings, "spinBetween");
+  return pool;
 }
 
 // 720/900 no longer exist anywhere in the game — dropped structurally
@@ -542,7 +613,7 @@ export function enumeratePossibleTricks(
   { cap = ENUMERATE_CAP } = {}
 ) {
   const grindPool = grindCandidates(settings, [], null, grindToggles);
-  const names = new Set();
+  const byName = new Map(); // name -> full descriptor, for turning this into a personal family's entries later
   let truncated = false;
   let count = 0;
 
@@ -613,7 +684,21 @@ export function enumeratePossibleTricks(
                 { name: "SwitchUpVariation", winner: branch.switchUpVariation },
                 { name: "SpinOff", winner: spinOff },
               ];
-              names.add(nameTrick(reels).parsed);
+              const name = nameTrick(reels).parsed;
+              if (!byName.has(name)) {
+                byName.set(name, {
+                  grindName: grind.name,
+                  variationName: variation ? variation.name : "None",
+                  approach: approach ? approach.name : "Forwards",
+                  spinToName: spinTo.name,
+                  spinOffName: spinOff.name,
+                  switchUpGrindName: branch.switchUp ? branch.switchUp.name : null,
+                  switchUpVariationName: branch.switchUpVariation
+                    ? branch.switchUpVariation.name
+                    : null,
+                  switchSpinName: branch.switchSpin ? branch.switchSpin.name : null,
+                });
+              }
             }
           }
         }
@@ -621,8 +706,53 @@ export function enumeratePossibleTricks(
     }
   }
 
+  const names = [...byName.keys()].sort((a, b) => a.localeCompare(b));
   return {
-    names: [...names].sort((a, b) => a.localeCompare(b)),
+    names,
+    entries: names.map((name) => byName.get(name)),
     exact: !truncated,
   };
+}
+
+// Names a family entry directly, without generating a real spin — used
+// by the family history screen to label tricks that haven't been
+// landed yet (so there's no real land record with the actual name).
+// For entries that don't pin a spin-in (the base Soul/Groove/Zerospin-
+// style families, which leave the rotation up to the player's own
+// settings), this shows the plain "no rotation" version as a best
+// effort — the real trained trick may vary, this is just a label.
+export function nameEntry(entry) {
+  const grind = GRINDS.find((g) => g.name === entry.grindName);
+  if (!grind) {
+    return entry.grindName;
+  }
+  const switchUpGrind = entry.switchUpGrindName
+    ? GRINDS.find((g) => g.name === entry.switchUpGrindName)
+    : null;
+  const approach = APPROACHES.find((a) => a.name === entry.approach) || {
+    name: entry.approach || "Forwards",
+    isFakie: false,
+  };
+  const variation =
+    entry.variationName && entry.variationName !== "None"
+      ? variationByName(entry.variationName)
+      : null;
+  const switchUpVariation =
+    entry.switchUpVariationName && entry.switchUpVariationName !== "None"
+      ? variationByName(entry.switchUpVariationName)
+      : null;
+  const reels = [
+    { name: "Approach", winner: approach },
+    { name: "SpinTo", winner: { name: entry.spinToName || "None" } },
+    { name: "Grind", winner: grind },
+    { name: "GrindVariation", winner: variation },
+    { name: "SwitchSpin", winner: entry.switchSpinName ? { name: entry.switchSpinName } : null },
+    { name: "SwitchUp", winner: switchUpGrind },
+    { name: "SwitchUpVariation", winner: switchUpGrind ? switchUpVariation : null },
+    {
+      name: "SpinOff",
+      winner: { name: entry.spinOffName || (grind.isGroove ? "Forwards" : "None") },
+    },
+  ];
+  return nameTrick(reels).parsed;
 }

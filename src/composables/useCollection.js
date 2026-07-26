@@ -1,8 +1,17 @@
 import { computed, reactive, watch } from "vue";
 import { GRINDS, RARE_GRIND_NAME_PARTS } from "../game/trickData.js";
-import { FAMILIES, familyById, familyEntryKey } from "../game/families.js";
+import { FAMILIES, resolveFamily, familyEntryKey } from "../game/families.js";
+import { useSettings } from "./useSettings.js";
 
 const STORAGE_KEY = "aight-collection-v1";
+
+const settingsApi = useSettings();
+
+// Resolves either a built-in family (families.js) or a player-built one
+// (settings.customFamilies) by id — see resolveFamily in families.js.
+function resolveFamilyById(familyId) {
+  return familyId ? resolveFamily(familyId, settingsApi.settings.customFamilies) : null;
+}
 
 /**
  * Lifetime trick collection for solo mode: every exact trick name you
@@ -214,7 +223,7 @@ function familyLandedKeySet(familyId) {
 
 /** How many of the family's CURRENT entries have been landed so far. */
 function familyIndex(familyId) {
-  const family = familyById(familyId);
+  const family = resolveFamilyById(familyId);
   if (!family) {
     return 0;
   }
@@ -292,20 +301,31 @@ function familyRemainingIndices(familyId, entries) {
  * "newly earned" shape as recordLand, so the game screen's badge toast
  * can handle both the same way.
  */
-function advanceFamilyProgress(familyId, entry, entries) {
-  const progress = familyProgressEntry(familyId);
+function advanceFamilyProgress(family, entry) {
+  const progress = familyProgressEntry(family.id);
   const key = familyEntryKey(entry);
   if (!progress.landedKeys.includes(key)) {
     progress.landedKeys.push(key);
   }
   const keys = new Set(progress.landedKeys);
-  const nowComplete = entries.every((e) => keys.has(familyEntryKey(e)));
+  const nowComplete = family.entries.every((e) => keys.has(familyEntryKey(e)));
   if (nowComplete && !progress.completedAt) {
     progress.completedAt = new Date().toISOString();
-    const badgeId = `family-${familyId}`;
+    const badgeId = `family-${family.id}`;
     if (!collection.badges[badgeId]) {
       collection.badges[badgeId] = new Date().toISOString();
-      return BADGES.find((b) => b.id === badgeId) || null;
+      // Built-in families always have a matching entry in BADGES (see
+      // the auto-generated block at the top of this file). Personal
+      // families never do — they're not known ahead of time — so this
+      // builds an equivalent badge object on the fly from the family's
+      // own name instead of coming back empty-handed.
+      return (
+        BADGES.find((b) => b.id === badgeId) || {
+          id: badgeId,
+          name: family.badgeName || family.name,
+          desc: `Termine la famille "${family.name}"`,
+        }
+      );
     }
   }
   return null;
@@ -474,9 +494,60 @@ export function useCollection() {
       counts[land.familyId] = (counts[land.familyId] || 0) + 1;
     }
     return Object.entries(counts)
-      .map(([familyId, count]) => ({ family: familyById(familyId), count }))
+      .map(([familyId, count]) => ({ family: resolveFamilyById(familyId), count }))
       .filter((entry) => entry.family);
   };
+
+  /** Every land ever recorded while this family was the active one,
+   * across all sessions — oldest first. */
+  function familyLands(familyId) {
+    return collection.lands
+      .filter((land) => land.familyId === familyId)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+  }
+
+  /**
+   * Every entry of a family, split into landed/not-yet-landed — each
+   * landed one paired with its actual land record (real name, date,
+   * tries), so the history screen can show exactly what happened
+   * rather than a generic label.
+   */
+  function familyEntryStatuses(family) {
+    const keys = familyLandedKeySet(family.id);
+    // Landed entries are matched back to their actual land record via
+    // the exact key stored on it at landing time (see recordLand) —
+    // the most recent one if it was somehow landed more than once
+    // (shouldn't normally happen, a family stops drawing an entry once
+    // it's done).
+    const landsByKey = {};
+    for (const land of familyLands(family.id)) {
+      if (land.familyEntryKey) {
+        landsByKey[land.familyEntryKey] = land;
+      }
+    }
+    const skipCounts = {};
+    for (const skip of collection.skips) {
+      if (skip.familyId === family.id && skip.familyEntryKey) {
+        skipCounts[skip.familyEntryKey] = (skipCounts[skip.familyEntryKey] || 0) + 1;
+      }
+    }
+    return family.entries.map((entry) => {
+      const key = familyEntryKey(entry);
+      return {
+        entry,
+        landed: keys.has(key),
+        land: landsByKey[key] || null,
+        skipCount: skipCounts[key] || 0,
+      };
+    });
+  }
+
+  /** Tries needed for each trick landed in this family, in the order
+   * they were landed — feeds the same AttemptsChart used elsewhere
+   * (Historique), just for one family instead of one repeated trick. */
+  function familyTriesSeries(familyId) {
+    return familyLands(familyId).map((land) => land.tries);
+  }
 
   /**
    * Progress data for the chart: only exact tricks landed 2+ times
@@ -577,7 +648,7 @@ export function useCollection() {
   }
 
   /** Records a landed spin and returns any newly earned badges. */
-  const recordLand = (spin, tries = 1, sessionId = null, familyId = null) => {
+  const recordLand = (spin, tries = 1, sessionId = null, familyId = null, familyEntry = null) => {
     const winners = spinWinners(spin);
     statsIn(collection.tricks, spin.name).landed += 1;
     statsIn(collection.grinds, winners.Grind).landed += 1;
@@ -589,15 +660,30 @@ export function useCollection() {
       trickName: spin.name,
       grindName: winners.Grind,
       variationName: winners.GrindVariation,
+      // Full descriptor of what was actually rolled — approach/spin-in/
+      // spin-out/switch-up, mainly kept for reference (e.g. showing
+      // full trick details later).
+      approach: winners.Approach,
+      spinToName: winners.SpinTo,
+      spinOffName: winners.SpinOff,
       // Switch-up (2nd grind) info, only set when this land actually
       // had one — null otherwise. Feeds the Historique panel's
       // Switch-ups list (see switchUpLands below).
       switchUpGrindName: winners.SwitchUp !== "None" ? winners.SwitchUp : null,
       switchUpVariationName:
         winners.SwitchUp !== "None" ? winners.SwitchUpVariation : null,
+      switchSpinName: winners.SwitchUp !== "None" ? winners.SwitchSpin : null,
       // Which family (if any) was being trained when this was landed —
       // feeds the end-of-session recap's "families progressed" list.
       familyId,
+      // The EXACT family entry this land completed, keyed the same way
+      // progress-tracking is (familyEntryKey) — some family entries
+      // don't pin every reel (e.g. a plain "Soul" entry leaves spin-in
+      // up to the player's own settings), so what actually got rolled
+      // can't always be reconstructed backwards from the land's own
+      // fields alone. Stored directly instead, straight from the
+      // entry that was actually active — always exact.
+      familyEntryKey: familyEntry ? familyEntryKey(familyEntry) : null,
       tries,
       score: spin.score,
     });
@@ -654,20 +740,26 @@ export function useCollection() {
     });
   };
 
-  // The Career screen's own reset: wipes every family's progress (both
-  // Normal and Switch tracks) and their completion badges, and nothing
-  // else — the rest of the collection (stats, badges, session history)
-  // is untouched.
+  // The Career screen's own reset: wipes every BUILT-IN family's
+  // progress (both Normal and Switch tracks) and their completion
+  // badges — personal families have nothing to do with Career and are
+  // deliberately left untouched, along with the rest of the collection
+  // (stats, badges, session history).
   const resetCareerProgress = () => {
-    collection.familyProgress = {};
+    const builtinIds = new Set(FAMILIES.map((family) => family.id));
+    for (const id of Object.keys(collection.familyProgress)) {
+      if (builtinIds.has(id)) {
+        delete collection.familyProgress[id];
+      }
+    }
     for (const id of Object.keys(collection.badges)) {
-      if (id.startsWith("family-")) {
+      if (id.startsWith("family-") && builtinIds.has(id.slice("family-".length))) {
         delete collection.badges[id];
       }
     }
   };
 
-  const recordSkip = (spin, sessionId = null) => {
+  const recordSkip = (spin, sessionId = null, familyId = null, familyEntry = null) => {
     const winners = spinWinners(spin);
     statsIn(collection.tricks, spin.name).skipped += 1;
     statsIn(collection.grinds, winners.Grind).skipped += 1;
@@ -677,6 +769,8 @@ export function useCollection() {
       trickName: spin.name,
       grindName: winners.Grind,
       variationName: winners.GrindVariation,
+      familyId,
+      familyEntryKey: familyEntry ? familyEntryKey(familyEntry) : null,
     });
     collection.streak = 0;
     if (sessionId) {
@@ -713,8 +807,22 @@ export function useCollection() {
   const grindProgressPercent = computed(() =>
     Math.round((landedGrindCount.value / totalGrinds) * 100)
   );
+  // BADGES only ever knows about built-in families (fixed at build
+  // time) — personal families are created by the player, so their
+  // badges are stitched in here dynamically from whichever ones
+  // currently exist, rather than being missing from every gallery/count
+  // that walks the badge list.
+  const allBadges = computed(() => [
+    ...BADGES,
+    ...settingsApi.settings.customFamilies.map((family) => ({
+      id: `family-${family.id}`,
+      name: family.name,
+      desc: `Termine la famille perso "${family.name}"`,
+    })),
+  ]);
+
   const earnedBadges = computed(() =>
-    BADGES.filter((badge) => collection.badges[badge.id])
+    allBadges.value.filter((badge) => collection.badges[badge.id])
   );
   const hasBadge = (id) => Boolean(collection.badges[id]);
   const grindLandedCount = (name) => collection.grinds[name]?.landed || 0;
@@ -730,6 +838,7 @@ export function useCollection() {
     landedGrindCount,
     totalGrinds,
     grindProgressPercent,
+    allBadges,
     earnedBadges,
     hasBadge,
     familyIndex,
@@ -748,6 +857,8 @@ export function useCollection() {
     sessionLands,
     sessionBadges,
     sessionFamilyProgress,
+    familyEntryStatuses,
+    familyTriesSeries,
     repeatedTrickSeries,
     switchUpLands,
     staleCombos,
