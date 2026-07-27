@@ -14,10 +14,28 @@ const ALL_OFF = {
   grabs: false,
   rocket: false,
   crossgrab: false,
-  spins360: false,
-  spins540: false,
-  spins720: false,
-  spins900: false,
+  trainingFocus: false,
+  switchUp: false,
+  switchUpTopside: false,
+  spinInAlleyOop: false,
+  spinInTrue: false,
+  spinBetweenAlleyOop: false,
+  spinBetweenTrue: false,
+  spinIn180: false,
+  spinIn270: false,
+  spinIn360: false,
+  spinIn450: false,
+  spinIn540: false,
+  spinBetween180: false,
+  spinBetween270: false,
+  spinBetween360: false,
+  spinBetween450: false,
+  spinBetween540: false,
+  spinOut180: false,
+  spinOut270: false,
+  spinOut360: false,
+  spinOut450: false,
+  spinOut540: false,
 };
 
 const ALL_ON = Object.fromEntries(Object.keys(ALL_OFF).map((k) => [k, true]));
@@ -97,7 +115,7 @@ describe("generateSpin", () => {
       const spin = generateSpin(ALL_ON);
       expect(spin.name).not.toBe("");
       expect(spin.score).toBeGreaterThanOrEqual(1);
-      expect(spin.reels).toHaveLength(5);
+      expect(spin.reels).toHaveLength(8);
       expect(spin.reels.every((r) => r.pool.length > 0)).toBe(true);
     }
   });

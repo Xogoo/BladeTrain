@@ -129,8 +129,8 @@ export function nameTrick(slots) {
   });
 
   result = result
-    .replace("Topside", "Top")
-    .replace("Alley-oop", "AO")
+    .replace(/Topside/g, "Top")
+    .replace(/Alley-oop/g, "AO")
     .replace(/to Forwards out/g, "")
     .replace(/Forwards/g, "")
     .replace(/90 /, "")

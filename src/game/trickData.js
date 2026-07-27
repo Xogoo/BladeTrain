@@ -277,7 +277,7 @@ const SOUL_GRINDS = [
     isSoulGroove: true,
     url: "http://skateyeg.com/bog/14.0_Darkslide.html",
     comment:
-      "(Acid Rain) Comme un Top Mistrial mais avec le pied soul avant en position acid. Le pied arrière est comme un Frontside Backslide.",
+      "(Acid Rain) Comme un Overpuss mais avec le pied soul avant en position acid. Le pied arrière est comme un Frontside Backslide.",
     variations: ["Channel"],
   },
   {
@@ -641,7 +641,7 @@ export const VARIATIONS = [
  */
 export const GRIND_SYNONYMS = [
   {
-    newName: "AO Top Mistrial",
+    newName: "Misfit",
     name: "Mistrial",
     comment: "Alley-oop Topside Mistrial",
     isReverse: true,
@@ -649,7 +649,7 @@ export const GRIND_SYNONYMS = [
     url: "http://skateyeg.com/bog/07.0_Misfit_(AO_Topside_Mistrial).html",
   },
   {
-    newName: "Top Mistrial",
+    newName: "Overpuss",
     name: "Mistrial",
     comment: "Topside Mistrial",
     isTopside: true,
@@ -699,7 +699,7 @@ export const GRIND_SYNONYMS = [
     url: "http://skateyeg.com/bog/13.0_Tea_Kettle.html",
   },
   {
-    newName: "Top PStar",
+    newName: "Sunny Day",
     name: "PStar",
     comment: "Topside PStar",
     isTopside: true,

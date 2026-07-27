@@ -176,10 +176,10 @@ describe("useGame modes", () => {
     expect(collection.collection.grinds[grind].skipped).toBeGreaterThan(0);
   });
 
-  it("solo give up returns to the start screen without a game over", () => {
+  it("solo give up shows the session report instead of a game over", () => {
     game.startGame(settings("solo"), "solo");
     game.giveUp();
-    expect(game.state.screen).toBe("start");
+    expect(game.state.screen).toBe("sessionReport");
   });
 
   it("trainer bias favors never-landed grinds", () => {
