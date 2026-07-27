@@ -297,7 +297,11 @@ export function useGame() {
     if (switchUpReel && switchUpReel.winner) {
       state.usedGrinds.push(switchUpReel.winner.name);
     }
-    if (state.mode === "solo" && state.usedGrinds.length > SOLO_REPEAT_WINDOW) {
+    // A switch-up spin pushes 2 names (grind + switch-up grind) in one
+    // go, so trimming needs a loop, not a single shift — one shift per
+    // call let the array creep past SOLO_REPEAT_WINDOW by one entry
+    // every switch-up spin, growing unboundedly over a long session.
+    while (state.mode === "solo" && state.usedGrinds.length > SOLO_REPEAT_WINDOW) {
       state.usedGrinds.shift();
     }
     state.spinId += 1;

@@ -4,6 +4,7 @@ import {
   GRIND_SYNONYMS,
   VARIATIONS,
   thumbUrl,
+  synonymThumbUrl,
 } from "./trickData.js";
 
 /**
@@ -15,6 +16,16 @@ import {
  */
 export function explainTrick(trick) {
   const rows = [];
+  // Grind synonyms are matched against the parsed name as-is, before
+  // the Topside abbreviation is undone below — several synonyms start
+  // with "Top " as part of their own proper name (Top Teakettle, Top
+  // PStar, Top Mistrial, AO Top Mistrial), and expanding that to
+  // "Topside " first broke their own self-match, silently falling
+  // through to a shorter, unrelated synonym instead (e.g. "Top
+  // Teakettle" matching plain "Teakettle") or to the generic grind
+  // fallback further down, either way showing the wrong comment/URL.
+  const synonym = GRIND_SYNONYMS.find((syn) => trick.parsed.includes(syn.newName));
+
   // Undo the namer's abbreviation so "Top Acid" matches "Topside".
   let rest = trick.parsed.replace("Top ", "Topside");
 
@@ -41,15 +52,11 @@ export function explainTrick(trick) {
     rest = rest.replace(term, "");
   }
 
-  const synonym = GRIND_SYNONYMS.find((syn) => rest.includes(syn.newName));
   if (synonym) {
-    // Top Teakettle shares the Teakettle thumbnail.
-    const thumbName =
-      synonym.newName === "Top Teakettle" ? "Teakettle" : synonym.newName;
     rows.push({
       title: synonym.newName,
       comment: synonym.comment,
-      thumbUrl: thumbUrl(thumbName),
+      thumbUrl: synonymThumbUrl(synonym),
       url: synonym.url,
     });
   } else {
