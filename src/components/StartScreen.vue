@@ -2,6 +2,7 @@
 import { computed, ref, watch } from "vue";
 import AppIcon from "./AppIcon.vue";
 import FamilyHistoryPanel from "./FamilyHistoryPanel.vue";
+import TargetedTrainingHistoryPanel from "./TargetedTrainingHistoryPanel.vue";
 import {
   CUSTOM_LEVEL,
   LEVELS,
@@ -18,12 +19,14 @@ import { useBackup } from "../composables/useBackup.js";
 
 const emit = defineEmits(["open-settings"]);
 
-const { settings, applyLevel, saveCustomFamily, deleteCustomFamily } = useSettings();
+const { settings, applyLevel, saveCustomFamily, deleteCustomFamily, recordTargetedTraining } =
+  useSettings();
 const { startGame, startFamilySession, hasOpenSessionToday, endOpenSession } = useGame();
 const { familyIndex, isFamilyComplete, careerProgress, resetCareerProgress } = useCollection();
 const { needsBackupReminder, exportBackup, exportFamilies, importFamilies } = useBackup();
 
 function startSoloSession() {
+  recordTargetedTraining();
   startGame(settings);
 }
 
@@ -72,6 +75,7 @@ watch(
 
 const confirmingFamilyDelete = ref(false);
 const showFamilyHistory = ref(false);
+const showTrainingHistory = ref(false);
 function onDeleteCustomFamily() {
   if (!selectedCustomFamilyId.value) {
     return;
@@ -553,6 +557,12 @@ function removePlayer(index) {
       @close="showFamilyHistory = false"
     />
 
+    <TargetedTrainingHistoryPanel
+      v-if="showTrainingHistory"
+      @close="showTrainingHistory = false"
+      @redo="startSoloSession()"
+    />
+
     <button
       class="btn btn--go setup__go"
       :disabled="
@@ -593,6 +603,13 @@ function removePlayer(index) {
       <p class="setup__hint">
         {{ presetLevels.find((l) => l.id === settings.level)?.tagline }}
       </p>
+      <button
+        v-if="settings.mode === 'solo'"
+        class="btn btn--ghost training-history-btn"
+        @click="showTrainingHistory = true"
+      >
+        <AppIcon name="list" :size="14" /> Historique des entraînements ciblés
+      </button>
     </div>
 
     <p v-if="settings.mode === 'solo'" class="setup__hint setup__hint--standalone">
@@ -672,7 +689,7 @@ function removePlayer(index) {
 .start__logo {
   width: min(500px, 95%);
   padding-bottom: 16px;
-  border-bottom: 1px solid #fff;
+  border-bottom: 1px solid var(--line-strong);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -831,10 +848,22 @@ function removePlayer(index) {
   color: var(--text-dim);
 }
 
+.training-history-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 10px;
+  font-size: 13px;
+  padding: 9px 14px;
+}
+
 .family-picker {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .family-import-actions {
@@ -850,7 +879,8 @@ function removePlayer(index) {
 }
 
 .family-picker .select {
-  flex: 1;
+  flex: 1 1 160px;
+  min-width: 0;
   font-family: var(--font-body);
   font-size: 15px;
   padding: 10px 12px;

@@ -641,3 +641,310 @@ body.accent-indigo.theme-inverted {
   --glow-red: 0 0 12px rgba(67, 56, 202, 0.35), 0 0 30px rgba(67, 56, 202, 0.15);
   --glow-red-hi: 0 0 12px rgba(49, 46, 129, 0.45), 0 0 34px rgba(49, 46, 129, 0.2);
 }
+body.accent-lime {
+  --red: #b1fa42;
+  --red-hi: #c5fb74;
+  --red-deep: #75b319;
+  --cta-text: #1c280b;
+  --glow-red: 0 0 12px rgba(177, 250, 66, 0.45), 0 0 36px rgba(177, 250, 66, 0.18);
+  --glow-red-hi: 0 0 12px rgba(197, 251, 116, 0.6), 0 0 36px rgba(197, 251, 116, 0.28);
+}
+body.accent-lime.theme-inverted {
+  --red: #558112;
+  --red-hi: #466b0f;
+  --red-deep: #3f5d14;
+  --cta-text: #ffffff;
+  --glow-red: 0 0 12px rgba(85, 129, 18, 0.35), 0 0 30px rgba(85, 129, 18, 0.15);
+  --glow-red-hi: 0 0 12px rgba(70, 107, 15, 0.45), 0 0 34px rgba(70, 107, 15, 0.2);
+}
+
+body.accent-emerald {
+  --red: #42faad;
+  --red-hi: #74fbc3;
+  --red-deep: #19b373;
+  --cta-text: #0b281c;
+  --glow-red: 0 0 12px rgba(66, 250, 173, 0.45), 0 0 36px rgba(66, 250, 173, 0.18);
+  --glow-red-hi: 0 0 12px rgba(116, 251, 195, 0.6), 0 0 36px rgba(116, 251, 195, 0.28);
+}
+body.accent-emerald.theme-inverted {
+  --red: #128153;
+  --red-hi: #107048;
+  --red-deep: #145d3e;
+  --cta-text: #ffffff;
+  --glow-red: 0 0 12px rgba(18, 129, 83, 0.35), 0 0 30px rgba(18, 129, 83, 0.15);
+  --glow-red-hi: 0 0 12px rgba(16, 112, 72, 0.45), 0 0 34px rgba(16, 112, 72, 0.2);
+}
+
+body.accent-cyan {
+  --red: #42dbfa;
+  --red-hi: #74e5fb;
+  --red-deep: #1b9cb6;
+  --cta-text: #0b2328;
+  --glow-red: 0 0 12px rgba(66, 219, 250, 0.45), 0 0 36px rgba(66, 219, 250, 0.18);
+  --glow-red-hi: 0 0 12px rgba(116, 229, 251, 0.6), 0 0 36px rgba(116, 229, 251, 0.28);
+}
+body.accent-cyan.theme-inverted {
+  --red: #157e93;
+  --red-hi: #126b7d;
+  --red-deep: #14505d;
+  --cta-text: #ffffff;
+  --glow-red: 0 0 12px rgba(21, 126, 147, 0.35), 0 0 30px rgba(21, 126, 147, 0.15);
+  --glow-red-hi: 0 0 12px rgba(18, 107, 125, 0.45), 0 0 34px rgba(18, 107, 125, 0.2);
+}
+
+body.accent-violet {
+  --red: #bd42fa;
+  --red-hi: #ce74fb;
+  --red-deep: #b85be7;
+  --cta-text: #1e0b28;
+  --glow-red: 0 0 12px rgba(189, 66, 250, 0.45), 0 0 36px rgba(189, 66, 250, 0.18);
+  --glow-red-hi: 0 0 12px rgba(206, 116, 251, 0.6), 0 0 36px rgba(206, 116, 251, 0.28);
+}
+body.accent-violet.theme-inverted {
+  --red: #861bbb;
+  --red-hi: #59127d;
+  --red-deep: #44145d;
+  --cta-text: #ffffff;
+  --glow-red: 0 0 12px rgba(134, 27, 187, 0.35), 0 0 30px rgba(134, 27, 187, 0.15);
+  --glow-red-hi: 0 0 12px rgba(89, 18, 125, 0.45), 0 0 34px rgba(89, 18, 125, 0.2);
+}
+
+body.accent-fuchsia {
+  --red: #fa42eb;
+  --red-hi: #fb74f0;
+  --red-deep: #e536d6;
+  --cta-text: #280b25;
+  --glow-red: 0 0 12px rgba(250, 66, 235, 0.45), 0 0 36px rgba(250, 66, 235, 0.18);
+  --glow-red-hi: 0 0 12px rgba(251, 116, 240, 0.6), 0 0 36px rgba(251, 116, 240, 0.28);
+}
+body.accent-fuchsia.theme-inverted {
+  --red: #bb1bae;
+  --red-hi: #7d1274;
+  --red-deep: #5d1456;
+  --cta-text: #ffffff;
+  --glow-red: 0 0 12px rgba(187, 27, 174, 0.35), 0 0 30px rgba(187, 27, 174, 0.15);
+  --glow-red-hi: 0 0 12px rgba(125, 18, 116, 0.45), 0 0 34px rgba(125, 18, 116, 0.2);
+}
+
+body.accent-rose {
+  --red: #fa425b;
+  --red-hi: #fb7486;
+  --red-deep: #f53f58;
+  --cta-text: #280b0f;
+  --glow-red: 0 0 12px rgba(250, 66, 91, 0.45), 0 0 36px rgba(250, 66, 91, 0.18);
+  --glow-red-hi: 0 0 12px rgba(251, 116, 134, 0.6), 0 0 36px rgba(251, 116, 134, 0.28);
+}
+body.accent-rose.theme-inverted {
+  --red: #bb1b30;
+  --red-hi: #7d1220;
+  --red-deep: #5d141d;
+  --cta-text: #ffffff;
+  --glow-red: 0 0 12px rgba(187, 27, 48, 0.35), 0 0 30px rgba(187, 27, 48, 0.15);
+  --glow-red-hi: 0 0 12px rgba(125, 18, 32, 0.45), 0 0 34px rgba(125, 18, 32, 0.2);
+}
+
+body.accent-amber {
+  --red: #fac342;
+  --red-hi: #fbd374;
+  --red-deep: #b6871b;
+  --cta-text: #281f0b;
+  --glow-red: 0 0 12px rgba(250, 195, 66, 0.45), 0 0 36px rgba(250, 195, 66, 0.18);
+  --glow-red-hi: 0 0 12px rgba(251, 211, 116, 0.6), 0 0 36px rgba(251, 211, 116, 0.28);
+}
+body.accent-amber.theme-inverted {
+  --red: #936d15;
+  --red-hi: #7d5d12;
+  --red-deep: #5d4714;
+  --cta-text: #ffffff;
+  --glow-red: 0 0 12px rgba(147, 109, 21, 0.35), 0 0 30px rgba(147, 109, 21, 0.15);
+  --glow-red-hi: 0 0 12px rgba(125, 93, 18, 0.45), 0 0 34px rgba(125, 93, 18, 0.2);
+}
+
+body.accent-brown {
+  --red: #fa8f42;
+  --red-hi: #fbac74;
+  --red-deep: #d2702b;
+  --cta-text: #28170b;
+  --glow-red: 0 0 12px rgba(250, 143, 66, 0.45), 0 0 36px rgba(250, 143, 66, 0.18);
+  --glow-red-hi: 0 0 12px rgba(251, 172, 116, 0.6), 0 0 36px rgba(251, 172, 116, 0.28);
+}
+body.accent-brown.theme-inverted {
+  --red: #b75b1a;
+  --red-hi: #7d3e12;
+  --red-deep: #5d3214;
+  --cta-text: #ffffff;
+  --glow-red: 0 0 12px rgba(183, 91, 26, 0.35), 0 0 30px rgba(183, 91, 26, 0.15);
+  --glow-red-hi: 0 0 12px rgba(125, 62, 18, 0.45), 0 0 34px rgba(125, 62, 18, 0.2);
+}
+
+body.accent-slate {
+  --red: #428ffa;
+  --red-hi: #74acfb;
+  --red-deep: #3b86ef;
+  --cta-text: #0b1728;
+  --glow-red: 0 0 12px rgba(66, 143, 250, 0.45), 0 0 36px rgba(66, 143, 250, 0.18);
+  --glow-red-hi: 0 0 12px rgba(116, 172, 251, 0.6), 0 0 36px rgba(116, 172, 251, 0.28);
+}
+body.accent-slate.theme-inverted {
+  --red: #1b5ebb;
+  --red-hi: #123e7d;
+  --red-deep: #14325d;
+  --cta-text: #ffffff;
+  --glow-red: 0 0 12px rgba(27, 94, 187, 0.35), 0 0 30px rgba(27, 94, 187, 0.15);
+  --glow-red-hi: 0 0 12px rgba(18, 62, 125, 0.45), 0 0 34px rgba(18, 62, 125, 0.2);
+}
+
+body.accent-maroon {
+  --red: #fa4261;
+  --red-hi: #fb748a;
+  --red-deep: #f53f5e;
+  --cta-text: #280b10;
+  --glow-red: 0 0 12px rgba(250, 66, 97, 0.45), 0 0 36px rgba(250, 66, 97, 0.18);
+  --glow-red-hi: 0 0 12px rgba(251, 116, 138, 0.6), 0 0 36px rgba(251, 116, 138, 0.28);
+}
+body.accent-maroon.theme-inverted {
+  --red: #bb1b36;
+  --red-hi: #7d1224;
+  --red-deep: #5d1420;
+  --cta-text: #ffffff;
+  --glow-red: 0 0 12px rgba(187, 27, 54, 0.35), 0 0 30px rgba(187, 27, 54, 0.15);
+  --glow-red-hi: 0 0 12px rgba(125, 18, 36, 0.45), 0 0 34px rgba(125, 18, 36, 0.2);
+}
+
+/* ---------- background themes ---------- */
+/* Optional test palettes (Réglages > Couleur de fond) — independent of
+   the accent color above: only --bg-0/1/2 (and their rgb triplet)
+   change, a subtle tint instead of pure black/white. --panel/--line
+   stay as translucent overlays of --fg-rgb, so they keep working
+   unmodified over any of these. "mono" (pure black/white) is the
+   default and needs no class, same convention as accent-mono. */
+
+body.bg-navy {
+  --bg-0: #05070a;
+  --bg-0-rgb: 5, 7, 10;
+  --bg-1: #0c1018;
+  --bg-2: #161c27;
+}
+body.bg-navy.theme-inverted {
+  --bg-0: #f8f9fc;
+  --bg-0-rgb: 248, 249, 252;
+  --bg-1: #eef1f6;
+  --bg-2: #dfe3ec;
+}
+
+body.bg-forest {
+  --bg-0: #050a07;
+  --bg-0-rgb: 5, 10, 7;
+  --bg-1: #0c1811;
+  --bg-2: #16271d;
+}
+body.bg-forest.theme-inverted {
+  --bg-0: #f8fcfa;
+  --bg-0-rgb: 248, 252, 250;
+  --bg-1: #eef6f2;
+  --bg-2: #dfece4;
+}
+
+body.bg-plum {
+  --bg-0: #09050a;
+  --bg-0-rgb: 9, 5, 10;
+  --bg-1: #140c18;
+  --bg-2: #211627;
+}
+body.bg-plum.theme-inverted {
+  --bg-0: #faf8fc;
+  --bg-0-rgb: 250, 248, 252;
+  --bg-1: #f4eef6;
+  --bg-2: #e8dfec;
+}
+
+body.bg-coffee {
+  --bg-0: #0a0705;
+  --bg-0-rgb: 10, 7, 5;
+  --bg-1: #18110c;
+  --bg-2: #271e16;
+}
+body.bg-coffee.theme-inverted {
+  --bg-0: #fcfaf8;
+  --bg-0-rgb: 252, 250, 248;
+  --bg-1: #f6f2ee;
+  --bg-2: #ece5df;
+}
+
+body.bg-ocean {
+  --bg-0: #05090a;
+  --bg-0-rgb: 5, 9, 10;
+  --bg-1: #0d1417;
+  --bg-2: #172327;
+}
+body.bg-ocean.theme-inverted {
+  --bg-0: #f8fbfc;
+  --bg-0-rgb: 248, 251, 252;
+  --bg-1: #eff4f6;
+  --bg-2: #dfe9ec;
+}
+
+body.bg-wine {
+  --bg-0: #0a0506;
+  --bg-0-rgb: 10, 5, 6;
+  --bg-1: #170d0e;
+  --bg-2: #271719;
+}
+body.bg-wine.theme-inverted {
+  --bg-0: #fcf8f9;
+  --bg-0-rgb: 252, 248, 249;
+  --bg-1: #f6eff0;
+  --bg-2: #ecdfe1;
+}
+
+body.bg-olive {
+  --bg-0: #090a05;
+  --bg-0-rgb: 9, 10, 5;
+  --bg-1: #15170d;
+  --bg-2: #242717;
+}
+body.bg-olive.theme-inverted {
+  --bg-0: #fbfcf8;
+  --bg-0-rgb: 251, 252, 248;
+  --bg-1: #f5f6ef;
+  --bg-2: #eaecdf;
+}
+
+body.bg-charcoal {
+  --bg-0: #070709;
+  --bg-0-rgb: 7, 7, 9;
+  --bg-1: #101113;
+  --bg-2: #1d1e20;
+}
+body.bg-charcoal.theme-inverted {
+  --bg-0: #f9fafa;
+  --bg-0-rgb: 249, 250, 250;
+  --bg-1: #f1f2f3;
+  --bg-2: #e4e5e7;
+}
+
+body.bg-blush {
+  --bg-0: #0a0508;
+  --bg-0-rgb: 10, 5, 8;
+  --bg-1: #170d12;
+  --bg-2: #27171f;
+}
+body.bg-blush.theme-inverted {
+  --bg-0: #fcf8fa;
+  --bg-0-rgb: 252, 248, 250;
+  --bg-1: #f6eff2;
+  --bg-2: #ecdfe6;
+}
+
+body.bg-gold {
+  --bg-0: #0a0905;
+  --bg-0-rgb: 10, 9, 5;
+  --bg-1: #17140d;
+  --bg-2: #272317;
+}
+body.bg-gold.theme-inverted {
+  --bg-0: #fcfbf8;
+  --bg-0-rgb: 252, 251, 248;
+  --bg-1: #f6f4ef;
+  --bg-2: #ece9df;
+}

@@ -2,7 +2,7 @@
 import { computed, ref } from "vue";
 import AppModal from "./AppModal.vue";
 import AppIcon from "./AppIcon.vue";
-import { GRINDS } from "../game/trickData.js";
+import { FAMILIES } from "../game/families.js";
 import { useCollection } from "../composables/useCollection.js";
 import { useGame } from "../composables/useGame.js";
 import { useSettings } from "../composables/useSettings.js";
@@ -18,7 +18,7 @@ const {
   allBadges,
   earnedBadges,
   hasBadge,
-  grindLandedCount,
+  familyIndex,
   resetCollection,
   staleCombos,
 } = useCollection();
@@ -37,10 +37,32 @@ const onReset = () => {
   confirmingReset.value = false;
 };
 
-// Sort FS/BS pairs next to their base name, like the tricktionary.
-const grinds = [...GRINDS].sort((a, b) =>
-  a.name.replace(/^(BS|FS)/, "ZZ").localeCompare(b.name.replace(/^(BS|FS)/, "ZZ"))
-);
+// Every built-in family (both tracks, all 19 tiers) plus the player's
+// own, each with its completion — a quick "where do I stand" overview
+// without having to open Carrière/Familles one at a time. Sorted
+// normal-then-switch-by-tier so it reads the same order as Carrière;
+// custom families (no fixed tier) are appended at the end, most
+// recently created first.
+const familyProgress = computed(() => {
+  const builtIn = [...FAMILIES]
+    .sort((a, b) => (a.track === b.track ? a.tier - b.tier : a.track === "normal" ? -1 : 1))
+    .map((family) => ({
+      id: family.id,
+      name: family.name,
+      landed: familyIndex(family.id),
+      total: family.entries.length,
+    }));
+  const custom = [...settings.customFamilies]
+    .slice()
+    .reverse()
+    .map((family) => ({
+      id: family.id,
+      name: family.name,
+      landed: familyIndex(family.id),
+      total: family.entries.length,
+    }));
+  return [...builtIn, ...custom];
+});
 
 // "Grinds to review": grind+variation combos not landed in the chosen
 // window, or never landed at all. Recomputed whenever the window
@@ -136,24 +158,21 @@ function startReview() {
       <AppIcon name="play" :size="16" /> Lancer une session sur cette liste ({{ staleList.length }})
     </button>
 
-    <h3 class="section-title">Grinds</h3>
-    <ul class="grind-list">
+    <h3 class="section-title">Familles ({{ familyProgress.filter((f) => f.landed >= f.total).length }}/{{ familyProgress.length }})</h3>
+    <ul class="family-list">
       <li
-        v-for="grind in grinds"
-        :key="grind.name"
-        :class="{ landed: grindLandedCount(grind.name) > 0 }"
+        v-for="family in familyProgress"
+        :key="family.id"
+        :class="{ 'family-list--done': family.landed >= family.total }"
       >
-        <span class="grind-list__check">
-          <AppIcon
-            v-if="grindLandedCount(grind.name) > 0"
-            name="check"
-            :size="14"
+        <span class="family-list__name">{{ family.name }}</span>
+        <span class="family-list__bar">
+          <span
+            class="family-list__fill"
+            :style="{ width: `${family.total ? (family.landed / family.total) * 100 : 0}%` }"
           />
         </span>
-        {{ grind.name }}
-        <span v-if="grindLandedCount(grind.name) > 0" class="grind-list__count"
-          >{{ grindLandedCount(grind.name) }}&times;</span
-        >
+        <span class="family-list__count">{{ family.landed }}/{{ family.total }}</span>
       </li>
     </ul>
 
@@ -370,39 +389,66 @@ function startReview() {
   color: var(--text-dim);
 }
 
-.grind-list {
+.family-list {
   list-style: none;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 4px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+  margin-bottom: 6px;
 }
 
-.grind-list li {
+.family-list li {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 4px 0;
-  font-size: 17px;
-  font-weight: 600;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  font-size: 13px;
   color: var(--text-dim);
 }
 
-.grind-list li.landed {
+.family-list--done {
   color: var(--text);
 }
 
-.grind-list__check {
-  width: 16px;
-  display: inline-flex;
-  justify-content: center;
-  color: var(--red-hi);
-  flex: none;
+.family-list__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.grind-list__count {
-  margin-left: auto;
-  font-size: 13px;
+.family-list__bar {
+  flex: 1 1 60px;
+  min-width: 40px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(var(--fg-rgb), 0.08);
+  overflow: hidden;
+}
+
+.family-list__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--red-deep), var(--red));
+}
+
+.family-list--done .family-list__fill {
+  background: var(--green-hi);
+}
+
+.family-list__count {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 12px;
   color: var(--red-hi);
+  white-space: nowrap;
 }
 
 .actions {
@@ -418,8 +464,7 @@ function startReview() {
 }
 
 @media (max-width: 560px) {
-  .badges,
-  .grind-list {
+  .badges {
     grid-template-columns: 1fr;
   }
 }

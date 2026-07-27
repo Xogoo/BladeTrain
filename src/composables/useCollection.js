@@ -600,50 +600,32 @@ export function useCollection() {
   }
 
   /**
-   * (Grind, variation) pairs that have actually come up before (landed
-   * or skipped at least once) but weren't landed in the last `days`
-   * days — including drawn-but-never-landed. Pairs that have simply
-   * never been drawn at all are excluded: not having come up by chance
-   * isn't the same as neglecting them.
-   *
-   * Note: variationName was only added to land/skip entries going
-   * forward, so a pair only skipped or landed before this feature
-   * existed won't be recognized as "drawn" until it comes up again.
+   * (Grind, variation) pairs landed at least once but not landed again
+   * in the last `days` days — genuinely "learned it, haven't kept it
+   * up". Pairs never landed at all are excluded even if they've been
+   * drawn or skipped many times: not having cracked it yet isn't the
+   * same as neglecting it, and this list is about staying sharp on
+   * what you already know, not a to-do list of what you don't.
    */
   function staleCombos(days) {
     const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
     return allGrindVariationPairs()
       .map((pair) => {
         let lastLandedAt = null;
-        let everDrawn = false;
         for (const land of collection.lands) {
           if (
             land.grindName === pair.grindName &&
             land.variationName === pair.variationName
           ) {
-            everDrawn = true;
             if (!lastLandedAt || new Date(land.date) > new Date(lastLandedAt)) {
               lastLandedAt = land.date;
             }
           }
         }
-        if (!everDrawn) {
-          for (const skip of collection.skips) {
-            if (
-              skip.grindName === pair.grindName &&
-              skip.variationName === pair.variationName
-            ) {
-              everDrawn = true;
-              break;
-            }
-          }
-        }
-        return { ...pair, lastLandedAt, everDrawn };
+        return { ...pair, lastLandedAt };
       })
       .filter(
-        (entry) =>
-          entry.everDrawn &&
-          (!entry.lastLandedAt || new Date(entry.lastLandedAt).getTime() < cutoff)
+        (entry) => entry.lastLandedAt && new Date(entry.lastLandedAt).getTime() < cutoff
       );
   }
 

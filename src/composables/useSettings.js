@@ -13,7 +13,7 @@ export const LEVELS = [
   { id: 2, name: "Juicy", tagline: "Topsides, negatives et 360" },
   { id: 3, name: "Nuts", tagline: "Tout, jusqu'aux 540" },
   { id: 4, name: "Switch up", tagline: "Nuts, plus un second grind" },
-  { id: CUSTOM_LEVEL, name: "Custom", tagline: "Tes propres règles" },
+  { id: CUSTOM_LEVEL, name: "Entraînement ciblé", tagline: "Tes propres règles" },
 ];
 
 // Solo mostly means Custom (train exactly what you want) or Switch up
@@ -46,6 +46,34 @@ export const ACCENT_COLORS = [
   { id: "indigo", name: "Indigo", swatch: "#6366f1" },
   { id: "purple", name: "Violet", swatch: "#a970ff" },
   { id: "pink", name: "Rose", swatch: "#ff6fa5" },
+  { id: "lime", name: "Citron vert", swatch: "#b1fa42" },
+  { id: "emerald", name: "Émeraude", swatch: "#42faad" },
+  { id: "cyan", name: "Cyan", swatch: "#42dbfa" },
+  { id: "violet", name: "Violet foncé", swatch: "#bd42fa" },
+  { id: "fuchsia", name: "Fuchsia", swatch: "#fa42eb" },
+  { id: "rose", name: "Corail", swatch: "#fa425b" },
+  { id: "amber", name: "Ambre", swatch: "#fac342" },
+  { id: "brown", name: "Brun", swatch: "#fa8f42" },
+  { id: "slate", name: "Ardoise", swatch: "#428ffa" },
+  { id: "maroon", name: "Bordeaux", swatch: "#fa4261" },
+];
+
+// Background theme: a subtle tint on the ambient background/panels
+// (--bg-0/1/2), independent of the accent color above — see
+// body.bg-* in base.css. "mono" is the original pure black & white
+// look and needs no body class at all.
+export const BG_THEMES = [
+  { id: "mono", name: "Noir", swatch: "#050505" },
+  { id: "navy", name: "Bleu nuit", swatch: "#05070a" },
+  { id: "forest", name: "Vert forêt", swatch: "#050a07" },
+  { id: "plum", name: "Violet profond", swatch: "#09050a" },
+  { id: "coffee", name: "Brun café", swatch: "#0a0705" },
+  { id: "ocean", name: "Océan", swatch: "#05090a" },
+  { id: "wine", name: "Bordeaux profond", swatch: "#0a0506" },
+  { id: "olive", name: "Olive", swatch: "#090a05" },
+  { id: "charcoal", name: "Anthracite", swatch: "#070709" },
+  { id: "blush", name: "Rosé", swatch: "#0a0508" },
+  { id: "gold", name: "Or", swatch: "#0a0905" },
 ];
 
 const ALL_TRICKS_OFF = {
@@ -68,8 +96,12 @@ const ALL_TRICKS_OFF = {
   // Training focus: locks every checked option below (Approach,
   // Grind variations, Spin in direction) so it's guaranteed instead of
   // merely possible — see the settings panel hint and trickGenerator.js
-  // for exactly what "locked" means per section.
-  trainingFocus: false,
+  // for exactly what "locked" means per section. Defaults to on: it's
+  // independent of the level presets and immune to applyLevel() below
+  // (including "Tout remettre à zéro", which just re-applies the
+  // Custom preset) — only the checkbox itself, tapped manually, ever
+  // changes it.
+  trainingFocus: true,
   switchUp: false,
   // Independent 2nd-grind counterparts, so combos like "Top Soul to
   // True Top Soul" are trainable: switchUpTopside mirrors "topside" but
@@ -127,12 +159,10 @@ const LEVEL_PRESETS = {
     spinBetween360: false,
     spinBetween450: false,
     spinBetween540: false,
-    trainingFocus: false,
   },
   4: {
     ...Object.fromEntries(Object.keys(ALL_TRICKS_OFF).map((k) => [k, true])),
     switchUp: true,
-    trainingFocus: false,
   },
   // Clicking "Custom" itself (not just touching a single checkbox, which
   // silently flips the level without resetting anything) starts from a
@@ -216,6 +246,10 @@ function defaultSettings() {
     // Which hue the app's highlights use — see ACCENT_COLORS above and
     // body.accent-* in base.css. "mono" needs no body class.
     accentColor: "mono",
+    // Which hue the ambient background/panels use — see BG_THEMES
+    // above and body.bg-* in base.css. Independent of accentColor;
+    // "mono" needs no body class.
+    bgTheme: "mono",
     // Stripped-down display for handling the phone mid-session (on the
     // ground, one-handed, riding gloves...) — just the trick name, big,
     // and the two main action buttons, everything else hidden. See
@@ -247,6 +281,12 @@ function defaultSettings() {
     // as a real, trainable family once that combo's list is known to
     // be exact, not an estimate).
     customFamilies: [], // { id, name, entries: [{ grindName, variationName, approach, spinToName, spinOffName, switchUpGrindName, switchUpVariationName, switchSpinName }] }
+    // History of past "Entraînement ciblé" (solo Custom) configs, most
+    // recent first — lets the player revisit and instantly re-apply a
+    // combo they'd set up before, rather than rebuilding it by hand.
+    // { id, date, tricks, grinds, switchUpGrinds }. See
+    // recordTargetedTraining/redoTargetedTraining below.
+    targetedTrainingHistory: [],
   };
 }
 
@@ -282,6 +322,9 @@ function loadSettings() {
     }
     if (!Array.isArray(merged.customFamilies)) {
       merged.customFamilies = [];
+    }
+    if (!Array.isArray(merged.targetedTrainingHistory)) {
+      merged.targetedTrainingHistory = [];
     }
     return merged;
   } catch {
@@ -328,7 +371,16 @@ export function useSettings() {
   const applyLevel = (levelId) => {
     settings.level = levelId;
     if (LEVEL_PRESETS[levelId]) {
+      // Mode entraînement ciblé is independent of the level presets —
+      // applying one (including "Tout remettre à zéro", which is just
+      // re-applying the Custom/Entraînement ciblé preset) must never
+      // flip it either way. Only the checkbox itself, tapped manually,
+      // does — so its value is snapshotted and restored around the
+      // preset merge below rather than left to whatever that preset
+      // happens to declare.
+      const trainingFocus = settings.tricks.trainingFocus;
       Object.assign(settings.tricks, LEVEL_PRESETS[levelId]);
+      settings.tricks.trainingFocus = trainingFocus;
       settings.grinds =
         levelId === CUSTOM_LEVEL ? allGrindsOff() : presetGrinds(levelId);
       settings.switchUpGrinds =
@@ -459,6 +511,63 @@ export function useSettings() {
     }
   }
 
+  const MAX_TARGETED_HISTORY = 20;
+
+  /**
+   * Snapshots the current "Entraînement ciblé" (solo Custom) config —
+   * called right as a solo session starts (see startSoloSession in
+   * StartScreen.vue). Skipped entirely if it's an exact repeat of the
+   * most recent entry (same tricks/grinds/switchUpGrinds), so starting
+   * the same config over and over doesn't spam the history with
+   * identical rows — it just stays "most recent" as-is. Capped at
+   * MAX_TARGETED_HISTORY, oldest dropped first.
+   */
+  function recordTargetedTraining() {
+    const snapshot = {
+      tricks: JSON.parse(JSON.stringify(settings.tricks)),
+      grinds: JSON.parse(JSON.stringify(settings.grinds)),
+      switchUpGrinds: JSON.parse(JSON.stringify(settings.switchUpGrinds)),
+    };
+    const snapshotKey = JSON.stringify(snapshot);
+    const mostRecent = settings.targetedTrainingHistory[0];
+    if (mostRecent && JSON.stringify({
+      tricks: mostRecent.tricks,
+      grinds: mostRecent.grinds,
+      switchUpGrinds: mostRecent.switchUpGrinds,
+    }) === snapshotKey) {
+      return;
+    }
+    settings.targetedTrainingHistory.unshift({
+      id: `training-${Date.now()}`,
+      date: new Date().toISOString(),
+      ...snapshot,
+    });
+    if (settings.targetedTrainingHistory.length > MAX_TARGETED_HISTORY) {
+      settings.targetedTrainingHistory.length = MAX_TARGETED_HISTORY;
+    }
+  }
+
+  /**
+   * Re-applies a past targeted-training config from history — switches
+   * to Entraînement ciblé (Custom) and restores that exact
+   * tricks/grinds/switchUpGrinds combo. Doesn't start the session
+   * itself; the caller (the history panel) does that right after, same
+   * as picking Entraînement ciblé fresh would.
+   */
+  function redoTargetedTraining(entry) {
+    settings.level = CUSTOM_LEVEL;
+    settings.tricks = JSON.parse(JSON.stringify(entry.tricks));
+    settings.grinds = JSON.parse(JSON.stringify(entry.grinds));
+    settings.switchUpGrinds = JSON.parse(JSON.stringify(entry.switchUpGrinds));
+  }
+
+  function deleteTargetedTraining(id) {
+    const index = settings.targetedTrainingHistory.findIndex((e) => e.id === id);
+    if (index !== -1) {
+      settings.targetedTrainingHistory.splice(index, 1);
+    }
+  }
+
   /**
    * Merges an imported list of families (see useBackup.js exportFamilies)
    * into settings.customFamilies. A family already present — same name
@@ -505,6 +614,9 @@ export function useSettings() {
     saveCustomFamily,
     deleteCustomFamily,
     importCustomFamilies,
+    recordTargetedTraining,
+    redoTargetedTraining,
+    deleteTargetedTraining,
     grindEnabled,
     setGrind,
     setAllGrinds,

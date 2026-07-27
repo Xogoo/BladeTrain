@@ -180,6 +180,16 @@ function onReelStopped() {
   <section class="game" :class="{ 'game--focus': settings.focusMode }">
     <button
       v-if="!settings.focusMode"
+      class="btn btn--ghost game__back"
+      :class="{ 'btn--confirm': confirmingEndSession }"
+      @click="onEndSessionClick()"
+      @blur="confirmingEndSession = false"
+    >
+      &lsaquo; {{ confirmingEndSession ? "Retape pour confirmer" : "Retour" }}
+    </button>
+
+    <button
+      v-if="!settings.focusMode"
       class="focus-enter-btn"
       @click="settings.focusMode = true"
     >
@@ -468,6 +478,12 @@ function onReelStopped() {
   position: relative;
 }
 
+.game__back {
+  align-self: flex-start;
+  font-size: 13px;
+  padding: 10px 16px;
+}
+
 /* Always reachable in a corner, in or out of Focus mode — big enough
    to tap without precision (gloves, phone on the ground, one hand). */
 .undo-btn {
@@ -621,7 +637,7 @@ function onReelStopped() {
 }
 
 .machine__lights span:nth-child(even) {
-  background: #fff;
+  background: var(--red-hi);
   box-shadow: var(--glow-white);
 }
 

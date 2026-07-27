@@ -10,6 +10,7 @@ import {
   CUSTOM_LEVEL,
   REEL_SPEEDS,
   ACCENT_COLORS,
+  BG_THEMES,
   useSettings,
 } from "../composables/useSettings.js";
 import { useBackup } from "../composables/useBackup.js";
@@ -213,6 +214,22 @@ const grindList = [
           :aria-label="accent.name"
           :title="accent.name"
           @click="settings.accentColor = accent.id"
+        />
+      </div>
+    </div>
+
+    <div class="option option--inline accent-picker">
+      <span>Couleur de fond</span>
+      <div class="accent-swatches">
+        <button
+          v-for="bg in BG_THEMES"
+          :key="bg.id"
+          class="accent-swatch"
+          :class="{ 'accent-swatch--active': settings.bgTheme === bg.id }"
+          :style="{ background: bg.swatch }"
+          :aria-label="bg.name"
+          :title="bg.name"
+          @click="settings.bgTheme = bg.id"
         />
       </div>
     </div>
