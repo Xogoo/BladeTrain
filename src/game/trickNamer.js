@@ -51,18 +51,23 @@ export function nameTrick(slots) {
   const isInspin = hasSpin && spinTo.winner.name.includes("Inspin");
   const isOutspin = hasSpin && spinTo.winner.name.includes("Outspin");
 
-  let isReverse = false;
-  if (!isGroove && !isFakie) {
-    isReverse =
-      hasSpin &&
-      (spinTo.winner.name.includes("180") ||
-        spinTo.winner.name.includes("540"));
-  } else if (!isGroove && isFakie) {
-    isReverse = hasSpin && spinTo.winner.name.includes("360");
-  }
+  // Whether this is a genuine Alley-oop-style (Inspin) entry — used to
+  // pick grind synonyms like Kindgrind (Alley-oop Topside Mizou) over
+  // their plain counterpart (Sweatstance). This has to key off
+  // Inspin/Outspin specifically, not the rotation degree or the
+  // approach: Halfcab (Fakie + Inspin 180) and Fullcab (Fakie + Inspin
+  // 360) are BOTH alley-oop-style entries and should both get the
+  // synonym, while True Halfcab/True Fullcab (Outspin, any degree) and
+  // Zerospin (no spin at all) never should, regardless of degree. A
+  // previous version checked for the "180"/"540"/"360" substrings
+  // instead, which also matched Outspin (True) entries containing
+  // those same digits and missed Inspin Halfcab (180) since only "360"
+  // was checked for Fakie approaches — both caused the wrong grind
+  // synonym (e.g. "Sweatstance" or "True Kindgrind") to show up after
+  // an actual draw.
+  const isReverse = !isGroove && isInspin;
 
   let approachName = parseApproach(approach, isFakie, hasSpin, isGroove);
-  isReverse = approachName === "Zerospin" ? true : isReverse;
   const spinName = parseSpinTo(spinTo, isGroove, isInspin, isOutspin, isFakie);
 
   const impliesFakie = ["Halfcab", "Fullcab", "True Halfcab", "True Fullcab"];
@@ -92,14 +97,17 @@ export function nameTrick(slots) {
       ? switchUpVariation.winner.name
       : null;
 
-  // Same rule as the first grind's isReverse: soul target + 180° or
-  // 540° triggers the synonym swap (all known synonyms are soul
-  // grinds); groove targets and 270/450 transitions never do.
+  // Same rule as the first grind's isReverse: a genuine Inspin
+  // transition into a soul target triggers the synonym swap (all
+  // known synonyms are soul grinds); groove targets, Outspin (True)
+  // transitions, and 270/450 cross-type transitions never do. Keying
+  // off "Inspin" specifically (rather than the "180"/"540" substrings)
+  // avoids the same False-positive on Outspin transitions that the
+  // first grind's isReverse had.
   const switchUpIsReverse =
     !switchUpIsGroove &&
     !!switchSpin &&
-    (switchSpin.winner.name.includes("180") ||
-      switchSpin.winner.name.includes("540"));
+    switchSpin.winner.name.includes("Inspin");
   const switchUpName = switchUp
     ? applyGrindSynonym(
         [switchUpVariationName, switchUp.winner.name].filter(Boolean).join(" "),
