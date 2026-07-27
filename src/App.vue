@@ -60,23 +60,6 @@ watch(
   { immediate: true }
 );
 
-// Overall text/UI size — "normal" is the default and needs no class
-// (zoom: 1), see body.text-* in base.css.
-watch(
-  () => settings.fontSize,
-  (size) => {
-    document.body.classList.forEach((cls) => {
-      if (cls.startsWith("text-")) {
-        document.body.classList.remove(cls);
-      }
-    });
-    if (size && size !== "normal") {
-      document.body.classList.add(`text-${size}`);
-    }
-  },
-  { immediate: true }
-);
-
 // All audio (speech samples, announcer, title music) is decoded before
 // the app shows, behind an intro screen of at least INTRO_MIN_MS.
 const {

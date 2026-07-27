@@ -463,7 +463,13 @@ function onReelStopped() {
   position: fixed;
   top: calc(env(safe-area-inset-top) + 10px);
   right: 12px;
-  z-index: 20;
+  /* Forced very high — something was visually covering this button as
+     soon as the result screen appeared (reported: visible mid-spin,
+     gone the instant the trick settles), without an obvious CSS
+     conflict to point to after several passes. Rather than keep
+     guessing at the exact cause, this guarantees it wins regardless of
+     whatever stacking context is competing with it. */
+  z-index: 1000;
   display: flex;
   align-items: center;
   gap: 6px;

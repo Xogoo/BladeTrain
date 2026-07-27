@@ -48,16 +48,6 @@ export const ACCENT_COLORS = [
   { id: "pink", name: "Rose", swatch: "#ff6fa5" },
 ];
 
-// Overall text/UI size (Réglages > Taille du texte) — applied as a
-// zoom on <body> (see body.text-* in base.css), not individual
-// font-sizes, since the whole app is built in fixed px rather than a
-// relative unit like rem.
-export const FONT_SIZES = [
-  { id: "normal", name: "Normale" },
-  { id: "large", name: "Grande" },
-  { id: "xlarge", name: "Très grande" },
-];
-
 const ALL_TRICKS_OFF = {
   fakie: false,
   switch: false,
@@ -226,10 +216,6 @@ function defaultSettings() {
     // Which hue the app's highlights use — see ACCENT_COLORS above and
     // body.accent-* in base.css. "mono" needs no body class.
     accentColor: "mono",
-    // Overall text/UI size — the whole app is built in fixed px, not
-    // rem, so this scales via a CSS zoom on <body> (see body.text-* in
-    // base.css) rather than trying to touch every font-size individually.
-    fontSize: "normal", // "normal" | "large" | "xlarge"
     // Stripped-down display for handling the phone mid-session (on the
     // ground, one-handed, riding gloves...) — just the trick name, big,
     // and the two main action buttons, everything else hidden. See

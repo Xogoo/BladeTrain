@@ -82,6 +82,17 @@ export function generateSpin(
         forcedTrick.switchUpVariationName && forcedTrick.switchUpVariationName !== "None"
           ? variationByName(forcedTrick.switchUpVariationName)
           : null;
+      // Bug fixed here: this pool was never set in the forced branch,
+      // staying at its default empty array — harmless when the winner
+      // is null (reel stays hidden either way), but whenever a personal
+      // family entry DID pin a real switch-up variation, the reel
+      // became visible with an empty pool. SlotReel's filler-building
+      // then tried to read .name off a random pick from that empty
+      // array, threw, and never reached its own settle timers — which
+      // is exactly why that one reel showed blank forever and the
+      // whole result screen (score, Blade!/Passer, even the bottom
+      // nav) never came back without the failsafe timeout kicking in.
+      switchUpVariationPool = switchUpVariation ? [switchUpVariation] : [];
     }
   } else if (hasSwitchUpReel(settings) && !forcedTrick) {
     // Family training only ever pins grind/variation/approach/spin-in/
