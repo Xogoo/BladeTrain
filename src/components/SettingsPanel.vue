@@ -238,6 +238,8 @@ const grindList = [
           type="email"
           class="select"
           placeholder="toi@exemple.com"
+          autocomplete="email"
+          inputmode="email"
           v-model="settings.backupEmail"
         />
       </label>

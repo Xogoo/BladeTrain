@@ -459,6 +459,42 @@ export function useSettings() {
     }
   }
 
+  /**
+   * Merges an imported list of families (see useBackup.js exportFamilies)
+   * into settings.customFamilies. A family already present — same name
+   * AND same exact trick list — is skipped rather than duplicated;
+   * everything else is added with a fresh id (imported ids are never
+   * reused as-is, so importing the same file on two devices, or twice
+   * on the same one, can never collide). Malformed entries (not the
+   * `{ name, entries: [...] }` shape) are silently skipped too, rather
+   * than failing the whole import over one bad entry.
+   */
+  function importCustomFamilies(families) {
+    let imported = 0;
+    let skipped = 0;
+    for (const incoming of families) {
+      if (!incoming || typeof incoming.name !== "string" || !Array.isArray(incoming.entries)) {
+        skipped += 1;
+        continue;
+      }
+      const incomingEntriesJson = JSON.stringify(incoming.entries);
+      const alreadyExists = settings.customFamilies.some(
+        (f) => f.name === incoming.name && JSON.stringify(f.entries) === incomingEntriesJson
+      );
+      if (alreadyExists) {
+        skipped += 1;
+        continue;
+      }
+      settings.customFamilies.push({
+        id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: incoming.name,
+        entries: JSON.parse(incomingEntriesJson),
+      });
+      imported += 1;
+    }
+    return { imported, skipped };
+  }
+
   return {
     settings,
     applyLevel,
@@ -468,6 +504,7 @@ export function useSettings() {
     reelSpeedMs,
     saveCustomFamily,
     deleteCustomFamily,
+    importCustomFamilies,
     grindEnabled,
     setGrind,
     setAllGrinds,

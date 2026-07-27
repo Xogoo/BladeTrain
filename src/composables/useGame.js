@@ -182,7 +182,7 @@ export function useGame() {
     state.usedGrinds = [];
     state.newBadges = [];
     state.players = settings.players.map((name, i) => ({
-      name: String(name).trim() || `Player ${i + 1}`,
+      name: String(name).trim() || `Joueur ${i + 1}`,
       letters: 0,
     }));
     state.round = 0;

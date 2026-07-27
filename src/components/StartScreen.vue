@@ -21,7 +21,7 @@ const emit = defineEmits(["open-settings"]);
 const { settings, applyLevel, saveCustomFamily, deleteCustomFamily } = useSettings();
 const { startGame, startFamilySession, hasOpenSessionToday, endOpenSession } = useGame();
 const { familyIndex, isFamilyComplete, careerProgress, resetCareerProgress } = useCollection();
-const { needsBackupReminder, exportBackup } = useBackup();
+const { needsBackupReminder, exportBackup, exportFamilies, importFamilies } = useBackup();
 
 function startSoloSession() {
   startGame(settings);
@@ -82,6 +82,48 @@ function onDeleteCustomFamily() {
   }
   deleteCustomFamily(selectedCustomFamilyId.value);
   confirmingFamilyDelete.value = false;
+}
+
+// Export/import just the personal families — separate from the full
+// progress backup in Réglages, for sharing a family with someone else
+// or moving it between devices without dragging everything else along.
+const familyImportStatus = ref("");
+const familyImportInput = ref(null);
+
+async function onExportFamiliesClick() {
+  familyImportStatus.value = "";
+  const result = await exportFamilies();
+  if (result.method === "share") {
+    familyImportStatus.value = "Partagé — choisis où l'envoyer.";
+  } else if (result.method === "download") {
+    familyImportStatus.value = "Enregistré en fichier.";
+  }
+  // "cancelled" : le joueur a fermé le menu de partage sans rien choisir, on ne dit rien.
+}
+
+function onImportFamiliesFileChosen(event) {
+  const file = event.target.files?.[0];
+  event.target.value = ""; // permet de reprendre le même fichier plus tard
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const payload = JSON.parse(reader.result);
+      const { imported, skipped } = importFamilies(payload);
+      if (imported === 0) {
+        familyImportStatus.value = skipped
+          ? "Rien à importer — déjà toutes présentes."
+          : "Aucune famille trouvée dans ce fichier.";
+      } else {
+        familyImportStatus.value = `${imported} famille${imported > 1 ? "s" : ""} importée${imported > 1 ? "s" : ""}${
+          skipped ? ` (${skipped} déjà présente${skipped > 1 ? "s" : ""}, ignorée${skipped > 1 ? "s" : ""})` : ""
+        }.`;
+      }
+    } catch (err) {
+      familyImportStatus.value = `Impossible d'importer ce fichier : ${err.message}`;
+    }
+  };
+  reader.readAsText(file);
 }
 
 function startFamilyModeSession() {
@@ -476,13 +518,33 @@ function removePlayer(index) {
           @click="onDeleteCustomFamily"
           @blur="confirmingFamilyDelete = false"
         >
-          {{ confirmingFamilyDelete ? "Confirmer ?" : "Supprimer" }}
+          {{ confirmingFamilyDelete ? "Retape pour confirmer" : "Supprimer" }}
         </button>
       </div>
       <p v-else class="setup__hint">
         Aucune famille perso pour l'instant — crée-en une depuis l'aperçu des
         tricks possibles (Réglages &gt; Terminé).
       </p>
+      <div class="family-import-actions">
+        <button
+          class="btn btn--ghost"
+          :disabled="!settings.customFamilies.length"
+          @click="onExportFamiliesClick"
+        >
+          Exporter
+        </button>
+        <button class="btn btn--ghost" @click="familyImportInput.click()">
+          Importer
+        </button>
+        <input
+          ref="familyImportInput"
+          type="file"
+          accept="application/json"
+          class="family-import-actions__file-input"
+          @change="onImportFamiliesFileChosen"
+        />
+      </div>
+      <p v-if="familyImportStatus" class="setup__hint">{{ familyImportStatus }}</p>
     </div>
 
     <FamilyHistoryPanel
@@ -552,6 +614,8 @@ function removePlayer(index) {
               class="player-input"
               type="text"
               maxlength="14"
+              autocapitalize="words"
+              autocomplete="off"
               :placeholder="`Joueur ${i + 1}`"
             />
             <button
@@ -771,6 +835,18 @@ function removePlayer(index) {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.family-import-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+.family-import-actions .btn {
+  flex: 1;
+}
+.family-import-actions__file-input {
+  display: none;
 }
 
 .family-picker .select {

@@ -98,6 +98,8 @@ const sample = computed(() => {
         type="text"
         class="select"
         placeholder="Nom de la famille (ex: Backslide to AO Acid)"
+        autocapitalize="sentences"
+        autocomplete="off"
         v-model="newFamilyName"
         :disabled="!sample.isExact"
         @keyup.enter="onCreateFamily"

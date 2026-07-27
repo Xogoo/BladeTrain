@@ -13,6 +13,24 @@ body {
   max-width: 100vw;
 }
 
+/* Respect the OS-level "reduce motion" accessibility setting across
+   the whole app in one place — badge unlock slams/shakes, reel spins,
+   panel rise-ins, the pulsing "Terminé" CTA, all of it — rather than
+   requiring every component's own animation to opt in individually.
+   Collapsing duration/iteration to (near-)zero still lets each
+   animation reach its final state instantly, so nothing looks stuck
+   half-transitioned; it just no longer moves. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 :root {
   --bg-0: #050505;
   --bg-0-rgb: 5, 5, 5;
@@ -474,7 +492,7 @@ body.theme-inverted .app-loading__logo-mark {
 body.accent-blue {
   --red: #4d8dff;
   --red-hi: #7db2ff;
-  --red-deep: #2f5fc9;
+  --red-deep: #4480ef;
   --cta-text: #071026;
   --glow-red: 0 0 12px rgba(77, 141, 255, 0.45), 0 0 36px rgba(77, 141, 255, 0.18);
   --glow-red-hi: 0 0 12px rgba(125, 178, 255, 0.6), 0 0 36px rgba(125, 178, 255, 0.28);
@@ -491,7 +509,7 @@ body.accent-blue.theme-inverted {
 body.accent-purple {
   --red: #a970ff;
   --red-hi: #d1a6ff;
-  --red-deep: #7c3fd6;
+  --red-deep: #9f65f6;
   --cta-text: #1a0a2e;
   --glow-red: 0 0 12px rgba(169, 112, 255, 0.45), 0 0 36px rgba(169, 112, 255, 0.18);
   --glow-red-hi: 0 0 12px rgba(209, 166, 255, 0.6), 0 0 36px rgba(209, 166, 255, 0.28);
@@ -542,7 +560,7 @@ body.accent-orange.theme-inverted {
 body.accent-red {
   --red: #ff5252;
   --red-hi: #ff8a8a;
-  --red-deep: #c62828;
+  --red-deep: #ef4646;
   --cta-text: #2b0505;
   --glow-red: 0 0 12px rgba(255, 82, 82, 0.45), 0 0 36px rgba(255, 82, 82, 0.18);
   --glow-red-hi: 0 0 12px rgba(255, 138, 138, 0.6), 0 0 36px rgba(255, 138, 138, 0.28);
@@ -559,7 +577,7 @@ body.accent-red.theme-inverted {
 body.accent-pink {
   --red: #ff6fa5;
   --red-hi: #ffb3d1;
-  --red-deep: #d1477a;
+  --red-deep: #e75a8e;
   --cta-text: #3a0a1e;
   --glow-red: 0 0 12px rgba(255, 111, 165, 0.45), 0 0 36px rgba(255, 111, 165, 0.18);
   --glow-red-hi: 0 0 12px rgba(255, 179, 209, 0.6), 0 0 36px rgba(255, 179, 209, 0.28);
@@ -593,7 +611,7 @@ body.accent-yellow.theme-inverted {
 body.accent-teal {
   --red: #2dd4bf;
   --red-hi: #6fffe9;
-  --red-deep: #0f766e;
+  --red-deep: #20aa9b;
   --cta-text: #042f2c;
   --glow-red: 0 0 12px rgba(45, 212, 191, 0.45), 0 0 36px rgba(45, 212, 191, 0.18);
   --glow-red-hi: 0 0 12px rgba(111, 255, 233, 0.6), 0 0 36px rgba(111, 255, 233, 0.28);
@@ -610,7 +628,7 @@ body.accent-teal.theme-inverted {
 body.accent-indigo {
   --red: #6366f1;
   --red-hi: #a5b4fc;
-  --red-deep: #4338ca;
+  --red-deep: #7b7fe6;
   --cta-text: #1e1b4b;
   --glow-red: 0 0 12px rgba(99, 102, 241, 0.45), 0 0 36px rgba(99, 102, 241, 0.18);
   --glow-red-hi: 0 0 12px rgba(165, 180, 252, 0.6), 0 0 36px rgba(165, 180, 252, 0.28);

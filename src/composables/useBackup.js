@@ -18,9 +18,46 @@ function backupFileName() {
   return `blade-backup-${date}.json`;
 }
 
+function familiesFileName() {
+  const date = new Date().toISOString().slice(0, 10);
+  return `blade-familles-perso-${date}.json`;
+}
+
+// Shared by exportBackup and exportFamilies below: try the native share
+// sheet first (Mail, AirDrop, Files, whatever the player picks, with
+// the JSON file attached), falling back to a plain download if sharing
+// files isn't supported.
+async function shareOrDownloadJson(json, fileName, shareText) {
+  const file = new File([json], fileName, { type: "application/json" });
+
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: fileName, text: shareText });
+      return { method: "share" };
+    } catch (err) {
+      // AbortError = the player closed the share sheet without picking
+      // anything — not a failure, just don't mark anything done.
+      if (err?.name === "AbortError") {
+        return { method: "cancelled" };
+      }
+      // Any other error: fall through to the download fallback below.
+    }
+  }
+
+  const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  return { method: "download" };
+}
+
 export function useBackup() {
   const { collection } = useCollection();
-  const { settings } = useSettings();
+  const { settings, importCustomFamilies } = useSettings();
 
   function buildPayload() {
     return {
@@ -76,40 +113,52 @@ export function useBackup() {
   async function exportBackup() {
     const payload = buildPayload();
     const json = JSON.stringify(payload, null, 2);
-    const fileName = backupFileName();
-    const file = new File([json], fileName, { type: "application/json" });
-
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({
-          files: [file],
-          title: "Sauvegarde BLADE",
-          text: settings.backupEmail
-            ? `Sauvegarde de ta progression BLADE — envoie-la à ${settings.backupEmail} pour la garder en sécurité.`
-            : "Sauvegarde de ta progression BLADE.",
-        });
-        markBackedUp();
-        return { method: "share" };
-      } catch (err) {
-        // AbortError = the player closed the share sheet without
-        // picking anything — not a failure, just don't mark it done.
-        if (err?.name === "AbortError") {
-          return { method: "cancelled" };
-        }
-        // Any other error: fall through to the download fallback below.
-      }
+    const shareText = settings.backupEmail
+      ? `Sauvegarde de ta progression BLADE — envoie-la à ${settings.backupEmail} pour la garder en sécurité.`
+      : "Sauvegarde de ta progression BLADE.";
+    const result = await shareOrDownloadJson(json, backupFileName(), shareText);
+    if (result.method !== "cancelled") {
+      markBackedUp();
     }
+    return result;
+  }
 
-    const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    markBackedUp();
-    return { method: "download" };
+  /**
+   * Same idea as exportBackup, but scoped to just the player's custom
+   * ("perso") families — for sharing a family with someone else, or
+   * moving just those between devices, without dragging the whole
+   * progress/settings backup along.
+   */
+  async function exportFamilies() {
+    const payload = {
+      app: "BLADE",
+      type: "custom-families",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      families: JSON.parse(JSON.stringify(settings.customFamilies)),
+    };
+    const json = JSON.stringify(payload, null, 2);
+    return shareOrDownloadJson(
+      json,
+      familiesFileName(),
+      "Familles de tricks perso BLADE."
+    );
+  }
+
+  /**
+   * Imports families from a previously exported file (or one shared by
+   * someone else) — merges into the existing list rather than
+   * replacing it (see importCustomFamilies in useSettings.js for the
+   * dedupe rule). Returns { imported, skipped } for the caller to show
+   * a status message.
+   */
+  function importFamilies(payload) {
+    if (!payload || !Array.isArray(payload.families)) {
+      throw new Error(
+        "Ce fichier ne ressemble pas à un export de familles perso BLADE."
+      );
+    }
+    return importCustomFamilies(payload.families);
   }
 
   /**
@@ -137,5 +186,7 @@ export function useBackup() {
     markMonthlyPromptShown,
     exportBackup,
     restoreBackup,
+    exportFamilies,
+    importFamilies,
   };
 }

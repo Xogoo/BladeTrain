@@ -1,10 +1,41 @@
+<script>
+// Module-level (shared across every AppModal instance) stack of
+// currently-open modals, topmost last. Needed because modals can stack
+// (e.g. Réglages -> "Aperçu des tricks possibles" -> Créer une famille
+// perso) — without this, Escape would fire every open modal's own
+// keydown listener at once and close all of them together instead of
+// just the one actually on top.
+const openModals = [];
+</script>
+
 <script setup>
+import { onMounted, onUnmounted } from "vue";
 import AppIcon from "./AppIcon.vue";
 
 defineProps({
   title: { type: String, required: true },
 });
 const emit = defineEmits(["close"]);
+
+// Escape closes the modal — standard keyboard/accessibility expectation,
+// and the only way to dismiss it without a mouse/touch tap otherwise.
+const self = {};
+function onKeydown(event) {
+  if (event.key === "Escape" && openModals[openModals.length - 1] === self) {
+    emit("close");
+  }
+}
+onMounted(() => {
+  openModals.push(self);
+  document.addEventListener("keydown", onKeydown);
+});
+onUnmounted(() => {
+  const index = openModals.indexOf(self);
+  if (index !== -1) {
+    openModals.splice(index, 1);
+  }
+  document.removeEventListener("keydown", onKeydown);
+});
 </script>
 
 <template>
