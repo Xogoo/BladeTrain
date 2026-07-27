@@ -1,6 +1,6 @@
 export const testData = [
   {
-    expected: "540 AO Sunny Day",
+    expected: "540 AO Top PStar",
     data: [
       { name: "Grind", winner: { name: "PStar", isGrooveGrind: false } },
       { name: "SpinTo", winner: { name: "Inspin 540" } },
@@ -8,7 +8,7 @@ export const testData = [
     ],
   },
   {
-    expected: "540 Hurricane Sunny Day",
+    expected: "540 Hurricane Top PStar",
     data: [
       { name: "Grind", winner: { name: "PStar", isGrooveGrind: false } },
       { name: "SpinTo", winner: { name: "Outspin 540" } },
@@ -881,7 +881,7 @@ export const testData = [
   },
 
   {
-    expected: "Zerospin Misfit",
+    expected: "Zerospin AO Top Mistrial",
     data: [
       {
         name: "Approach",
@@ -896,7 +896,7 @@ export const testData = [
     ],
   },
   {
-    expected: "Zerospin Sunny Day",
+    expected: "Zerospin Top PStar",
     data: [
       {
         name: "Approach",

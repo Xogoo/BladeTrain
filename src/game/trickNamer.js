@@ -95,9 +95,18 @@ export function nameTrick(slots) {
   // are soul grinds) — both Alley-oop and True count, only "no
   // transition at all" or a groove target keep the plain name.
   const switchUpIsReverse = !switchUpIsGroove && !!switchSpin;
+  // switchSpinName is folded into the same string as the grind name
+  // (rather than joined on afterwards) so a reverse synonym's stripping
+  // of the literal "Alley-oop"/"Topside" text below also reaches it —
+  // otherwise a synonym whose own name already bakes in "AO" (e.g. "AO
+  // Top Mistrial") would leave the real rotation's "Alley-oop" text
+  // untouched, and the final abbreviation pass would turn that into a
+  // second, duplicate "AO".
   const switchUpName = switchUp
     ? applyGrindSynonym(
-        [switchUpVariationName, switchUp.winner.name].filter(Boolean).join(" "),
+        [switchSpinName, switchUpVariationName, switchUp.winner.name]
+          .filter(Boolean)
+          .join(" "),
         switchUp.winner.name,
         {
           isReverse: switchUpIsReverse,
@@ -108,9 +117,7 @@ export function nameTrick(slots) {
       )
     : null;
 
-  const switchUpToken = switchUpName
-    ? `to ${[switchSpinName, switchUpName].filter(Boolean).join(" ")}`
-    : null;
+  const switchUpToken = switchUpName ? `to ${switchUpName}` : null;
 
   const tokens = [
     approachName,

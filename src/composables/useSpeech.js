@@ -4,6 +4,7 @@ import {
   GRIND_SYNONYMS,
   VARIATIONS,
   thumbUrl,
+  synonymThumbUrl,
 } from "../game/trickData.js";
 
 /**
@@ -128,9 +129,7 @@ export const IMAGE_URLS = [
     "img/blade-mark-square.svg",
     ...GRINDS.map((grind) => grind.thumbUrl),
     ...VARIATIONS.filter((v) => !v.noThumb).map((v) => thumbUrl(v.name)),
-    ...GRIND_SYNONYMS.map((syn) =>
-      thumbUrl(syn.newName === "Top Teakettle" ? "Teakettle" : syn.newName)
-    ),
+    ...GRIND_SYNONYMS.map((syn) => synonymThumbUrl(syn)),
   ]),
 ];
 

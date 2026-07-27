@@ -8,6 +8,7 @@ import {
   OBSTACLE_VARIATIONS,
   VARIATIONS,
   thumbUrl,
+  synonymThumbUrl,
 } from "../game/trickData.js";
 import { useCollection } from "../composables/useCollection.js";
 
@@ -190,11 +191,7 @@ function scrollTo(id) {
             >
               <img
                 class="thumb"
-                :src="
-                  thumbUrl(
-                    syn.newName === 'Top Teakettle' ? 'Teakettle' : syn.newName,
-                  )
-                "
+                :src="synonymThumbUrl(syn)"
                 :alt="syn.newName"
                 loading="lazy"
               />

@@ -277,7 +277,7 @@ const SOUL_GRINDS = [
     isSoulGroove: true,
     url: "http://skateyeg.com/bog/14.0_Darkslide.html",
     comment:
-      "(Acid Rain) Comme un Overpuss mais avec le pied soul avant en position acid. Le pied arrière est comme un Frontside Backslide.",
+      "(Acid Rain) Comme un Top Mistrial mais avec le pied soul avant en position acid. Le pied arrière est comme un Frontside Backslide.",
     variations: ["Channel"],
   },
   {
@@ -641,7 +641,7 @@ export const VARIATIONS = [
  */
 export const GRIND_SYNONYMS = [
   {
-    newName: "Misfit",
+    newName: "AO Top Mistrial",
     name: "Mistrial",
     comment: "Alley-oop Topside Mistrial",
     isReverse: true,
@@ -649,7 +649,7 @@ export const GRIND_SYNONYMS = [
     url: "http://skateyeg.com/bog/07.0_Misfit_(AO_Topside_Mistrial).html",
   },
   {
-    newName: "Overpuss",
+    newName: "Top Mistrial",
     name: "Mistrial",
     comment: "Topside Mistrial",
     isTopside: true,
@@ -699,7 +699,7 @@ export const GRIND_SYNONYMS = [
     url: "http://skateyeg.com/bog/13.0_Tea_Kettle.html",
   },
   {
-    newName: "Sunny Day",
+    newName: "Top PStar",
     name: "PStar",
     comment: "Topside PStar",
     isTopside: true,
@@ -761,6 +761,22 @@ export const RARE_GRIND_NAME_PARTS = ["Byn Soul", "Darkslide"];
 
 export function thumbUrl(name) {
   return `img/captures/200x200/${name.replaceAll(" ", "")}.jpg`;
+}
+
+// A few GRIND_SYNONYMS display names (deliberately kept as the plain
+// descriptive combo, e.g. "AO Top Mistrial") don't match the capture
+// file on disk, which is filed under the trick's real Book of Grinds
+// name instead (Misfit.jpg). Central lookup so every caller resolving
+// a synonym's thumbnail (Tricktionary, useSpeech preload) agrees.
+const SYNONYM_THUMB_OVERRIDES = {
+  "Top Teakettle": "Teakettle",
+  "AO Top Mistrial": "Misfit",
+  "Top Mistrial": "Overpuss",
+  "Top PStar": "Sunny Day",
+};
+
+export function synonymThumbUrl(synonym) {
+  return thumbUrl(SYNONYM_THUMB_OVERRIDES[synonym.newName] || synonym.newName);
 }
 
 function finalizeGrind(grind, isGroove) {
