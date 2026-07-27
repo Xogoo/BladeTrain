@@ -8,9 +8,9 @@ const { state, isSolo, activeFamily } = useGame();
 const { levelName } = useSettings();
 const { uniqueTrickCount, familyIndex, sessionById } = useCollection();
 
-// Family names carry their own "(Normal)"/"(Switch)" suffix (see
-// families.js) — stripped here, there's no room for it in this small
-// a space and the track is already obvious from context.
+// Switch families carry their own leading "Switch " prefix (see
+// families.js) — nothing to strip here anymore, kept as a pass-through
+// in case a suffix-style annotation ever comes back.
 function familyBaseName(name) {
   return name.replace(/ \((Normal|Switch)\)$/, "");
 }

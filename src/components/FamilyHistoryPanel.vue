@@ -62,6 +62,23 @@ const hardestTrick = computed(() => {
 function displayName(status) {
   return status.land ? status.land.trickName : nameEntry(status.entry);
 }
+
+// The trick(s) that took the fewest tries to land — the "best
+// mastered" counterpart to "Le plus dur" below. Ties (several tricks
+// landed in the same fewest number of tries) are all shown together.
+const bestTries = computed(() => {
+  const candidates = landed.value.filter((s) => s.land);
+  if (!candidates.length) {
+    return null;
+  }
+  return Math.min(...candidates.map((s) => s.land.tries));
+});
+const easiestTricks = computed(() => {
+  if (bestTries.value === null) {
+    return [];
+  }
+  return landed.value.filter((s) => s.land && s.land.tries === bestTries.value);
+});
 </script>
 
 <template>
@@ -97,6 +114,13 @@ function displayName(status) {
           hardestTrick.land.tries
         }}
         essais)
+      </p>
+
+      <p v-if="easiestTricks.length" class="history-easiest">
+        <AppIcon name="check" :size="14" />
+        Le mieux maîtrisé{{ easiestTricks.length > 1 ? "s" : "" }} :
+        <strong>{{ easiestTricks.map(displayName).join(", ") }}</strong>
+        ({{ bestTries }} essai{{ bestTries === 1 ? "" : "s" }})
       </p>
 
       <h3 class="section-title">Progression</h3>
@@ -184,6 +208,18 @@ function displayName(status) {
 }
 .history-hardest strong {
   color: var(--text);
+}
+
+.history-easiest {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+}
+.history-easiest strong {
+  color: var(--green-hi);
 }
 
 .section-title {

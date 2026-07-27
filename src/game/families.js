@@ -147,7 +147,7 @@ function trackPair({ id, name, badgeName, tier, buildEntries }) {
   return [
     {
       id: `${id}-normal`,
-      name: `${name} (Normal)`,
+      name,
       badgeName,
       tier,
       track: "normal",
@@ -155,7 +155,7 @@ function trackPair({ id, name, badgeName, tier, buildEntries }) {
     },
     {
       id: `${id}-switch`,
-      name: `${name} (Switch)`,
+      name: `Switch ${name}`,
       badgeName: `${badgeName} (Switch)`,
       tier,
       track: "switch",

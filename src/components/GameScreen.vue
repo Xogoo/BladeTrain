@@ -7,6 +7,7 @@ import TrickListPanel from "./TrickListPanel.vue";
 import { LETTERS, useGame } from "../composables/useGame.js";
 import { useSettings } from "../composables/useSettings.js";
 import { useSpeech } from "../composables/useSpeech.js";
+import { useCollection } from "../composables/useCollection.js";
 
 const REEL_STAGGER_MS = 320;
 
@@ -38,13 +39,15 @@ const {
   addTry,
   giveUp,
   onReelsSettled,
+  activeFamily,
 } = useGame();
 const { settings, reelSpeedMs } = useSettings();
 const { speakTrick, playKeys } = useSpeech();
+const { familyIndex } = useCollection();
 
-// Family names carry their own "(Normal)"/"(Switch)" suffix (see
-// families.js) — stripped here since the completion pause already
-// makes that context obvious.
+// Switch families carry their own leading "Switch " prefix (see
+// families.js) — nothing to strip here anymore, kept as a pass-through
+// in case a suffix-style annotation ever comes back.
 function familyBaseName(name) {
   return name.replace(/ \((Normal|Switch)\)$/, "");
 }
@@ -189,6 +192,10 @@ function onReelStopped() {
     >
       <AppIcon name="close" :size="14" /> Quitter le mode Focus
     </button>
+
+    <div v-if="settings.focusMode && activeFamily" class="focus-family-progress">
+      {{ familyIndex(activeFamily.id) }}/{{ activeFamily.entries.length }} tricks réussis
+    </div>
 
     <div v-if="!isSolo" class="roster">
       <div
@@ -406,7 +413,12 @@ function onReelStopped() {
           />
         </filter>
       </svg>
-      <transition-group name="badge-stamp" tag="div" class="badge-stamp-stack">
+      <transition-group
+        name="badge-stamp"
+        tag="div"
+        class="badge-stamp-stack"
+        :class="{ 'badge-stamp-stack--multi': badgeToast.length > 1 }"
+      >
         <div
           v-for="(badge, i) in badgeToast"
           :key="badge.id"
@@ -550,6 +562,17 @@ function onReelStopped() {
   font-family: var(--font-display);
   font-size: 28px;
   color: var(--text-dim);
+}
+
+.focus-family-progress {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--red-hi);
+  text-shadow: var(--glow-red);
+  margin-bottom: -6px;
 }
 
 .machine {
@@ -812,6 +835,9 @@ function onReelStopped() {
   flex-direction: column;
   align-items: center;
   gap: 18px;
+  max-height: 100dvh;
+  overflow-y: auto;
+  padding: 12px 0;
 }
 
 .badge-stamp {
@@ -824,6 +850,37 @@ function onReelStopped() {
   animation: badge-stamp-slam 1s var(--stamp-delay, 0s) cubic-bezier(0.22, 0.68, 0.32, 1)
       both,
     badge-stamp-shake 0.5s calc(var(--stamp-delay, 0s) + 1s) ease-out;
+}
+
+/* Two or more badges landing at once used to stack at full size and
+   overflow the screen — shrink each stamp (and its inner content)
+   once there's more than one so the whole stack fits and reads
+   clearly instead of spilling off-screen. */
+.badge-stamp-stack--multi {
+  gap: 10px;
+}
+
+.badge-stamp-stack--multi .badge-stamp {
+  width: min(52vw, 220px);
+}
+
+.badge-stamp-stack--multi .badge-stamp__content {
+  padding: 16px 14px;
+  gap: 6px;
+}
+
+.badge-stamp-stack--multi .badge-stamp__icon {
+  width: 52px;
+  height: 52px;
+}
+
+.badge-stamp-stack--multi .badge-stamp__text strong {
+  font-size: 17px;
+}
+
+.badge-stamp-stack--multi .badge-stamp__text span {
+  font-size: 12px;
+  max-width: 150px;
 }
 
 /* Everything that should look like rough-edged ink — clipped to a

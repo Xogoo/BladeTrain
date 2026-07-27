@@ -142,11 +142,11 @@ const zigzagPath = computed(() => {
   return d;
 });
 
-// Family names carry their own "(Normal)"/"(Switch)" suffix (see
-// families.js) — stripped here for the Famille/Carrière pickers, which
-// already make the track obvious from context. Personal family names
-// never have this suffix in the first place, so this is a harmless
-// no-op for those.
+// Switch families carry their own leading "Switch " prefix (see
+// families.js) — nothing to strip here anymore, kept as a pass-through
+// in case a suffix-style annotation ever comes back. Personal family
+// names never had this suffix in the first place, so this remains a
+// harmless no-op for those.
 function familyBaseName(name) {
   return name.replace(/ \((Normal|Switch)\)$/, "");
 }
@@ -697,11 +697,12 @@ function removePlayer(index) {
 
 .setup__top {
   display: flex;
+  margin-top: 14px;
 }
 
 .setup__back {
-  font-size: 12px;
-  padding: 7px 12px;
+  font-size: 13px;
+  padding: 10px 16px;
 }
 
 .setup__title {
