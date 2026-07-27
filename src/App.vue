@@ -60,24 +60,6 @@ watch(
   { immediate: true }
 );
 
-// Background theme: which hue the ambient background/panels use —
-// independent of the accent color above, same "mono needs no class"
-// convention.
-watch(
-  () => settings.bgTheme,
-  (theme) => {
-    document.body.classList.forEach((cls) => {
-      if (cls.startsWith("bg-")) {
-        document.body.classList.remove(cls);
-      }
-    });
-    if (theme && theme !== "mono") {
-      document.body.classList.add(`bg-${theme}`);
-    }
-  },
-  { immediate: true }
-);
-
 // All audio (speech samples, announcer, title music) is decoded before
 // the app shows, behind an intro screen of at least INTRO_MIN_MS.
 const {

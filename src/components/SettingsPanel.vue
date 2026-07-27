@@ -10,7 +10,6 @@ import {
   CUSTOM_LEVEL,
   REEL_SPEEDS,
   ACCENT_COLORS,
-  BG_THEMES,
   useSettings,
 } from "../composables/useSettings.js";
 import { useBackup } from "../composables/useBackup.js";
@@ -202,8 +201,8 @@ const grindList = [
       </span>
     </label>
 
-    <div class="option option--inline accent-picker">
-      <span>Couleur d'accent</span>
+    <div class="accent-picker">
+      <span class="accent-picker__label">Couleur d'accent</span>
       <div class="accent-swatches">
         <button
           v-for="accent in ACCENT_COLORS"
@@ -214,22 +213,6 @@ const grindList = [
           :aria-label="accent.name"
           :title="accent.name"
           @click="settings.accentColor = accent.id"
-        />
-      </div>
-    </div>
-
-    <div class="option option--inline accent-picker">
-      <span>Couleur de fond</span>
-      <div class="accent-swatches">
-        <button
-          v-for="bg in BG_THEMES"
-          :key="bg.id"
-          class="accent-swatch"
-          :class="{ 'accent-swatch--active': settings.bgTheme === bg.id }"
-          :style="{ background: bg.swatch }"
-          :aria-label="bg.name"
-          :title="bg.name"
-          @click="settings.bgTheme = bg.id"
         />
       </div>
     </div>
@@ -423,15 +406,27 @@ const grindList = [
   margin-bottom: 20px;
 }
 
-.accent-swatches {
+.accent-picker {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 10px;
+  margin: 4px 0;
+}
+
+.accent-picker__label {
+  font-size: 15px;
+  color: var(--text);
+}
+
+.accent-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
   gap: 10px;
 }
 
 .accent-swatch {
-  width: 30px;
-  height: 30px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   border: 2px solid var(--line-strong);
   padding: 0;

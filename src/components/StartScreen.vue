@@ -19,14 +19,12 @@ import { useBackup } from "../composables/useBackup.js";
 
 const emit = defineEmits(["open-settings"]);
 
-const { settings, applyLevel, saveCustomFamily, deleteCustomFamily, recordTargetedTraining } =
-  useSettings();
+const { settings, applyLevel, saveCustomFamily, deleteCustomFamily } = useSettings();
 const { startGame, startFamilySession, hasOpenSessionToday, endOpenSession } = useGame();
 const { familyIndex, isFamilyComplete, careerProgress, resetCareerProgress } = useCollection();
 const { needsBackupReminder, exportBackup, exportFamilies, importFamilies } = useBackup();
 
 function startSoloSession() {
-  recordTargetedTraining();
   startGame(settings);
 }
 

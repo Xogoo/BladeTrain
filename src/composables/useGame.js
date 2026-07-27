@@ -2,7 +2,7 @@ import { computed, reactive, ref } from "vue";
 import { generateSpin } from "../game/trickGenerator.js";
 import { FAMILIES, resolveFamily } from "../game/families.js";
 import { useCollection } from "./useCollection.js";
-import { useSettings } from "./useSettings.js";
+import { useSettings, CUSTOM_LEVEL } from "./useSettings.js";
 
 // Group mode is S.K.A.T.E with the letters A.I.G.H.T: bail a trick and
 // you collect the next letter; five letters and you are out.
@@ -176,6 +176,9 @@ export function useGame() {
     state.screen = "game";
 
     if (mode === "solo") {
+      if (settings.level === CUSTOM_LEVEL) {
+        settingsApi.recordTargetedTraining();
+      }
       state.spinsTotal = Infinity;
       beginOrContinueSoloSession();
       nextSpin(settings);

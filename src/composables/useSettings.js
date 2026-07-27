@@ -58,24 +58,6 @@ export const ACCENT_COLORS = [
   { id: "maroon", name: "Bordeaux", swatch: "#fa4261" },
 ];
 
-// Background theme: a subtle tint on the ambient background/panels
-// (--bg-0/1/2), independent of the accent color above — see
-// body.bg-* in base.css. "mono" is the original pure black & white
-// look and needs no body class at all.
-export const BG_THEMES = [
-  { id: "mono", name: "Noir", swatch: "#050505" },
-  { id: "navy", name: "Bleu nuit", swatch: "#05070a" },
-  { id: "forest", name: "Vert forêt", swatch: "#050a07" },
-  { id: "plum", name: "Violet profond", swatch: "#09050a" },
-  { id: "coffee", name: "Brun café", swatch: "#0a0705" },
-  { id: "ocean", name: "Océan", swatch: "#05090a" },
-  { id: "wine", name: "Bordeaux profond", swatch: "#0a0506" },
-  { id: "olive", name: "Olive", swatch: "#090a05" },
-  { id: "charcoal", name: "Anthracite", swatch: "#070709" },
-  { id: "blush", name: "Rosé", swatch: "#0a0508" },
-  { id: "gold", name: "Or", swatch: "#0a0905" },
-];
-
 const ALL_TRICKS_OFF = {
   fakie: false,
   switch: false,
@@ -246,10 +228,6 @@ function defaultSettings() {
     // Which hue the app's highlights use — see ACCENT_COLORS above and
     // body.accent-* in base.css. "mono" needs no body class.
     accentColor: "mono",
-    // Which hue the ambient background/panels use — see BG_THEMES
-    // above and body.bg-* in base.css. Independent of accentColor;
-    // "mono" needs no body class.
-    bgTheme: "mono",
     // Stripped-down display for handling the phone mid-session (on the
     // ground, one-handed, riding gloves...) — just the trick name, big,
     // and the two main action buttons, everything else hidden. See
