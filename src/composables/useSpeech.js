@@ -38,7 +38,6 @@ export const SAMPLE_FILES = {
   christ: "Christ.wav",
   "citric acid": "Citric Acid.wav",
   "closed book": "Closed Book.wav",
-  "cloudy night": "Cloudy Night.wav",
   "cross-grab": "Crossgrab.wav",
   darkslide: "Darkslide.wav",
   fakie: "Fakie.wav",

@@ -1,6 +1,6 @@
 export const testData = [
   {
-    expected: "540 Cloudy Night",
+    expected: "540 AO Top PStar",
     data: [
       { name: "Grind", winner: { name: "PStar", isGrooveGrind: false } },
       { name: "SpinTo", winner: { name: "Inspin 540" } },
@@ -8,7 +8,7 @@ export const testData = [
     ],
   },
   {
-    expected: "540 Hurricane Cloudy Night",
+    expected: "540 Hurricane Top PStar",
     data: [
       { name: "Grind", winner: { name: "PStar", isGrooveGrind: false } },
       { name: "SpinTo", winner: { name: "Outspin 540" } },
@@ -74,7 +74,7 @@ export const testData = [
     ],
   },
   {
-    expected: "360 Sweatstance to 180 rewind out",
+    expected: "360 Kindgrind to 180 rewind out",
     data: [
       { name: "Grind", winner: { name: "Mizou" } },
       { name: "GrindVariation", winner: { name: "Topside" } },
@@ -445,7 +445,7 @@ export const testData = [
     ],
   },
   {
-    expected: "360 Torque Soul",
+    expected: "360 Soyale",
     data: [
       {
         name: "Approach",
@@ -463,7 +463,7 @@ export const testData = [
     ],
   },
   {
-    expected: "Switch 360 Torque Soul",
+    expected: "Switch 360 Soyale",
     data: [
       {
         name: "Approach",
@@ -795,7 +795,7 @@ export const testData = [
   },
 
   {
-    expected: "True Fullcab 720 Sweatstance",
+    expected: "True Fullcab 720 Kindgrind",
     data: [
       {
         name: "Approach",
@@ -896,7 +896,7 @@ export const testData = [
     ],
   },
   {
-    expected: "Zerospin Cloudy Night",
+    expected: "Zerospin Top PStar",
     data: [
       {
         name: "Approach",

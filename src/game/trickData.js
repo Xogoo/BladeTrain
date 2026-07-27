@@ -699,14 +699,6 @@ export const GRIND_SYNONYMS = [
     url: "http://skateyeg.com/bog/13.0_Tea_Kettle.html",
   },
   {
-    newName: "Cloudy Night",
-    name: "PStar",
-    comment: "Alley-oop Topside PStar",
-    isTopside: true,
-    isReverse: true,
-    url: "http://skateyeg.com/bog/06.0_Cloudy_Night_(AO_Topside_PStar).html",
-  },
-  {
     newName: "Top PStar",
     name: "PStar",
     comment: "Topside PStar",
