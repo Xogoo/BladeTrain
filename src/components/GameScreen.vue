@@ -4,6 +4,7 @@ import AppIcon from "./AppIcon.vue";
 import SlotReel from "./SlotReel.vue";
 import TrickExplainPanel from "./TrickExplainPanel.vue";
 import TrickListPanel from "./TrickListPanel.vue";
+import FamilyChecklistPanel from "./FamilyChecklistPanel.vue";
 import { LETTERS, useGame } from "../composables/useGame.js";
 import { useSettings } from "../composables/useSettings.js";
 import { useSpeech } from "../composables/useSpeech.js";
@@ -63,7 +64,7 @@ onMounted(() => {
   }
 });
 
-const openPanel = ref(null); // 'explain' | 'tricklist' | null
+const openPanel = ref(null); // 'explain' | 'tricklist' | 'familyChecklist' | null
 const stoppedReels = ref(0);
 
 onUnmounted(() => {
@@ -193,9 +194,13 @@ function onReelStopped() {
       <AppIcon name="close" :size="14" /> Quitter le mode Focus
     </button>
 
-    <div v-if="settings.focusMode && activeFamily" class="focus-family-progress">
+    <button
+      v-if="settings.focusMode && activeFamily"
+      class="focus-family-progress"
+      @click="openPanel = 'familyChecklist'"
+    >
       {{ familyIndex(activeFamily.id) }}/{{ activeFamily.entries.length }} tricks réussis
-    </div>
+    </button>
 
     <div v-if="!isSolo" class="roster">
       <div
@@ -391,6 +396,11 @@ function onReelStopped() {
       @close="openPanel = null"
     />
     <TrickListPanel v-if="openPanel === 'tricklist'" @close="openPanel = null" />
+    <FamilyChecklistPanel
+      v-if="openPanel === 'familyChecklist' && activeFamily"
+      :family-id="activeFamily.id"
+      @close="openPanel = null"
+    />
 
     <div v-if="badgeToast.length" class="badge-stamp-layer">
       <!-- Distorts the stamp's edges via feDisplacementMap so it reads
@@ -565,6 +575,10 @@ function onReelStopped() {
 }
 
 .focus-family-progress {
+  align-self: center;
+  background: none;
+  border: none;
+  cursor: pointer;
   text-align: center;
   font-family: var(--font-display);
   font-size: 15px;

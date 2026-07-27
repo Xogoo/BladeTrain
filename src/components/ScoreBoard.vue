@@ -3,10 +3,13 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { LETTERS, useGame } from "../composables/useGame.js";
 import { useSettings } from "../composables/useSettings.js";
 import { useCollection } from "../composables/useCollection.js";
+import FamilyChecklistPanel from "./FamilyChecklistPanel.vue";
 
 const { state, isSolo, activeFamily } = useGame();
 const { levelName } = useSettings();
 const { uniqueTrickCount, familyIndex, sessionById } = useCollection();
+
+const showChecklist = ref(false);
 
 // Switch families carry their own leading "Switch " prefix (see
 // families.js) — nothing to strip here anymore, kept as a pass-through
@@ -85,12 +88,16 @@ const sessionDuration = computed(() => {
         }}</span>
       </div>
       <div class="scoreboard__divider" />
-      <div v-if="activeFamily" class="scoreboard__block">
+      <button
+        v-if="activeFamily"
+        class="scoreboard__block scoreboard__block--tap"
+        @click="showChecklist = true"
+      >
         <span class="scoreboard__caption">{{ familyBaseName(activeFamily.name) }}</span>
         <span class="scoreboard__level">
           {{ familyIndex(activeFamily.id) }}/{{ activeFamily.entries.length }}
         </span>
-      </div>
+      </button>
       <div v-else class="scoreboard__block">
         <span class="scoreboard__caption">Collection</span>
         <span class="scoreboard__level">{{ uniqueTrickCount }}</span>
@@ -118,6 +125,12 @@ const sessionDuration = computed(() => {
 
     <p v-if="sessionDuration" class="scoreboard__duration">{{ sessionDuration }}</p>
   </div>
+
+  <FamilyChecklistPanel
+    v-if="showChecklist && activeFamily"
+    :family-id="activeFamily.id"
+    @close="showChecklist = false"
+  />
 </template>
 
 <style scoped>
@@ -150,6 +163,14 @@ const sessionDuration = computed(() => {
   gap: 2px;
   min-width: 64px;
   max-width: 120px;
+}
+
+.scoreboard__block--tap {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .scoreboard__caption {

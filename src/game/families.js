@@ -41,8 +41,6 @@ const GROOVE_GRIND_NAMES = [
   "BS Cab driver",
   "FS Backslide",
   "BS Backslide",
-  "FS Pudslide",
-  "BS Pudslide",
   "FS Full Torque",
   "BS Full Torque",
   "FS Fastslide",
