@@ -175,12 +175,19 @@ function onReelStopped() {
 <template>
   <section class="game" :class="{ 'game--focus': settings.focusMode }">
     <button
-      class="focus-toggle"
-      :aria-label="settings.focusMode ? 'Quitter le mode Focus' : 'Activer le mode Focus'"
-      @click="settings.focusMode = !settings.focusMode"
+      v-if="!settings.focusMode"
+      class="focus-enter-btn"
+      @click="settings.focusMode = true"
     >
-      <AppIcon :name="settings.focusMode ? 'close' : 'zap'" :size="16" />
-      {{ settings.focusMode ? "Quitter" : "Focus" }}
+      <AppIcon name="zap" :size="14" /> Mode Focus
+    </button>
+
+    <button
+      v-if="settings.focusMode"
+      class="focus-exit-btn"
+      @click="settings.focusMode = false"
+    >
+      <AppIcon name="close" :size="14" /> Quitter le mode Focus
     </button>
 
     <div v-if="!isSolo" class="roster">
@@ -459,29 +466,36 @@ function onReelStopped() {
   padding: 12px 18px;
 }
 
-.focus-toggle {
-  position: fixed;
-  top: calc(env(safe-area-inset-top) + 10px);
-  right: 12px;
-  /* Forced very high — something was visually covering this button as
-     soon as the result screen appeared (reported: visible mid-spin,
-     gone the instant the trick settles), without an obvious CSS
-     conflict to point to after several passes. Rather than keep
-     guessing at the exact cause, this guarantees it wins regardless of
-     whatever stacking context is competing with it. */
-  z-index: 1000;
+.focus-enter-btn,
+.focus-exit-btn {
+  align-self: flex-end;
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 14px;
+  padding: 8px 14px;
   border-radius: 999px;
   border: 1px solid var(--line-strong);
-  background: rgba(var(--bg-0-rgb), 0.85);
+  background: rgba(var(--bg-0-rgb), 0.6);
   color: var(--red-hi);
   font-family: var(--font-display);
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.04em;
+}
+
+/* In focus mode this is the only way back — no header, no nav — so it
+   gets its own prominent spot instead of blending in, and needs to
+   stay reachable at any point (mid-spin included), not just once a
+   result is showing. Ordinary document flow, not position:fixed —
+   fixed positioning kept getting visually covered once the result
+   screen appeared, for a stacking-context conflict never fully
+   pinned down across several passes; flow layout sidesteps the whole
+   question instead of fighting it. */
+.focus-exit-btn {
+  align-self: center;
+  margin-bottom: 10px;
+  padding: 12px 20px;
+  font-size: 15px;
 }
 
 /* Focus mode: just the trick name (big) and the two main buttons
