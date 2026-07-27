@@ -52,6 +52,16 @@ const state = reactive({
   // picks "next family" or "keep going free" (see continueFreePlay /
   // nextCareerFamily below) rather than the switch happening unnoticed.
   familyJustCompleted: null,
+  // Set when the player picks "Continuer en mode libre" after a family
+  // completion pause — keeps drawing randomly from THAT family's own
+  // entries, forever, instead of degrading into a fully unrestricted
+  // draw across every grind (which is what silently happened before:
+  // activeFamilyId gets cleared the instant the family completes, so
+  // the old continueFreePlay had nothing left to loop on). Unlike
+  // activeFamilyId, this never blocks on "remaining" entries — the
+  // family is already 100% done, so every entry is fair game every
+  // time. Cleared whenever a genuinely new session/family starts.
+  freeLoopFamilyId: null,
   // Set instead of familyJustCompleted when the family that just
   // finished was the LAST one of its whole Career track — triggers the
   // full-screen CareerCompleteScreen (state.screen = "careerComplete")
@@ -129,7 +139,9 @@ export function useGame() {
   const onLastLetter = computed(
     () => (currentPlayer.value?.letters ?? 0) === LETTERS.length - 1
   );
-  const activeFamily = computed(() => resolveFamilyById(state.activeFamilyId));
+  const activeFamily = computed(() =>
+    resolveFamilyById(state.activeFamilyId ?? state.freeLoopFamilyId)
+  );
 
   // Switching what you're training (Custom, a family, review mode, a
   // different family...) used to always start a brand new session,
@@ -159,6 +171,7 @@ export function useGame() {
     state.activeFamilyEntryIndex = null;
     state.familyJustCompleted = null;
     state.careerJustCompleted = null;
+    state.freeLoopFamilyId = null;
     state.lockedPairs = null;
     state.screen = "game";
 
@@ -202,6 +215,7 @@ export function useGame() {
     state.activeFamilyEntryIndex = null;
     state.familyJustCompleted = null;
     state.careerJustCompleted = null;
+    state.freeLoopFamilyId = null;
     state.screen = "game";
     state.spinsTotal = Infinity;
     beginOrContinueSoloSession();
@@ -223,6 +237,7 @@ export function useGame() {
     state.activeFamilyEntryIndex = null;
     state.familyJustCompleted = null;
     state.careerJustCompleted = null;
+    state.freeLoopFamilyId = null;
     if (restart || collection.isFamilyComplete(familyId)) {
       collection.resetFamilyProgress(familyId);
     }
@@ -275,6 +290,19 @@ export function useGame() {
         state.activeFamilyEntryIndex =
           remaining[Math.floor(Math.random() * remaining.length)];
         forcedTrick = family.entries[state.activeFamilyEntryIndex];
+      } else {
+        state.activeFamilyEntryIndex = null;
+      }
+    } else if (state.freeLoopFamilyId) {
+      // "Continuer en mode libre" after completion — every entry is
+      // fair game every time, no "remaining" tracking needed since
+      // there's nothing left to complete.
+      const loopFamily = resolveFamilyById(state.freeLoopFamilyId);
+      if (loopFamily && loopFamily.entries.length) {
+        state.activeFamilyEntryIndex = Math.floor(
+          Math.random() * loopFamily.entries.length
+        );
+        forcedTrick = loopFamily.entries[state.activeFamilyEntryIndex];
       } else {
         state.activeFamilyEntryIndex = null;
       }
@@ -420,8 +448,13 @@ export function useGame() {
     null;
 
   // Player's choice after a family completion pause: keep the session
-  // going as normal free solo play (what used to happen automatically).
+  // going, drawing randomly from THIS family's entries in a loop —
+  // "tirage aléatoire de la famille en boucle", not a fully free draw
+  // across every grind (that was the bug: activeFamilyId is already
+  // null by the time this runs, so without freeLoopFamilyId there was
+  // nothing left tying the next draw to the family at all).
   const continueFreePlay = (settings) => {
+    state.freeLoopFamilyId = state.familyJustCompleted?.id ?? null;
     state.familyJustCompleted = null;
     state.careerJustCompleted = null;
     nextSpin(settings);
