@@ -704,6 +704,9 @@ export function useCollection() {
           primaryGuessIsTopside,
           primaryGuessIsReverse
         );
+        // Switching up to the same grind is a normal, always-available
+        // option now (see switchUpPool in trickGenerator.js) — treated
+        // exactly like every other target, not a special case.
         for (const su of switchUpGrinds) {
           const land = sessionLands.find(
             (l) => l.grindName === primary.name && l.switchUpGrindName === su.name

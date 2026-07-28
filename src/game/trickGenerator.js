@@ -111,18 +111,7 @@ export function generateSpin(
         grindBias,
         switchUpGrindToggles !== null ? switchUpGrindToggles : grindToggles
       )
-    ).filter((candidate) => candidate.name !== grind.name);
-
-    if (switchUpPool.length === 0) {
-      switchUpPool = excludeNoSwitch(
-        grindCandidates(
-          settings,
-          usedGrinds,
-          grindBias,
-          switchUpGrindToggles !== null ? switchUpGrindToggles : grindToggles
-        )
-      );
-    }
+    );
     switchUp = pickWeighted(switchUpPool);
 
     if (hasSwitchSpinReel(settings)) {
@@ -652,15 +641,7 @@ export function enumeratePossibleTricks(
         [],
         null,
         switchUpGrindToggles !== null ? switchUpGrindToggles : grindToggles
-      ).filter((candidate) => candidate.name !== grind.name);
-      if (switchUpPool.length === 0) {
-        switchUpPool = grindCandidates(
-          settings,
-          [],
-          null,
-          switchUpGrindToggles !== null ? switchUpGrindToggles : grindToggles
-        );
-      }
+      );
     }
     // [{ switchUp, switchSpin, switchUpVariation }], or a single
     // all-null entry when Switch up is off entirely.
