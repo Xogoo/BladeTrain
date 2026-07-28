@@ -110,7 +110,7 @@ function showNextBadge() {
   }
   badgeToast.value = [badgeQueue.shift()];
   window.clearTimeout(badgeToastTimer);
-  badgeToastTimer = window.setTimeout(showNextBadge, 4500);
+  badgeToastTimer = window.setTimeout(showNextBadge, 2500);
 }
 
 watch(
