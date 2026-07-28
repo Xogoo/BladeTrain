@@ -703,7 +703,9 @@ export function enumeratePossibleTricks(
                 { name: "SwitchUpVariation", winner: branch.switchUpVariation },
                 { name: "SpinOff", winner: spinOff },
               ];
-              const name = nameTrick(reels).parsed;
+              const name = nameTrick(reels, {
+                switchUpSwitch: !!settings.switchUpSwitch,
+              }).parsed;
               if (!byName.has(name)) {
                 byName.set(name, {
                   grindName: grind.name,
