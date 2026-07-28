@@ -490,7 +490,13 @@ export function useGame() {
         family && state.activeFamilyEntryIndex !== null
           ? family.entries[state.activeFamilyEntryIndex]
           : null;
-      collection.recordSkip(state.spin, state.sessionId, state.activeFamilyId, entry);
+      collection.recordSkip(
+        state.spin,
+        state.tries,
+        state.sessionId,
+        state.activeFamilyId,
+        entry
+      );
     }
     nextSpin(settings);
   };

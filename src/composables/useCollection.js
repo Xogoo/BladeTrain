@@ -529,7 +529,8 @@ export function useCollection() {
     const skipCounts = {};
     for (const skip of collection.skips) {
       if (skip.familyId === family.id && skip.familyEntryKey) {
-        skipCounts[skip.familyEntryKey] = (skipCounts[skip.familyEntryKey] || 0) + 1;
+        skipCounts[skip.familyEntryKey] =
+          (skipCounts[skip.familyEntryKey] || 0) + (skip.tries || 1);
       }
     }
     return family.entries.map((entry) => {
@@ -596,15 +597,18 @@ export function useCollection() {
    * ScoreBoard/current-session view, or a saved entry's own sessionId
    * to preview how that particular session went.
    *
-   * Each item: { key, name, landed }. `name` is the exact recorded
-   * trickName if that specific combo has been landed this session (so
-   * it shows real rotation/synonym naming, e.g. "Kindgrind" rather
-   * than a generic "X to Mizou"); otherwise a best-guess placeholder
-   * that still applies the grind-level synonym (e.g. "Fishbrain" for
-   * an Alley-oop Topside Makio switch-up) based on what the config
-   * actually enables (switchUpTopside, spinBetweenAlleyOop/True) — the
-   * exact rotation that will come up isn't knowable ahead of the real
-   * draw, but the synonym usually is.
+   * Each item: { key, name, landed, attempts }. `name` is the exact
+   * recorded trickName if that specific combo has been landed this
+   * session (so it shows real rotation/synonym naming, e.g.
+   * "Kindgrind" rather than a generic "X to Mizou"); otherwise a
+   * best-guess placeholder that still applies the grind-level synonym
+   * (e.g. "Fishbrain" for an Alley-oop Topside Makio switch-up) based
+   * on what the config actually enables (switchUpTopside,
+   * spinBetweenAlleyOop/True) — the exact rotation that will come up
+   * isn't knowable ahead of the real draw, but the synonym usually is.
+   * `attempts` is how many times this session drew this exact combo
+   * and it wasn't landed (skipped, however many Raté taps came first)
+   * — 0 if landed or never drawn at all.
    *
    * Standalone primary-grind entries (landed = drawn without a
    * switch-up attached) are only included when that's actually
@@ -617,10 +621,45 @@ export function useCollection() {
    * long for a config with many grinds enabled on both sides; the
    * panel showing it scrolls.
    */
+  // Best-guess synonym-aware display name for a grind, given whether
+  // it's (about to be) entered topside and/or via a reverse rotation —
+  // not exact (the real generator also factors in the specific
+  // rotation degree, Rough/Negative/Tough, etc.), but covers the
+  // common Topside/Alley-oop case that most grind synonyms key off.
+  // Shared between the 1st grind's own settings and the switch-up
+  // target's, so neither gets left out of the guess.
+  function guessGrindPlaceholderName(grindName, guessIsTopside, guessIsReverse) {
+    const synonym = GRIND_SYNONYMS.find(
+      (syn) =>
+        syn.name === grindName &&
+        !syn.isRough &&
+        !syn.isNegative &&
+        !(syn.isReverse && !guessIsReverse) &&
+        !(syn.isTopside && !guessIsTopside)
+    );
+    if (synonym) {
+      const prefix = guessIsReverse && !synonym.isReverse ? "AO " : "";
+      return `${prefix}${synonym.newName}`;
+    }
+    const prefix = [guessIsReverse && "AO", guessIsTopside && "Top"]
+      .filter(Boolean)
+      .join(" ");
+    return prefix ? `${prefix} ${grindName}` : grindName;
+  }
+
   function targetedTrainingItems(config, sessionId) {
     const sessionLands = collection.lands.filter((l) => l.sessionId === sessionId);
+    const sessionSkips = collection.skips.filter((s) => s.sessionId === sessionId);
     const primaryGrinds = GRINDS.filter((g) => config.grinds[g.name] !== false);
     const switchUpGuaranteed = !!(config.tricks.switchUp && config.tricks.trainingFocus);
+
+    // 1st grind's own guess conditions — same idea as the switch-up
+    // ones below, but from topside/spinInAlleyOop/spinInTrue instead of
+    // their switchUp* counterparts.
+    const primaryGuessIsTopside = !!config.tricks.topside;
+    const primaryGuessIsReverse = !!(
+      config.tricks.spinInAlleyOop || config.tricks.spinInTrue
+    );
 
     const items = switchUpGuaranteed
       ? []
@@ -628,55 +667,62 @@ export function useCollection() {
           const land = sessionLands.find(
             (l) => l.grindName === grind.name && !l.switchUpGrindName
           );
+          const attempts = sessionSkips
+            .filter((s) => s.grindName === grind.name && !s.switchUpGrindName)
+            .reduce((sum, s) => sum + (s.tries || 1), 0);
           return {
             key: `plain-${grind.name}`,
-            name: land ? land.trickName : grind.name,
+            name: land
+              ? land.trickName
+              : guessGrindPlaceholderName(
+                  grind.name,
+                  primaryGuessIsTopside,
+                  primaryGuessIsReverse
+                ),
             landed: !!land,
+            tries: land ? land.tries : 0,
+            attempts,
           };
         });
 
     if (config.tricks.switchUp) {
-      // Best-guess synonym conditions for the placeholder name below —
-      // not exact (the real generator also factors in the specific
-      // rotation degree, Rough/Negative/Tough, etc.), but covers the
-      // common Topside/Alley-oop case that most grind synonyms key off.
-      const guessIsTopside = !!config.tricks.switchUpTopside;
-      const guessIsReverse = !!(
+      const switchUpGuessIsTopside = !!config.tricks.switchUpTopside;
+      const switchUpGuessIsReverse = !!(
         config.tricks.spinBetweenAlleyOop || config.tricks.spinBetweenTrue
       );
+      // The whole 2nd-grind portion gets a "Switch " prefix when that
+      // setting is on — see switchUpSwitch in trickNamer.js, which this
+      // mirrors for the not-yet-landed placeholder case.
+      const switchUpSwitchPrefix = config.tricks.switchUpSwitch ? "Switch " : "";
 
       const switchUpGrinds = GRINDS.filter(
         (g) => config.switchUpGrinds[g.name] !== false
       );
       for (const primary of primaryGrinds) {
+        const primaryName = guessGrindPlaceholderName(
+          primary.name,
+          primaryGuessIsTopside,
+          primaryGuessIsReverse
+        );
         for (const su of switchUpGrinds) {
           const land = sessionLands.find(
             (l) => l.grindName === primary.name && l.switchUpGrindName === su.name
           );
-          let placeholderName = `${primary.name} to ${su.name}`;
-          if (!land) {
-            const synonym = GRIND_SYNONYMS.find(
-              (syn) =>
-                syn.name === su.name &&
-                !syn.isRough &&
-                !syn.isNegative &&
-                !(syn.isReverse && !guessIsReverse) &&
-                !(syn.isTopside && !guessIsTopside)
-            );
-            if (synonym) {
-              const prefix = guessIsReverse && !synonym.isReverse ? "AO " : "";
-              placeholderName = `${primary.name} to ${prefix}${synonym.newName}`;
-            } else if (guessIsTopside || guessIsReverse) {
-              const prefix = [guessIsReverse && "AO", guessIsTopside && "Top"]
-                .filter(Boolean)
-                .join(" ");
-              placeholderName = `${primary.name} to ${prefix} ${su.name}`;
-            }
-          }
+          const attempts = sessionSkips
+            .filter((s) => s.grindName === primary.name && s.switchUpGrindName === su.name)
+            .reduce((sum, s) => sum + (s.tries || 1), 0);
+          const suName = guessGrindPlaceholderName(
+            su.name,
+            switchUpGuessIsTopside,
+            switchUpGuessIsReverse
+          );
+          const placeholderName = `${primaryName} to ${switchUpSwitchPrefix}${suName}`;
           items.push({
             key: `combo-${primary.name}-${su.name}`,
             name: land ? land.trickName : placeholderName,
             landed: !!land,
+            tries: land ? land.tries : 0,
+            attempts,
           });
         }
       }
@@ -844,7 +890,13 @@ export function useCollection() {
     }
   };
 
-  const recordSkip = (spin, sessionId = null, familyId = null, familyEntry = null) => {
+  const recordSkip = (
+    spin,
+    tries = 1,
+    sessionId = null,
+    familyId = null,
+    familyEntry = null
+  ) => {
     const winners = spinWinners(spin);
     statsIn(collection.tricks, spin.name).skipped += 1;
     statsIn(collection.grinds, winners.Grind).skipped += 1;
@@ -854,6 +906,14 @@ export function useCollection() {
       trickName: spin.name,
       grindName: winners.Grind,
       variationName: winners.GrindVariation,
+      // How many Raté taps happened before this skip — a trick can be
+      // attempted several times and still end up skipped rather than
+      // landed; that shouldn't just collapse into "1 attempt".
+      tries,
+      // So a skip can be matched back to a specific (grind, switch-up
+      // grind) combo — e.g. targetedTrainingItems' attempt counts —
+      // not just the 1st grind. null when this draw had no switch-up.
+      switchUpGrindName: winners.SwitchUp !== "None" ? winners.SwitchUp : null,
       familyId,
       familyEntryKey: familyEntry ? familyEntryKey(familyEntry) : null,
     });

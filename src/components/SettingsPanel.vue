@@ -442,6 +442,7 @@ const grindList = [
 
 .accent-picker__row {
   display: flex;
+  flex-direction: column;
   gap: 10px;
   width: 100%;
 }

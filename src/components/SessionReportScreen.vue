@@ -40,10 +40,12 @@ async function sendMonthlyBackup() {
     </div>
 
     <div v-if="showBackupPrompt" class="backup-prompt panel">
-      <AppIcon name="share" :size="18" />
-      <div class="backup-prompt__text">
-        <strong>Nouveau mois — pense à ta sauvegarde !</strong>
-        <span>Garde ta progression en sécurité en l'envoyant quelque part.</span>
+      <div class="backup-prompt__row">
+        <AppIcon name="share" :size="18" />
+        <div class="backup-prompt__text">
+          <strong>Nouveau mois — pense à ta sauvegarde !</strong>
+          <span>Garde ta progression en sécurité en l'envoyant quelque part.</span>
+        </div>
       </div>
       <button class="btn btn--ghost backup-prompt__btn" @click="sendMonthlyBackup">
         {{ backupStatus || "Envoyer la sauvegarde" }}
@@ -81,7 +83,7 @@ async function sendMonthlyBackup() {
 
 .backup-prompt {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 12px;
   width: 100%;
   padding: 14px 16px;
@@ -89,8 +91,16 @@ async function sendMonthlyBackup() {
   color: var(--red-hi);
 }
 
+.backup-prompt__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
 .backup-prompt__text {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -109,10 +119,9 @@ async function sendMonthlyBackup() {
 }
 
 .backup-prompt__btn {
-  flex: none;
+  width: 100%;
   font-size: 13px;
   padding: 10px 14px;
-  white-space: nowrap;
 }
 
 .report__back {

@@ -46,6 +46,12 @@ function displayName(status) {
         >
           <AppIcon :name="status.landed ? 'check' : 'close'" :size="15" />
           <span class="checklist-row__name">{{ displayName(status) }}</span>
+          <span v-if="status.landed && status.land && status.land.tries" class="checklist-row__attempts">
+            (après {{ status.land.tries }} tentative{{ status.land.tries > 1 ? "s" : "" }})
+          </span>
+          <span v-if="!status.landed" class="checklist-row__attempts">
+            ({{ status.skipCount ? `${status.skipCount} tentative${status.skipCount > 1 ? "s" : ""}` : "aucune tentative" }})
+          </span>
         </div>
       </div>
     </template>
@@ -72,7 +78,8 @@ function displayName(status) {
 .checklist-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 6px 10px;
   padding: 9px 12px;
   border-radius: 10px;
   background: var(--bg-1);
@@ -86,8 +93,16 @@ function displayName(status) {
 
 .checklist-row__name {
   flex: 1;
+  min-width: 0;
   font-size: 14px;
   color: var(--text);
+}
+
+.checklist-row__attempts {
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-dim);
 }
 
 .hint {

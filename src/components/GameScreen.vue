@@ -95,19 +95,37 @@ function onEndSessionClick() {
   giveUp();
 }
 
-const badgeToast = ref([]);
+// Badges earned in the same spin used to all stack on screen together
+// (with just a staggered slam-in animation) — now they queue up and
+// show one at a time, each getting its own full 4.5s, so a big
+// multi-badge moment doesn't turn into a wall of overlapping stamps.
+const badgeToast = ref([]); // always 0 or 1 badge, kept as an array so the template (v-for) doesn't need to change
+let badgeQueue = [];
 let badgeToastTimer = null;
+
+function showNextBadge() {
+  if (badgeQueue.length === 0) {
+    badgeToast.value = [];
+    return;
+  }
+  badgeToast.value = [badgeQueue.shift()];
+  window.clearTimeout(badgeToastTimer);
+  badgeToastTimer = window.setTimeout(showNextBadge, 4500);
+}
+
 watch(
   () => state.newBadges,
   (badges) => {
     if (!badges.length) {
       return;
     }
-    badgeToast.value = badges;
-    window.clearTimeout(badgeToastTimer);
-    badgeToastTimer = window.setTimeout(() => {
-      badgeToast.value = [];
-    }, 4500);
+    badgeQueue = badgeQueue.concat(badges);
+    // Only kick off the queue if nothing is currently showing — if a
+    // badge is already mid-display, it'll pick up the new arrivals on
+    // its own timer chain once it's done.
+    if (badgeToast.value.length === 0) {
+      showNextBadge();
+    }
   }
 );
 
@@ -202,6 +220,17 @@ function onReelStopped() {
       @click="settings.focusMode = false"
     >
       <AppIcon name="close" :size="14" /> Quitter le mode Focus
+    </button>
+
+    <button
+      v-if="settings.focusMode"
+      class="btn btn--ghost focus-end-btn"
+      :class="{ 'btn--confirm': confirmingEndSession }"
+      @click="onEndSessionClick()"
+      @blur="confirmingEndSession = false"
+    >
+      <AppIcon name="flag" :size="13" />
+      {{ confirmingEndSession ? "Retape pour confirmer" : "Terminer la session" }}
     </button>
 
     <button
@@ -536,6 +565,13 @@ function onReelStopped() {
   font-size: 15px;
 }
 
+.focus-end-btn {
+  align-self: center;
+  margin-bottom: 14px;
+  font-size: 12px;
+  padding: 7px 14px;
+}
+
 /* Focus mode: just the trick name (big) and the two main buttons
    (big) — everything else that isn't essential while handling the
    phone mid-session gets out of the way. */
@@ -858,6 +894,8 @@ function onReelStopped() {
   align-items: center;
   justify-content: center;
   pointer-events: none;
+  background: rgba(var(--bg-0-rgb), 0.72);
+  backdrop-filter: blur(3px);
 }
 
 .badge-stamp-stack {
@@ -966,7 +1004,8 @@ function onReelStopped() {
 /* The actual readable content — sits above the ink layer, completely
    untouched by its filter/distortion, so text always stays crisp. */
 .badge-stamp__content {
-  position: relative;
+  position: absolute;
+  inset: 0;
   z-index: 1;
   display: flex;
   flex-direction: column;
@@ -975,6 +1014,7 @@ function onReelStopped() {
   gap: 10px;
   padding: 30px 26px;
   text-align: center;
+  overflow: hidden;
 }
 
 .badge-stamp__icon {

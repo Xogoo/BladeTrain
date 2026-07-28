@@ -48,6 +48,12 @@ const landedCount = computed(() => items.value.filter((item) => item.landed).len
       >
         <AppIcon :name="item.landed ? 'check' : 'close'" :size="15" />
         <span class="checklist-row__name">{{ item.name }}</span>
+        <span v-if="item.landed && item.tries" class="checklist-row__attempts">
+          (après {{ item.tries }} tentative{{ item.tries > 1 ? "s" : "" }})
+        </span>
+        <span v-if="!item.landed" class="checklist-row__attempts">
+          ({{ item.attempts ? `${item.attempts} tentative${item.attempts > 1 ? "s" : ""}` : "aucune tentative" }})
+        </span>
       </div>
     </div>
   </AppModal>
@@ -72,7 +78,8 @@ const landedCount = computed(() => items.value.filter((item) => item.landed).len
 .checklist-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 6px 10px;
   padding: 9px 12px;
   border-radius: 10px;
   background: var(--bg-1);
@@ -86,7 +93,15 @@ const landedCount = computed(() => items.value.filter((item) => item.landed).len
 
 .checklist-row__name {
   flex: 1;
+  min-width: 0;
   font-size: 14px;
   color: var(--text);
+}
+
+.checklist-row__attempts {
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-dim);
 }
 </style>

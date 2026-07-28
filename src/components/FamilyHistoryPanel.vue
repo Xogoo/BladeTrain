@@ -144,8 +144,8 @@ const easiestTricks = computed(() => {
         <div v-for="status in notLanded" :key="displayName(status)" class="trick-row">
           <AppIcon name="lock" :size="13" />
           <span class="trick-row__name">{{ displayName(status) }}</span>
-          <span v-if="status.skipCount" class="trick-row__meta">
-            passé {{ status.skipCount }}×
+          <span class="trick-row__meta">
+            ({{ status.skipCount ? `${status.skipCount} tentative${status.skipCount > 1 ? "s" : ""}` : "aucune tentative" }})
           </span>
         </div>
       </div>
@@ -249,7 +249,8 @@ const easiestTricks = computed(() => {
 .trick-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px 8px;
   padding: 8px 10px;
   border-radius: 10px;
   background: var(--bg-1);
@@ -263,6 +264,7 @@ const easiestTricks = computed(() => {
 
 .trick-row__name {
   flex: 1;
+  min-width: 0;
   font-size: 13px;
   color: var(--text);
 }
@@ -271,6 +273,7 @@ const easiestTricks = computed(() => {
   flex: none;
   font-family: var(--font-display);
   font-size: 11px;
+  font-weight: 700;
   color: var(--text-dim);
   white-space: nowrap;
 }
