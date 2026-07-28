@@ -33,30 +33,13 @@ export const REEL_SPEEDS = [
 
 // Accent color: which hue the app's highlights (buttons, active states,
 // scores, badges, career path) use — the ambient background/panels
-// stay neutral either way, see body.accent-* in base.css. "mono" is
-// the original black & white look and needs no body class at all.
-export const ACCENT_COLORS = [
-  { id: "mono", name: "Monochrome", swatch: "#f2f2f2" },
-  { id: "red", name: "Rouge", swatch: "#ff5252" },
-  { id: "orange", name: "Orange", swatch: "#ffab5b" },
-  { id: "yellow", name: "Jaune", swatch: "#ffe14d" },
-  { id: "green", name: "Vert", swatch: "#7cff8a" },
-  { id: "teal", name: "Turquoise", swatch: "#2dd4bf" },
-  { id: "blue", name: "Bleu", swatch: "#4d8dff" },
-  { id: "indigo", name: "Indigo", swatch: "#6366f1" },
-  { id: "purple", name: "Violet", swatch: "#a970ff" },
-  { id: "pink", name: "Rose", swatch: "#ff6fa5" },
-  { id: "lime", name: "Citron vert", swatch: "#b1fa42" },
-  { id: "emerald", name: "Émeraude", swatch: "#42faad" },
-  { id: "cyan", name: "Cyan", swatch: "#42dbfa" },
-  { id: "violet", name: "Violet foncé", swatch: "#bd42fa" },
-  { id: "fuchsia", name: "Fuchsia", swatch: "#fa42eb" },
-  { id: "rose", name: "Corail", swatch: "#fa425b" },
-  { id: "amber", name: "Ambre", swatch: "#fac342" },
-  { id: "brown", name: "Brun", swatch: "#fa8f42" },
-  { id: "slate", name: "Ardoise", swatch: "#428ffa" },
-  { id: "maroon", name: "Bordeaux", swatch: "#fa4261" },
-];
+// stay neutral either way. settings.accentColor is "mono" (the
+// original black & white look, no hue at all) or "custom" (any hue,
+// chosen on the color wheel in Réglages — see settings.accentHue and
+// game/accentPalette.js, applied as inline CSS custom properties in
+// App.vue rather than a fixed body.accent-* class, since any of the
+// 360° is selectable, not just a preset list).
+export const DEFAULT_ACCENT_HUE = 210; // a pleasant blue, first time "Personnalisé" is picked
 
 const ALL_TRICKS_OFF = {
   fakie: false,
@@ -90,7 +73,11 @@ const ALL_TRICKS_OFF = {
   // only for the 2nd grind's variation (every other variation type
   // stays shared between both grinds). spinBetweenAlleyOop/True mirror
   // spinInAlleyOop/True but for the rotation between the two grinds.
+  // switchUpSwitch mirrors "switch" (stance) but only for the 2nd
+  // grind — independent of whether the approach into the 1st grind is
+  // itself switch stance.
   switchUpTopside: false,
+  switchUpSwitch: false,
   spinBetweenAlleyOop: true,
   spinBetweenTrue: true,
   // 3 independent groups (spin in / rotation between the two grinds /
@@ -225,9 +212,15 @@ function defaultSettings() {
     // Quick test toggle: swaps to a real light palette — see
     // .theme-inverted in base.css.
     invertedTheme: false,
-    // Which hue the app's highlights use — see ACCENT_COLORS above and
-    // body.accent-* in base.css. "mono" needs no body class.
+    // "mono" (default black & white) or "custom" (a chosen hue — see
+    // accentHue below and the color wheel in Réglages).
     accentColor: "mono",
+    // The hue (0-359°) used when accentColor is "custom" — see
+    // game/accentPalette.js and DEFAULT_ACCENT_HUE above.
+    accentHue: DEFAULT_ACCENT_HUE,
+    // How far from the wheel's center the hue was picked (0-1, 1 =
+    // rim = fully vivid) — see game/accentPalette.js.
+    accentSaturation: 1,
     // Stripped-down display for handling the phone mid-session (on the
     // ground, one-handed, riding gloves...) — just the trick name, big,
     // and the two main action buttons, everything else hidden. See
@@ -493,31 +486,25 @@ export function useSettings() {
 
   /**
    * Snapshots the current "Entraînement ciblé" (solo Custom) config —
-   * called right as a solo session starts (see startSoloSession in
-   * StartScreen.vue). Skipped entirely if it's an exact repeat of the
-   * most recent entry (same tricks/grinds/switchUpGrinds), so starting
-   * the same config over and over doesn't spam the history with
-   * identical rows — it just stays "most recent" as-is. Capped at
-   * MAX_TARGETED_HISTORY, oldest dropped first.
+   * called right as a solo session starts (see startGame in
+   * useGame.js), tagged with that session's id so its checklist (see
+   * targetedTrainingItems in useCollection.js) only counts lands from
+   * THIS session — starting fresh each time, not "have I ever landed
+   * this in my life" like a family's permanent progress. Every session
+   * gets its own entry, even a repeat of the exact same config via
+   * Refaire — each is a separate training occurrence worth tracking on
+   * its own. Capped at MAX_TARGETED_HISTORY, oldest dropped first.
    */
-  function recordTargetedTraining() {
+  function recordTargetedTraining(sessionId) {
     const snapshot = {
       tricks: JSON.parse(JSON.stringify(settings.tricks)),
       grinds: JSON.parse(JSON.stringify(settings.grinds)),
       switchUpGrinds: JSON.parse(JSON.stringify(settings.switchUpGrinds)),
     };
-    const snapshotKey = JSON.stringify(snapshot);
-    const mostRecent = settings.targetedTrainingHistory[0];
-    if (mostRecent && JSON.stringify({
-      tricks: mostRecent.tricks,
-      grinds: mostRecent.grinds,
-      switchUpGrinds: mostRecent.switchUpGrinds,
-    }) === snapshotKey) {
-      return;
-    }
     settings.targetedTrainingHistory.unshift({
       id: `training-${Date.now()}`,
       date: new Date().toISOString(),
+      sessionId,
       ...snapshot,
     });
     if (settings.targetedTrainingHistory.length > MAX_TARGETED_HISTORY) {

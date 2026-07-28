@@ -176,11 +176,11 @@ export function useGame() {
     state.screen = "game";
 
     if (mode === "solo") {
-      if (settings.level === CUSTOM_LEVEL) {
-        settingsApi.recordTargetedTraining();
-      }
       state.spinsTotal = Infinity;
       beginOrContinueSoloSession();
+      if (settings.level === CUSTOM_LEVEL) {
+        settingsApi.recordTargetedTraining(state.sessionId);
+      }
       nextSpin(settings);
       return;
     }

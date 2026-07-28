@@ -4,12 +4,28 @@ import { LETTERS, useGame } from "../composables/useGame.js";
 import { useSettings } from "../composables/useSettings.js";
 import { useCollection } from "../composables/useCollection.js";
 import FamilyChecklistPanel from "./FamilyChecklistPanel.vue";
+import TargetedTrainingChecklistPanel from "./TargetedTrainingChecklistPanel.vue";
 
 const { state, isSolo, activeFamily } = useGame();
-const { levelName } = useSettings();
-const { uniqueTrickCount, familyIndex, sessionById } = useCollection();
+const { settings, levelName } = useSettings();
+const { familyIndex, sessionById, targetedTrainingItems } = useCollection();
 
 const showChecklist = ref(false);
+const showTargetedChecklist = ref(false);
+
+// "X/Y" for the Grinds block when there's no active family — X = how
+// many of the currently-enabled grinds have been landed at least once,
+// Y = how many are enabled at all.
+// "X/Y" for the Grinds block when there's no active family — same
+// item list (standalone grinds + switch-up combos, each counted as
+// ONE trick) as TargetedTrainingChecklistPanel, so the two never
+// disagree. X = how many of those items have been landed, Y = how
+// many exist in total for this config.
+const enabledGrindsCount = computed(() => {
+  const items = targetedTrainingItems(settings, state.sessionId);
+  const landed = items.filter((item) => item.landed).length;
+  return `${landed}/${items.length}`;
+});
 
 // Switch families carry their own leading "Switch " prefix (see
 // families.js) — nothing to strip here anymore, kept as a pass-through
@@ -98,10 +114,16 @@ const sessionDuration = computed(() => {
           {{ familyIndex(activeFamily.id) }}/{{ activeFamily.entries.length }}
         </span>
       </button>
-      <div v-else class="scoreboard__block">
-        <span class="scoreboard__caption">Collection</span>
-        <span class="scoreboard__level">{{ uniqueTrickCount }}</span>
-      </div>
+      <button
+        v-else
+        class="scoreboard__block scoreboard__block--tap"
+        @click="showTargetedChecklist = true"
+      >
+        <span class="scoreboard__caption">Tricks</span>
+        <span class="scoreboard__level">
+          {{ enabledGrindsCount }}
+        </span>
+      </button>
     </div>
 
     <div v-else class="scoreboard panel">
@@ -130,6 +152,11 @@ const sessionDuration = computed(() => {
     v-if="showChecklist && activeFamily"
     :family-id="activeFamily.id"
     @close="showChecklist = false"
+  />
+
+  <TargetedTrainingChecklistPanel
+    v-if="showTargetedChecklist"
+    @close="showTargetedChecklist = false"
   />
 </template>
 

@@ -1,6 +1,6 @@
 import { GRIND_SYNONYMS } from "./trickData.js";
 
-export function nameTrick(slots) {
+export function nameTrick(slots, options = {}) {
   const bySlot = (slotName) =>
     slots.find((s) => s && s.name === slotName) || null;
 
@@ -117,7 +117,9 @@ export function nameTrick(slots) {
       )
     : null;
 
-  const switchUpToken = switchUpName ? `to ${switchUpName}` : null;
+  const switchUpToken = switchUpName
+    ? `to ${options.switchUpSwitch ? "Switch " : ""}${switchUpName}`
+    : null;
 
   const tokens = [
     approachName,

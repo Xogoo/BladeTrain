@@ -2,15 +2,23 @@
 import { computed, ref } from "vue";
 import AppModal from "./AppModal.vue";
 import AppIcon from "./AppIcon.vue";
-import { GRINDS } from "../game/trickData.js";
 import { useSettings } from "../composables/useSettings.js";
+import { useCollection } from "../composables/useCollection.js";
+import TargetedTrainingChecklistPanel from "./TargetedTrainingChecklistPanel.vue";
 
 const emit = defineEmits(["close", "redo"]);
 
 const { settings, redoTargetedTraining, deleteTargetedTraining } = useSettings();
+const { targetedTrainingItems } = useCollection();
 
 // Two-tap confirm per row, same pattern as everywhere else destructive.
 const confirmingId = ref(null);
+
+// Which past entry (if any) is being previewed — see
+// TargetedTrainingChecklistPanel's `config` prop. Lets the player see
+// exactly what a past entraînement ciblé contained before committing
+// to Refaire, without touching their current live settings.
+const previewingEntry = ref(null);
 
 function onDeleteClick(id) {
   if (confirmingId.value !== id) {
@@ -42,14 +50,9 @@ function formatDate(iso) {
 // to distinguish one entraînement ciblé from another at a glance.
 function summarize(entry) {
   const parts = [];
-  const grindCount = GRINDS.filter((g) => entry.grinds[g.name] !== false).length;
-  parts.push(`${grindCount}/${GRINDS.length} grinds`);
-  if (entry.tricks.switchUp) {
-    const switchUpCount = GRINDS.filter(
-      (g) => entry.switchUpGrinds[g.name] !== false
-    ).length;
-    parts.push(`Switch up (${switchUpCount})`);
-  }
+  const trickCount = targetedTrainingItems(entry, entry.sessionId).length;
+  parts.push(`${trickCount} trick${trickCount > 1 ? "s" : ""}`);
+  if (entry.tricks.switchUp) parts.push("Switch up");
   if (entry.tricks.topside) parts.push("Topside");
   if (entry.tricks.switch) parts.push("Switch");
   if (entry.tricks.trainingFocus) parts.push("Ciblé verrouillé");
@@ -71,6 +74,12 @@ const history = computed(() => settings.targetedTrainingHistory);
           <span class="training-card__summary">{{ summarize(entry) }}</span>
         </div>
         <div class="training-card__actions">
+          <button
+            class="btn btn--ghost training-card__preview"
+            @click="previewingEntry = entry"
+          >
+            <AppIcon name="trophy" :size="13" /> Aperçu
+          </button>
           <button class="btn btn--go training-card__redo" @click="onRedoClick(entry)">
             <AppIcon name="play" :size="14" /> Refaire
           </button>
@@ -86,6 +95,13 @@ const history = computed(() => settings.targetedTrainingHistory);
       </div>
     </div>
   </AppModal>
+
+  <TargetedTrainingChecklistPanel
+    v-if="previewingEntry"
+    :config="previewingEntry"
+    :title="`Tricks — ${formatDate(previewingEntry.date)}`"
+    @close="previewingEntry = null"
+  />
 </template>
 
 <style scoped>
@@ -137,8 +153,15 @@ const history = computed(() => settings.targetedTrainingHistory);
 
 .training-card__actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   flex: none;
+}
+
+.training-card__preview {
+  font-size: 13px;
+  padding: 8px 12px;
+  white-space: nowrap;
 }
 
 .training-card__redo {

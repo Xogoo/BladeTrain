@@ -1,5 +1,6 @@
 import { computed, reactive, watch } from "vue";
 import { GRINDS, RARE_GRIND_NAME_PARTS } from "../game/trickData.js";
+import { GRIND_SYNONYMS } from "../game/trickData.js";
 import { FAMILIES, resolveFamily, familyEntryKey } from "../game/families.js";
 import { useSettings } from "./useSettings.js";
 
@@ -582,6 +583,108 @@ export function useCollection() {
       .sort((a, b) => new Date(b.date) - new Date(a.date))
   );
 
+  /**
+   * The full list of "tricks" an Entraînement ciblé config can produce,
+   * the way they actually get drawn — a switch-up is ONE trick (e.g.
+   * "FS Backslide to AO Top PStar"), never split into its two grinds.
+   * Accepts anything shaped like { tricks, grinds, switchUpGrinds } —
+   * the live `settings` object, or a saved history entry — plus the
+   * sessionId to scope "landed" checks to. Unlike a family's permanent
+   * progress, this resets every session: landing a combo last week
+   * doesn't check it off today, only lands from THIS specific session
+   * count. Pass the live session's id (state.sessionId) for the
+   * ScoreBoard/current-session view, or a saved entry's own sessionId
+   * to preview how that particular session went.
+   *
+   * Each item: { key, name, landed }. `name` is the exact recorded
+   * trickName if that specific combo has been landed this session (so
+   * it shows real rotation/synonym naming, e.g. "Kindgrind" rather
+   * than a generic "X to Mizou"); otherwise a best-guess placeholder
+   * that still applies the grind-level synonym (e.g. "Fishbrain" for
+   * an Alley-oop Topside Makio switch-up) based on what the config
+   * actually enables (switchUpTopside, spinBetweenAlleyOop/True) — the
+   * exact rotation that will come up isn't knowable ahead of the real
+   * draw, but the synonym usually is.
+   *
+   * Standalone primary-grind entries (landed = drawn without a
+   * switch-up attached) are only included when that's actually
+   * possible — i.e. NOT when trainingFocus + switchUp are both locked,
+   * since a switch-up is then guaranteed on every draw and the primary
+   * grind alone can never come up.
+   *
+   * Includes every (primary × switch-up) combination when switch-up is
+   * enabled — every one is a genuinely possible outcome. This can get
+   * long for a config with many grinds enabled on both sides; the
+   * panel showing it scrolls.
+   */
+  function targetedTrainingItems(config, sessionId) {
+    const sessionLands = collection.lands.filter((l) => l.sessionId === sessionId);
+    const primaryGrinds = GRINDS.filter((g) => config.grinds[g.name] !== false);
+    const switchUpGuaranteed = !!(config.tricks.switchUp && config.tricks.trainingFocus);
+
+    const items = switchUpGuaranteed
+      ? []
+      : primaryGrinds.map((grind) => {
+          const land = sessionLands.find(
+            (l) => l.grindName === grind.name && !l.switchUpGrindName
+          );
+          return {
+            key: `plain-${grind.name}`,
+            name: land ? land.trickName : grind.name,
+            landed: !!land,
+          };
+        });
+
+    if (config.tricks.switchUp) {
+      // Best-guess synonym conditions for the placeholder name below —
+      // not exact (the real generator also factors in the specific
+      // rotation degree, Rough/Negative/Tough, etc.), but covers the
+      // common Topside/Alley-oop case that most grind synonyms key off.
+      const guessIsTopside = !!config.tricks.switchUpTopside;
+      const guessIsReverse = !!(
+        config.tricks.spinBetweenAlleyOop || config.tricks.spinBetweenTrue
+      );
+
+      const switchUpGrinds = GRINDS.filter(
+        (g) => config.switchUpGrinds[g.name] !== false
+      );
+      for (const primary of primaryGrinds) {
+        for (const su of switchUpGrinds) {
+          const land = sessionLands.find(
+            (l) => l.grindName === primary.name && l.switchUpGrindName === su.name
+          );
+          let placeholderName = `${primary.name} to ${su.name}`;
+          if (!land) {
+            const synonym = GRIND_SYNONYMS.find(
+              (syn) =>
+                syn.name === su.name &&
+                !syn.isRough &&
+                !syn.isNegative &&
+                !(syn.isReverse && !guessIsReverse) &&
+                !(syn.isTopside && !guessIsTopside)
+            );
+            if (synonym) {
+              const prefix = guessIsReverse && !synonym.isReverse ? "AO " : "";
+              placeholderName = `${primary.name} to ${prefix}${synonym.newName}`;
+            } else if (guessIsTopside || guessIsReverse) {
+              const prefix = [guessIsReverse && "AO", guessIsTopside && "Top"]
+                .filter(Boolean)
+                .join(" ");
+              placeholderName = `${primary.name} to ${prefix} ${su.name}`;
+            }
+          }
+          items.push({
+            key: `combo-${primary.name}-${su.name}`,
+            name: land ? land.trickName : placeholderName,
+            landed: !!land,
+          });
+        }
+      }
+    }
+
+    return items;
+  }
+
 
   /**
    * Every trainable (grind, variation) pair — each grind always
@@ -844,5 +947,6 @@ export function useCollection() {
     repeatedTrickSeries,
     switchUpLands,
     staleCombos,
+    targetedTrainingItems,
   };
 }

@@ -555,12 +555,6 @@ function removePlayer(index) {
       @close="showFamilyHistory = false"
     />
 
-    <TargetedTrainingHistoryPanel
-      v-if="showTrainingHistory"
-      @close="showTrainingHistory = false"
-      @redo="startSoloSession()"
-    />
-
     <button
       class="btn btn--go setup__go"
       :disabled="
@@ -668,6 +662,12 @@ function removePlayer(index) {
       <AppIcon name="play" :size="20" />
       {{ settings.mode === "solo" ? "Démarrer la session" : "Démarrer la partie" }}
     </button>
+
+    <TargetedTrainingHistoryPanel
+      v-if="showTrainingHistory"
+      @close="showTrainingHistory = false"
+      @redo="startSoloSession()"
+    />
   </section>
 </template>
 

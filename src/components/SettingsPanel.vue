@@ -2,14 +2,15 @@
 import { ref, computed } from "vue";
 import AppModal from "./AppModal.vue";
 import TrickPreviewPanel from "./TrickPreviewPanel.vue";
+import ColorWheel from "./ColorWheel.vue";
 import { useGame } from "../composables/useGame.js";
 import { GRINDS, RARE_GRIND_NAME_PARTS } from "../game/trickData.js";
+import { computeAccentPalette } from "../game/accentPalette.js";
 import {
   LEVELS,
   SOLO_LEVELS,
   CUSTOM_LEVEL,
   REEL_SPEEDS,
-  ACCENT_COLORS,
   useSettings,
 } from "../composables/useSettings.js";
 import { useBackup } from "../composables/useBackup.js";
@@ -39,6 +40,14 @@ const {
   setAllSwitchUpGrinds,
   setSwitchUpGrindsByType,
 } = useSettings();
+
+// A representative swatch for the "Personnalisé" button itself, so it
+// previews the chosen hue even while looking at Monochrome.
+const currentAccentSwatch = computed(
+  () =>
+    computeAccentPalette(settings.accentHue, settings.invertedTheme, settings.accentSaturation)
+      .red
+);
 
 const { lastBackupAt, exportBackup, restoreBackup } = useBackup();
 
@@ -96,10 +105,7 @@ const presetLevels = computed(() =>
 const TRICK_GROUPS = [
   {
     title: "Approche",
-    options: [
-      ["fakie", "Tricks fakie"],
-      ["switch", "Tricks switch"],
-    ],
+    options: [["fakie", "Tricks fakie"]],
   },
   {
     title: "Switch up",
@@ -108,10 +114,11 @@ const TRICK_GROUPS = [
   {
     title: "Variation du premier grind",
     // Rendered as its own 3-column row (see .options--featured) instead
-    // of falling into the generic 1-or-2-column list below — these three
-    // are related (a topside grind entered alley-oop or true) and read
-    // better side by side.
+    // of falling into the generic 1-or-2-column list below — these are
+    // related ways the grind itself is entered/held (switch stance, a
+    // topside grind, alley-oop or true) and read better side by side.
     featured: [
+      ["switch", "Tricks switch"],
       ["topside", "Grinds topside"],
       ["spinInAlleyOop", "Alley oop (inspin)"],
       ["spinInTrue", "True (outspin)"],
@@ -129,11 +136,12 @@ const TRICK_GROUPS = [
   },
   {
     title: "Variation du deuxième grind",
-    // Same idea as the featured row above, but for the rotation
-    // between the two grinds and the 2nd grind's own variation —
-    // trains combos like "Top Soul to True Top Soul" independently of
-    // the 1st grind's settings above.
+    // Same idea as the featured row above, but for the 2nd grind (the
+    // switch-up target) and the rotation between the two grinds —
+    // trains combos like "Top Soul to Switch True Top Soul"
+    // independently of the 1st grind's settings above.
     featured: [
+      ["switchUpSwitch", "Tricks switch (2nd)"],
       ["switchUpTopside", "Grinds topside (2nd)"],
       ["spinBetweenAlleyOop", "Alley oop (2nd, inspin)"],
       ["spinBetweenTrue", "True (2nd, outspin)"],
@@ -203,17 +211,33 @@ const grindList = [
 
     <div class="accent-picker">
       <span class="accent-picker__label">Couleur d'accent</span>
-      <div class="accent-swatches">
+      <ColorWheel
+        v-if="settings.accentColor === 'custom'"
+        :hue="settings.accentHue"
+        :saturation="settings.accentSaturation"
+        @update:hue="settings.accentHue = $event"
+        @update:saturation="settings.accentSaturation = $event"
+      />
+      <div class="accent-picker__row">
         <button
-          v-for="accent in ACCENT_COLORS"
-          :key="accent.id"
-          class="accent-swatch"
-          :class="{ 'accent-swatch--active': settings.accentColor === accent.id }"
-          :style="{ background: accent.swatch }"
-          :aria-label="accent.name"
-          :title="accent.name"
-          @click="settings.accentColor = accent.id"
-        />
+          class="btn"
+          :class="settings.accentColor === 'mono' ? 'btn--primary' : 'btn--ghost'"
+          @click="settings.accentColor = 'mono'"
+        >
+          Monochrome
+        </button>
+        <button
+          class="btn"
+          :class="settings.accentColor === 'custom' ? 'btn--primary' : 'btn--ghost'"
+          :style="
+            settings.accentColor === 'custom'
+              ? { background: currentAccentSwatch, borderColor: currentAccentSwatch, color: '#111' }
+              : {}
+          "
+          @click="settings.accentColor = 'custom'"
+        >
+          Personnalisé
+        </button>
       </div>
     </div>
 
@@ -403,43 +427,27 @@ const grindList = [
 }
 
 .accent-picker {
-  margin-bottom: 20px;
-}
-
-.accent-picker {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin: 4px 0;
+  align-items: center;
+  gap: 14px;
+  margin: 4px 0 20px;
 }
 
 .accent-picker__label {
+  align-self: flex-start;
   font-size: 15px;
   color: var(--text);
 }
 
-.accent-swatches {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+.accent-picker__row {
+  display: flex;
   gap: 10px;
+  width: 100%;
 }
 
-.accent-swatch {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  border: 2px solid var(--line-strong);
-  padding: 0;
-  transition: transform 0.15s ease, border-color 0.15s ease;
-}
-
-.accent-swatch:hover {
-  transform: scale(1.1);
-}
-
-.accent-swatch--active {
-  border-color: var(--text);
-  box-shadow: 0 0 0 2px var(--bg-1), 0 0 0 4px var(--text);
+.accent-picker__row .btn {
+  flex: 1;
 }
 
 .section-title {
@@ -479,7 +487,7 @@ const grindList = [
 
 @media (min-width: 420px) {
   .options--featured {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 

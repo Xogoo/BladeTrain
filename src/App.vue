@@ -15,6 +15,7 @@ import SessionHistoryPanel from "./components/SessionHistoryPanel.vue";
 import { useGame } from "./composables/useGame.js";
 import { useSettings } from "./composables/useSettings.js";
 import { useSpeech } from "./composables/useSpeech.js";
+import { computeAccentPalette, computeAccentGlow } from "./game/accentPalette.js";
 
 const { state, goToStart, closeStaleSessionIfNeeded } = useGame();
 const { settings } = useSettings();
@@ -42,20 +43,44 @@ watch(
   { immediate: true }
 );
 
-// Accent color: which hue buttons/highlights/badges use — "mono" is
-// the default black & white look and needs no class at all, so it's
-// just removed rather than replaced with a "mono" class of its own.
+// Accent color: "mono" is the default black & white look, no CSS
+// properties to set at all (just clears any previously-applied custom
+// ones). "custom" computes a full palette from the chosen hue (see the
+// color wheel in Réglages and game/accentPalette.js) and sets it as
+// inline custom properties on <body> — any of the 360° is selectable,
+// so this can't be a fixed set of body.accent-* classes like it used
+// to be. Recomputed whenever the hue OR the light/dark theme changes,
+// since the palette differs between the two.
+const ACCENT_PROPERTIES = [
+  "--red",
+  "--red-hi",
+  "--red-deep",
+  "--cta-text",
+  "--glow-red",
+  "--glow-red-hi",
+];
 watch(
-  () => settings.accentColor,
-  (accent) => {
-    document.body.classList.forEach((cls) => {
-      if (cls.startsWith("accent-")) {
-        document.body.classList.remove(cls);
+  [
+    () => settings.accentColor,
+    () => settings.accentHue,
+    () => settings.accentSaturation,
+    () => settings.invertedTheme,
+  ],
+  ([accent, hue, saturation, inverted]) => {
+    if (accent !== "custom") {
+      for (const prop of ACCENT_PROPERTIES) {
+        document.body.style.removeProperty(prop);
       }
-    });
-    if (accent && accent !== "mono") {
-      document.body.classList.add(`accent-${accent}`);
+      return;
     }
+    const palette = computeAccentPalette(hue, inverted, saturation);
+    const glow = computeAccentGlow(palette, inverted);
+    document.body.style.setProperty("--red", palette.red);
+    document.body.style.setProperty("--red-hi", palette.redHi);
+    document.body.style.setProperty("--red-deep", palette.redDeep);
+    document.body.style.setProperty("--cta-text", palette.ctaText);
+    document.body.style.setProperty("--glow-red", glow.glowRed);
+    document.body.style.setProperty("--glow-red-hi", glow.glowRedHi);
   },
   { immediate: true }
 );

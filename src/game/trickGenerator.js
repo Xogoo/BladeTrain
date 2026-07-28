@@ -101,19 +101,26 @@ export function generateSpin(
     // (unless the entry explicitly specifies one — see above), so it's
     // suppressed entirely here regardless of the player's own Switch
     // up setting.
-    switchUpPool = grindCandidates(
-      settings,
-      usedGrinds,
-      grindBias,
-      switchUpGrindToggles !== null ? switchUpGrindToggles : grindToggles
-    ).filter((candidate) => candidate.name !== grind.name);
+    const excludeNoSwitch = (candidates) =>
+      settings.switchUpSwitch ? candidates.filter((g) => !g.noSwitch) : candidates;
 
-    if (switchUpPool.length === 0) {
-      switchUpPool = grindCandidates(
+    switchUpPool = excludeNoSwitch(
+      grindCandidates(
         settings,
         usedGrinds,
         grindBias,
         switchUpGrindToggles !== null ? switchUpGrindToggles : grindToggles
+      )
+    ).filter((candidate) => candidate.name !== grind.name);
+
+    if (switchUpPool.length === 0) {
+      switchUpPool = excludeNoSwitch(
+        grindCandidates(
+          settings,
+          usedGrinds,
+          grindBias,
+          switchUpGrindToggles !== null ? switchUpGrindToggles : grindToggles
+        )
       );
     }
     switchUp = pickWeighted(switchUpPool);
@@ -171,7 +178,8 @@ export function generateSpin(
   ];
 
   const { parsed, orig } = nameTrick(
-    reels.map(({ name, winner }) => ({ name, winner }))
+    reels.map(({ name, winner }) => ({ name, winner })),
+    { switchUpSwitch: !!settings.switchUpSwitch }
   );
 
   return { reels, name: parsed, orig, score: scoreSpin(reels) };
