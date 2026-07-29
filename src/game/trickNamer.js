@@ -54,11 +54,14 @@ export function nameTrick(slots, options = {}) {
   // Whether this trick is entered "backwards" relative to a plain
   // straight-in approach — either because the approach itself is Fakie
   // (including Zerospin, which has no spin at all), or because there's
-  // a real spin-in (Alley-oop OR True, any degree). Used to pick grind
-  // synonyms like Kindgrind over their plain straight-in counterpart
-  // (Sweatstance). Only a plain Forwards/Switch approach with no
-  // spin-in keeps the plain name.
-  const isReverse = !isGroove && (isFakie || hasSpin);
+  // a real spin-in that doesn't land you back facing forward. A 180 or
+  // 540 (odd multiple of 180) does turn you around — that's the actual
+  // Alley-oop/True. A 360 or 720 (even multiple) brings you all the way
+  // back to facing forward, so it stays a plain forward trick (e.g. a
+  // forward 360 into Torque Soul is "360 Torque Soul", never "Soyale").
+  // Used to pick grind synonyms like Kindgrind/Soyale over their plain
+  // straight-in counterpart (Sweatstance/Torque Soul).
+  const isReverse = !isGroove && (isFakie || (hasSpin && isReverseSpinDegree(spinTo.winner.name)));
 
   let approachName = parseApproach(approach, isFakie, hasSpin, isGroove);
   const spinName = parseSpinTo(spinTo, isGroove, isInspin, isOutspin, isFakie);
@@ -90,11 +93,13 @@ export function nameTrick(slots, options = {}) {
       ? switchUpVariation.winner.name
       : null;
 
-  // Same rule as the first grind's isReverse: any real spin transition
-  // into a soul target triggers the synonym swap (all known synonyms
-  // are soul grinds) — both Alley-oop and True count, only "no
-  // transition at all" or a groove target keep the plain name.
-  const switchUpIsReverse = !switchUpIsGroove && !!switchSpin;
+  // Same rule as the first grind's isReverse: a spin transition into a
+  // soul target triggers the synonym swap (all known synonyms are soul
+  // grinds) only if it doesn't land back facing forward — "no
+  // transition at all", a groove target, or a 360/720 transition all
+  // keep the plain name.
+  const switchUpIsReverse =
+    !switchUpIsGroove && !!switchSpin && isReverseSpinDegree(switchSpin.winner.name);
   // switchSpinName is folded into the same string as the grind name
   // (rather than joined on afterwards) so a reverse synonym's stripping
   // of the literal "Alley-oop"/"Topside" text below also reaches it —
@@ -148,6 +153,19 @@ export function nameTrick(slots, options = {}) {
     .replace(/ {2}/g, " ");
 
   return { parsed: result.trim(), orig: orig.join(" | ") };
+}
+
+// A spin degree counts as "reverse" (turns you around) unless it's a
+// multiple of 360 — that brings you all the way back to facing
+// forward regardless of direction (180/540/900 do turn you around;
+// 360/720 don't). Cross-type groove transitions (270/450) have no
+// forward-facing equivalent, so they always count as reverse.
+function isReverseSpinDegree(name) {
+  const match = name && name.match(/(\d+)/);
+  if (!match) {
+    return false;
+  }
+  return parseInt(match[1], 10) % 360 !== 0;
 }
 
 function parseApproach(approach, isFakie, hasSpin, isGroove) {

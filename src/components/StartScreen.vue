@@ -20,7 +20,7 @@ import { useBackup } from "../composables/useBackup.js";
 const emit = defineEmits(["open-settings"]);
 
 const { settings, applyLevel, saveCustomFamily, deleteCustomFamily } = useSettings();
-const { startGame, startFamilySession, hasOpenSessionToday, endOpenSession } = useGame();
+const { startGame, startFamilySession, hasOpenSessionToday, endOpenSession, state } = useGame();
 const { familyIndex, isFamilyComplete, careerProgress, resetCareerProgress } = useCollection();
 const { needsBackupReminder, exportBackup, exportFamilies, importFamilies } = useBackup();
 
@@ -143,7 +143,7 @@ function startFamilyModeSession() {
 // step unlocks once the previous one is fully complete — tapping a
 // locked step does nothing. Tapping an unlocked one starts training it
 // directly, same mechanism as Solo's "Famille de tricks".
-const careerTrack = ref(null); // 'normal' | 'switch' | null
+const careerTrack = ref(state.pendingCareerTrack || null); // 'normal' | 'switch' | null
 
 const careerSteps = computed(() => {
   if (!careerTrack.value) {
@@ -249,7 +249,10 @@ const MODES = [
   },
 ];
 
-const step = ref("mode"); // 'mode' | 'family' | 'career' | 'career-track' | 'setup'
+const step = ref(state.pendingCareerTrack ? "career-track" : "mode"); // 'mode' | 'family' | 'career' | 'career-track' | 'setup'
+if (state.pendingCareerTrack) {
+  state.pendingCareerTrack = null;
+}
 
 const presetTitle = computed(() =>
   settings.mode === "solo" ? "Mode" : "Difficulté"

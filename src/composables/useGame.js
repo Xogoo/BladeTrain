@@ -67,6 +67,12 @@ const state = reactive({
   // full-screen CareerCompleteScreen (state.screen = "careerComplete")
   // rather than the regular pause panel. { track, badge } | null.
   careerJustCompleted: null,
+  // Set right before navigating back to the Start screen from a
+  // career family's spin screen, so StartScreen can reopen directly on
+  // that track's path instead of the mode-picker (see backToCareer
+  // below and StartScreen's own `step`/`careerTrack` init). Consumed
+  // and cleared by StartScreen as soon as it reads it.
+  pendingCareerTrack: null,
 
   // group (S.K.A.T.E) state
   players: [], // { name, letters }
@@ -531,6 +537,27 @@ export function useGame() {
     state.careerJustCompleted = null;
   };
 
+  // Shortcut back button shown only while training a built-in Career
+  // family (never for a personal family or targeted training, neither
+  // of which has a "path" screen to return to). Ends the session the
+  // same way the regular Retour/giveUp does, but skips the session
+  // report and drops the player straight back on this family's Career
+  // track path instead of the mode-picker.
+  const backToCareer = () => {
+    const family = state.activeFamilyId ? resolveFamilyById(state.activeFamilyId) : null;
+    const track = family?.track ?? null;
+    clearUndoSnapshot();
+    if (state.sessionId) {
+      collection.endSession(state.sessionId);
+      state.lastSessionId = state.sessionId;
+      state.sessionId = null;
+    }
+    state.activeFamilyId = null;
+    state.activeFamilyEntryIndex = null;
+    state.pendingCareerTrack = track;
+    goToStart();
+  };
+
   /**
    * There's no way to run code while the app is closed, so "at
    * midnight" really means "next time the Start screen is shown" — if
@@ -593,6 +620,7 @@ export function useGame() {
     addTry,
     giveUp,
     goToStart,
+    backToCareer,
     closeStaleSessionIfNeeded,
     hasOpenSessionToday,
     endOpenSession,

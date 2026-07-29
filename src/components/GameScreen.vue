@@ -39,6 +39,7 @@ const {
   nextCareerFamily,
   addTry,
   giveUp,
+  backToCareer,
   onReelsSettled,
   activeFamily,
 } = useGame();
@@ -93,6 +94,20 @@ function onEndSessionClick() {
   }
   confirmingEndSession.value = false;
   giveUp();
+}
+
+// Only a built-in Career family (has a track) has a path screen to
+// return to — a personal family or targeted training doesn't.
+const isCareerFamily = computed(() => Boolean(activeFamily.value?.track));
+
+const confirmingBackToCareer = ref(false);
+function onBackToCareerClick() {
+  if (!confirmingBackToCareer.value) {
+    confirmingBackToCareer.value = true;
+    return;
+  }
+  confirmingBackToCareer.value = false;
+  backToCareer();
 }
 
 // Badges earned in the same spin used to all stack on screen together
@@ -196,15 +211,26 @@ function onReelStopped() {
 
 <template>
   <section class="game" :class="{ 'game--focus': settings.focusMode }">
-    <button
-      v-if="!settings.focusMode"
-      class="btn btn--ghost game__back"
-      :class="{ 'btn--confirm': confirmingEndSession }"
-      @click="onEndSessionClick()"
-      @blur="confirmingEndSession = false"
-    >
-      &lsaquo; {{ confirmingEndSession ? "Retape pour confirmer" : "Retour" }}
-    </button>
+    <div v-if="!settings.focusMode" class="game__back-row">
+      <button
+        class="btn btn--ghost game__back"
+        :class="{ 'btn--confirm': confirmingEndSession }"
+        @click="onEndSessionClick()"
+        @blur="confirmingEndSession = false"
+      >
+        &lsaquo; {{ confirmingEndSession ? "Retape pour confirmer" : "Retour" }}
+      </button>
+
+      <button
+        v-if="isCareerFamily"
+        class="btn btn--ghost game__back-career"
+        :class="{ 'btn--confirm': confirmingBackToCareer }"
+        @click="onBackToCareerClick()"
+        @blur="confirmingBackToCareer = false"
+      >
+        &lsaquo; {{ confirmingBackToCareer ? "Retape pour confirmer" : "Carrière" }}
+      </button>
+    </div>
 
     <button
       v-if="!settings.focusMode"
@@ -507,8 +533,18 @@ function onReelStopped() {
   position: relative;
 }
 
-.game__back {
+.game__back-row {
+  display: flex;
+  gap: 8px;
   align-self: flex-start;
+}
+
+.game__back {
+  font-size: 13px;
+  padding: 10px 16px;
+}
+
+.game__back-career {
   font-size: 13px;
   padding: 10px 16px;
 }

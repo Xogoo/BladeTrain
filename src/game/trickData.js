@@ -645,6 +645,7 @@ export const GRIND_SYNONYMS = [
     name: "Mistrial",
     comment: "Alley-oop Topside Mistrial",
     isReverse: true,
+    isInspin: true,
     isTopside: true,
     url: "http://skateyeg.com/bog/07.0_Misfit_(AO_Topside_Mistrial).html",
   },
