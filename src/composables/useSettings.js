@@ -1,7 +1,19 @@
 import { reactive, watch } from "vue";
 import { GRINDS, RARE_GRIND_NAME_PARTS } from "../game/trickData.js";
+import { DEFAULT_CUSTOM_FAMILIES } from "../game/defaultCustomFamilies.js";
 
 const STORAGE_KEY = "aight-settings-v3";
+
+// Deep clone so every call gets its own independent copy — defaultSettings()
+// is also used by reset()/applyLevel(CUSTOM_LEVEL) via Object.assign, which
+// would otherwise share (and let one session's edits leak into) the same
+// shipped array/entry objects across every family.
+function defaultCustomFamilies() {
+  return DEFAULT_CUSTOM_FAMILIES.map((family) => ({
+    ...family,
+    entries: family.entries.map((entry) => ({ ...entry })),
+  }));
+}
 
 export const CUSTOM_LEVEL = 5;
 
@@ -251,7 +263,7 @@ function defaultSettings() {
     // trick list comes from enumeratePossibleTricks, so it only exists
     // as a real, trainable family once that combo's list is known to
     // be exact, not an estimate).
-    customFamilies: [], // { id, name, entries: [{ grindName, variationName, approach, spinToName, spinOffName, switchUpGrindName, switchUpVariationName, switchSpinName }] }
+    customFamilies: defaultCustomFamilies(), // { id, name, entries: [{ grindName, variationName, approach, spinToName, spinOffName, switchUpGrindName, switchUpVariationName, switchSpinName }] }
     // History of past "Entraînement ciblé" (solo Custom) configs, most
     // recent first — lets the player revisit and instantly re-apply a
     // combo they'd set up before, rather than rebuilding it by hand.

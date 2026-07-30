@@ -452,18 +452,25 @@ function spinOffCandidates(grind, settings) {
 // Soul to True Top Soul" (True specifically on the 2nd grind's
 // rotation) is trainable without also forcing the 1st grind's
 // direction.
-function filterSwitchSpinDirection(pool, settings) {
+// `flipDirection` mirrors the FS/BS split baked into SPINS_TO_GROOVE_FS
+// vs SPINS_TO_GROOVE_BS for the primary grind's own spin-in: entering
+// a Frontside-type groove grind reads its raw Outspin as the
+// Alley-oop-equivalent and Inspin as True — backwards from every other
+// case. Without this, checking "Alley-oop" for a cross-type switch-up
+// through a Frontside groove grind kept the raw Inspin entries, which
+// nameSwitchSpin's own (already-correct) flip then displays as True —
+// the exact opposite of what got checked.
+function filterSwitchSpinDirection(pool, settings, flipDirection = false) {
   return pool.filter((entry) => {
     if (entry.name === "None") {
       return true;
     }
-    if (entry.name.includes("Inspin")) {
+    const isInspin = entry.name.includes("Inspin");
+    const readsAsAlleyOop = flipDirection ? !isInspin : isInspin;
+    if (readsAsAlleyOop) {
       return settings.spinBetweenAlleyOop !== false;
     }
-    if (entry.name.includes("Outspin")) {
-      return settings.spinBetweenTrue !== false;
-    }
-    return true;
+    return settings.spinBetweenTrue !== false;
   });
 }
 
@@ -517,7 +524,15 @@ function switchSpinCandidates(grind, switchUpGrind, settings) {
         { name: "Inspin 450", weight: 1, score: 3 },
         { name: "Outspin 450", weight: 1, score: 3 },
       ];
-  pool = filterSwitchSpinDirection(pool, settings);
+  // Only ever one groove side in a cross-type transition — same idea
+  // as trickNamer.js's crossTypeGrooveName, just needed here too so the
+  // direction filter can apply the same FS/BS flip the display uses.
+  const crossTypeGrooveGrind = sameType ? null : grind.isGroove ? grind : switchUpGrind;
+  const flipDirection = !!(
+    crossTypeGrooveGrind &&
+    (crossTypeGrooveGrind.name === "Frontside" || crossTypeGrooveGrind.name.includes("FS "))
+  );
+  pool = filterSwitchSpinDirection(pool, settings, flipDirection);
   // If both directions got switched off at once, fall back to the
   // unfiltered pool rather than leaving nothing to spin (mirrors the
   // Spin in reel's own safety net).
