@@ -93,13 +93,61 @@ export function nameTrick(slots, options = {}) {
       ? switchUpVariation.winner.name
       : null;
 
-  // Same rule as the first grind's isReverse: a spin transition into a
-  // soul target triggers the synonym swap (all known synonyms are soul
-  // grinds) only if it doesn't land back facing forward — "no
-  // transition at all", a groove target, or a 360/720 transition all
-  // keep the plain name.
-  const switchUpIsReverse =
-    !switchUpIsGroove && !!switchSpin && isReverseSpinDegree(switchSpin.winner.name);
+  // Whether THIS transition, taken on its own, flips your facing
+  // (same idea as isReverse above, but for the switch spin) — true for
+  // 180/540/900 same-type and any cross-type 270/450, false for a
+  // 360/720 or no switch spin at all.
+  const switchUpTransitionFlips =
+    !!switchSpin && isReverseSpinDegree(switchSpin.winner.name);
+  // The switch-up's real backward/forward state has to account for
+  // whatever the FIRST grind already did — a 360 (or a straight,
+  // no-rotation switch) doesn't undo an Alley-oop/True entry, it just
+  // carries you into the second grind exactly as backward as you
+  // already were. So this is the first grind's isReverse XOR'd with
+  // whether THIS transition flips it, not the transition considered on
+  // its own: "AO Top Soul" + a plain 360 switch stays backward the
+  // whole way through (must read as e.g. "AO Top Soul to 360 Soyale",
+  // never a plain "360 Torque Soul" as if the trick had started
+  // forward) — same rule as a real board/skate switch-up: you don't
+  // reset your rotation just because the next transition happens to be
+  // a full spin. All known synonyms are soul grinds, so a groove
+  // target never needs any of this.
+  const switchUpIsReverse = !switchUpIsGroove && isReverse !== switchUpTransitionFlips;
+  // Whether this switch-up transition actually reads as Alley-oop
+  // (vs. True) for grind-synonym purposes — same resolved direction
+  // nameSwitchSpin uses for its own label, NOT just a raw "Inspin"
+  // text check. That distinction matters for a cross-type (270/450)
+  // transition: entering a Frontside-type groove grind flips which
+  // raw reel value (Inspin/Outspin) reads as Alley-oop vs True, same
+  // as the FS/BS split trickGenerator.js uses for the real pool. Get
+  // this wrong and a genuine True cross-type transition into e.g.
+  // Mistrial still matches the Alley-oop-only "AO Top Mistrial"
+  // synonym, producing the contradictory "True AO Top Mistrial".
+  const switchSpinIsInspin = (() => {
+    if (!switchSpin) {
+      return false;
+    }
+    const name = switchSpin.winner.name;
+    const rawIsInspin = name.includes("Inspin");
+    if ((name.includes("270") || name.includes("450")) && crossTypeGrooveName) {
+      const isFrontside = isFrontsideGrindName(crossTypeGrooveName);
+      return isFrontside ? !rawIsInspin : rawIsInspin;
+    }
+    return rawIsInspin;
+  })();
+  // Same carry-over idea as switchUpIsReverse: when THIS transition
+  // doesn't flip anything (a plain 360, or no switch spin at all), the
+  // direction that's still "active" is whichever one the first grind
+  // was already in (only meaningful when it actually had a real
+  // spin-in — Fakie alone has no Inspin/Outspin of its own to carry).
+  // When the transition DOES flip, that's a fresh, real rotation of
+  // its own, so it's judged purely on its own resolved direction,
+  // exactly as before.
+  const switchUpIsInspin = switchUpTransitionFlips
+    ? switchSpinIsInspin
+    : hasSpin
+    ? isInspin
+    : switchSpinIsInspin;
   // switchSpinName is folded into the same string as the grind name
   // (rather than joined on afterwards) so a reverse synonym's stripping
   // of the literal "Alley-oop"/"Topside" text below also reaches it —
@@ -115,6 +163,7 @@ export function nameTrick(slots, options = {}) {
         switchUp.winner.name,
         {
           isReverse: switchUpIsReverse,
+          isInspin: switchUpIsInspin,
           isTopside: !!(switchUpVariationName && switchUpVariationName.includes("Topside")),
           isNegative: !!(switchUpVariationName && switchUpVariationName.includes("Negative")),
           isRough: !!(switchUpVariationName && switchUpVariationName.includes("Rough")),
@@ -137,6 +186,7 @@ export function nameTrick(slots, options = {}) {
 
   let result = applyGrindSynonym(tokens.join(" "), grind.winner.name, {
     isReverse,
+    isInspin,
     isTopside: !!(variation && variation.winner.name.includes("Topside")),
     isNegative: !!(variation && variation.winner.name.includes("Negative")),
     isRough: !!(variation && variation.winner.name.includes("Rough")),
@@ -292,6 +342,7 @@ function applyGrindSynonym(result, grindName, props) {
   const synonym = GRIND_SYNONYMS.filter((syn) => syn.name === grindName).find(
     (syn) =>
       !(syn.isReverse && !props.isReverse) &&
+      !(syn.isInspin && !props.isInspin) &&
       !(syn.isTopside && !props.isTopside) &&
       !(syn.isNegative && !props.isNegative) &&
       !(syn.isRough && !props.isRough)

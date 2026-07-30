@@ -199,7 +199,7 @@ function startReview() {
         @click="onReset"
         @blur="confirmingReset = false"
       >
-        {{ confirmingReset ? "Retape pour tout effacer" : "Réinitialiser la progression" }}
+        {{ confirmingReset ? "Confirmer" : "Réinitialiser la progression" }}
       </button>
     </div>
   </AppModal>

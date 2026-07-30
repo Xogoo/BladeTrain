@@ -126,7 +126,7 @@ const showSwitchUps = ref(false);
         @click="onReset"
         @blur="confirmingReset = false"
       >
-        {{ confirmingReset ? "Retape pour tout effacer" : "Réinitialiser l'historique" }}
+        {{ confirmingReset ? "Confirmer" : "Réinitialiser l'historique" }}
       </button>
     </div>
   </AppModal>

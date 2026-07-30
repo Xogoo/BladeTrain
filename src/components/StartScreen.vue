@@ -21,7 +21,8 @@ const emit = defineEmits(["open-settings"]);
 
 const { settings, applyLevel, saveCustomFamily, deleteCustomFamily } = useSettings();
 const { startGame, startFamilySession, hasOpenSessionToday, endOpenSession, state } = useGame();
-const { familyIndex, isFamilyComplete, careerProgress, resetCareerProgress } = useCollection();
+const { familyIndex, isFamilyComplete, careerProgress, resetCareerProgress, resetFamilyProgress } =
+  useCollection();
 const { needsBackupReminder, exportBackup, exportFamilies, importFamilies } = useBackup();
 
 function startSoloSession() {
@@ -128,9 +129,12 @@ function onImportFamiliesFileChosen(event) {
   reader.readAsText(file);
 }
 
+const selectedFamilyId = computed(() =>
+  familySection.value === "builtin" ? selectedBuiltinFamilyId.value : selectedCustomFamilyId.value
+);
+
 function startFamilyModeSession() {
-  const id =
-    familySection.value === "builtin" ? selectedBuiltinFamilyId.value : selectedCustomFamilyId.value;
+  const id = selectedFamilyId.value;
   if (id) {
     startFamilySession(id, settings);
   }
@@ -210,6 +214,7 @@ function startCareerFamily(careerStep) {
   }
   startFamilySession(careerStep.family.id, settings, {
     restart: isFamilyComplete(careerStep.family.id),
+    isCareer: true,
   });
 }
 
@@ -225,6 +230,30 @@ function onCareerReset() {
   resetCareerProgress();
   confirmingCareerReset.value = false;
 }
+
+// Same tap-again-to-confirm pattern, but for whichever single family
+// is currently selected in the picker (builtin or perso) — resets only
+// that family's progress, not the whole Career/Collection.
+const confirmingFamilyReset = ref(false);
+function onFamilyReset() {
+  if (!selectedFamilyId.value) {
+    return;
+  }
+  if (!confirmingFamilyReset.value) {
+    confirmingFamilyReset.value = true;
+    return;
+  }
+  resetFamilyProgress(selectedFamilyId.value);
+  confirmingFamilyReset.value = false;
+}
+// The confirm must only ever fire on the SAME button/family that
+// armed it — switching the selected family (or the builtin/perso tab)
+// while armed silently carried the confirm over to whatever family
+// happened to be selected next, letting a single tap reset the wrong
+// one. Any change to what's selected disarms it.
+watch(selectedFamilyId, () => {
+  confirmingFamilyReset.value = false;
+});
 
 const MODES = [
   {
@@ -378,7 +407,7 @@ function removePlayer(index) {
       >
         {{
           confirmingCareerReset
-            ? "Retape pour tout effacer"
+            ? "Confirmer"
             : "Réinitialiser la Carrière"
         }}
       </button>
@@ -490,6 +519,15 @@ function removePlayer(index) {
         >
           Historique
         </button>
+        <button
+          class="btn btn--ghost family-picker__delete"
+          :class="{ 'btn--confirm': confirmingFamilyReset }"
+          :disabled="!selectedBuiltinFamilyId"
+          @click="onFamilyReset"
+          @blur="confirmingFamilyReset = false"
+        >
+          {{ confirmingFamilyReset ? "Confirmer" : "Réinitialiser" }}
+        </button>
       </div>
       <p class="setup__hint">
         Un trick précis à la fois, tiré au hasard parmi ceux pas encore
@@ -519,11 +557,20 @@ function removePlayer(index) {
         </button>
         <button
           class="btn btn--ghost family-picker__delete"
+          :class="{ 'btn--confirm': confirmingFamilyReset }"
+          :disabled="!selectedCustomFamilyId"
+          @click="onFamilyReset"
+          @blur="confirmingFamilyReset = false"
+        >
+          {{ confirmingFamilyReset ? "Confirmer" : "Réinitialiser" }}
+        </button>
+        <button
+          class="btn btn--ghost family-picker__delete"
           :class="{ 'btn--confirm': confirmingFamilyDelete }"
           @click="onDeleteCustomFamily"
           @blur="confirmingFamilyDelete = false"
         >
-          {{ confirmingFamilyDelete ? "Retape pour confirmer" : "Supprimer" }}
+          {{ confirmingFamilyDelete ? "Confirmer" : "Supprimer" }}
         </button>
       </div>
       <p v-else class="setup__hint">

@@ -30,7 +30,6 @@ const {
   settings,
   applyLevel,
   setTrick,
-  reset,
   grindEnabled,
   setGrind,
   setAllGrinds,
@@ -402,7 +401,6 @@ const grindList = [
 
     <div class="actions">
       <button class="btn btn--primary" @click="showPreview = true">Terminé</button>
-      <button class="btn btn--ghost" @click="reset()">Tout réinitialiser</button>
     </div>
   </AppModal>
 

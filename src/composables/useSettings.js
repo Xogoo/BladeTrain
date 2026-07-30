@@ -391,6 +391,23 @@ export function useSettings() {
       settings.tricks.spinIn180 = true;
       settings.tricks.spinIn270 = true;
     }
+    // Mirror of the bootstrap above: once BOTH Alley-oop and True are
+    // off, the 180/270 that got auto-checked for them no longer have
+    // any direction to spin in, so they come back off too — otherwise
+    // they'd silently stay checked but do nothing (or worse, still let
+    // generateSpin pick a 180/270 spin with neither direction enabled,
+    // which shouldn't be reachable). Only 180/270 are touched here —
+    // any other degree (360/450/540) the player picked independently is
+    // left exactly as they set it.
+    if (
+      !value &&
+      (key === "spinInAlleyOop" || key === "spinInTrue") &&
+      !settings.tricks.spinInAlleyOop &&
+      !settings.tricks.spinInTrue
+    ) {
+      settings.tricks.spinIn180 = false;
+      settings.tricks.spinIn270 = false;
+    }
     if (
       value &&
       (key === "spinBetweenAlleyOop" || key === "spinBetweenTrue") &&
@@ -398,6 +415,15 @@ export function useSettings() {
     ) {
       settings.tricks.spinBetween180 = true;
       settings.tricks.spinBetween270 = true;
+    }
+    if (
+      !value &&
+      (key === "spinBetweenAlleyOop" || key === "spinBetweenTrue") &&
+      !settings.tricks.spinBetweenAlleyOop &&
+      !settings.tricks.spinBetweenTrue
+    ) {
+      settings.tricks.spinBetween180 = false;
+      settings.tricks.spinBetween270 = false;
     }
     settings.level = CUSTOM_LEVEL;
   };

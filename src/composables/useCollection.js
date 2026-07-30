@@ -141,7 +141,43 @@ function loadCollection() {
   }
 }
 
-const collection = reactive(loadCollection());
+// One-time migration: the old combined "Zerospin" family (soul +
+// groove grinds together) was split into "zerospin-soul" and
+// "zerospin-groove" (two separate Career tiers). Existing progress
+// under the old ids would otherwise be silently orphaned — instead,
+// split its landedKeys between the two new ids by looking up whether
+// each entry's grind is soul or groove, then drop the old ids. Safe to
+// run every load: it's a no-op once the old ids are gone.
+function migrateZerospinSplit(data) {
+  const isGrooveGrindName = (grindName) =>
+    GRINDS.find((g) => g.name === grindName)?.isGroove ?? false;
+
+  for (const suffix of ["normal", "switch"]) {
+    const oldId = `zerospin-${suffix}`;
+    const old = data.familyProgress?.[oldId];
+    if (!old) {
+      continue;
+    }
+    const soulId = `zerospin-soul-${suffix}`;
+    const grooveId = `zerospin-groove-${suffix}`;
+    const soulKeys = [];
+    const grooveKeys = [];
+    for (const key of old.landedKeys || []) {
+      const grindName = key.split("|")[0];
+      (isGrooveGrindName(grindName) ? grooveKeys : soulKeys).push(key);
+    }
+    const soul = data.familyProgress[soulId] || { landedKeys: [], completedAt: null };
+    const groove = data.familyProgress[grooveId] || { landedKeys: [], completedAt: null };
+    soul.landedKeys = [...new Set([...soul.landedKeys, ...soulKeys])];
+    groove.landedKeys = [...new Set([...groove.landedKeys, ...grooveKeys])];
+    data.familyProgress[soulId] = soul;
+    data.familyProgress[grooveId] = groove;
+    delete data.familyProgress[oldId];
+  }
+  return data;
+}
+
+const collection = reactive(migrateZerospinSplit(loadCollection()));
 
 watch(
   collection,
@@ -215,7 +251,27 @@ function familyProgressEntry(familyId) {
       completedAt: existing?.completedAt || null,
     };
   }
-  return collection.familyProgress[familyId];
+  const progress = collection.familyProgress[familyId];
+  // Self-heal: `completedAt` was trusted forever once set, but a
+  // family's `entries` can change after the fact (a naming/content
+  // fix, a family getting split into two like Zerospin did) — if the
+  // CURRENT entries aren't all covered by what's actually in
+  // landedKeys anymore, the family isn't really done, no matter what
+  // completedAt says. Clearing it here means the family correctly
+  // shows as incomplete again, and actually finishing it re-triggers
+  // the completion badge/toast normally instead of staying silently
+  // stuck on a stale "done".
+  if (progress.completedAt) {
+    const family = resolveFamilyById(familyId);
+    if (family) {
+      const keys = new Set(progress.landedKeys);
+      const stillComplete = family.entries.every((entry) => keys.has(familyEntryKey(entry)));
+      if (!stillComplete) {
+        progress.completedAt = null;
+      }
+    }
+  }
+  return progress;
 }
 
 function familyLandedKeySet(familyId) {
@@ -233,7 +289,7 @@ function familyIndex(familyId) {
 }
 
 function isFamilyComplete(familyId) {
-  return Boolean(collection.familyProgress[familyId]?.completedAt);
+  return Boolean(familyProgressEntry(familyId).completedAt);
 }
 
 /**
@@ -638,8 +694,17 @@ export function useCollection() {
         !(syn.isTopside && !guessIsTopside)
     );
     if (synonym) {
-      const prefix = guessIsReverse && !synonym.isReverse ? "AO " : "";
-      return `${prefix}${synonym.newName}`;
+      // A synonym like "AO Top Mistrial" already bakes Topside into its
+      // own name, so nothing more to add there — but one like "Soyale"
+      // doesn't, so a topside guess needs its own explicit "Top" (the
+      // real name is "Top Soyale", never just "Soyale").
+      const prefix = [
+        guessIsReverse && !synonym.isReverse && "AO",
+        guessIsTopside && !synonym.isTopside && "Top",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      return prefix ? `${prefix} ${synonym.newName}` : synonym.newName;
     }
     const prefix = [guessIsReverse && "AO", guessIsTopside && "Top"]
       .filter(Boolean)

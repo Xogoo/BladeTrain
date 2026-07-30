@@ -73,6 +73,14 @@ const state = reactive({
   // below and StartScreen's own `step`/`careerTrack` init). Consumed
   // and cleared by StartScreen as soon as it reads it.
   pendingCareerTrack: null,
+  // Whether the CURRENT solo family session was entered through the
+  // Career flow specifically (StartScreen's startCareerFamily / the
+  // "next family" continuation below) rather than the plain "Familles
+  // de tricks" picker. Every built-in family has a `track` regardless
+  // of which of the two ways it was started, so that alone can't tell
+  // them apart — this can. Drives which menu "Retour" on the spin
+  // screen goes back to (see GameScreen.vue's isCareerFamily).
+  isCareerSession: false,
 
   // group (S.K.A.T.E) state
   players: [], // { name, letters }
@@ -239,7 +247,7 @@ export function useGame() {
    * is set (or the family was already fully complete, in which case it
    * restarts anyway).
    */
-  const startFamilySession = (familyId, settings, { restart = false } = {}) => {
+  const startFamilySession = (familyId, settings, { restart = false, isCareer = false } = {}) => {
     state.mode = "solo";
     state.lockedPairs = null;
     state.activeFamilyId = familyId;
@@ -247,6 +255,7 @@ export function useGame() {
     state.familyJustCompleted = null;
     state.careerJustCompleted = null;
     state.freeLoopFamilyId = null;
+    state.isCareerSession = isCareer;
     if (restart || collection.isFamilyComplete(familyId)) {
       collection.resetFamilyProgress(familyId);
     }
@@ -481,7 +490,7 @@ export function useGame() {
     state.familyJustCompleted = null;
     state.careerJustCompleted = null;
     if (next) {
-      startFamilySession(next.id, settings);
+      startFamilySession(next.id, settings, { isCareer: true });
     } else {
       nextSpin(settings);
     }
@@ -554,6 +563,7 @@ export function useGame() {
     }
     state.activeFamilyId = null;
     state.activeFamilyEntryIndex = null;
+    state.isCareerSession = false;
     state.pendingCareerTrack = track;
     goToStart();
   };

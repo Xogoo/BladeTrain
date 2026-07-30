@@ -23,7 +23,6 @@ function onCreateFamily() {
   newFamilyName.value = "";
 }
 
-const MAX_SHOWN = 20;
 const SAMPLE_ROLLS = 400;
 
 // Try the real, exact count (and full entry list) first — cheap for
@@ -41,9 +40,8 @@ const sample = computed(() => {
   if (exact.exact) {
     return {
       total: exact.names.length,
-      shown: exact.names.slice(0, MAX_SHOWN),
+      shown: exact.names,
       entries: exact.entries,
-      truncated: exact.names.length > MAX_SHOWN,
       isExact: true,
     };
   }
@@ -62,9 +60,8 @@ const sample = computed(() => {
   const all = [...names].sort((a, b) => a.localeCompare(b));
   return {
     total: all.length,
-    shown: all.slice(0, MAX_SHOWN),
+    shown: all,
     entries: [],
-    truncated: true,
     isExact: false,
   };
 });
@@ -73,19 +70,15 @@ const sample = computed(() => {
 <template>
   <AppModal title="Aperçu des tricks possibles" @close="emit('back')">
     <p class="hint">
-      <template v-if="sample.isExact && !sample.truncated">
+      <template v-if="sample.isExact">
         {{ sample.total }} trick{{ sample.total === 1 ? "" : "s" }} possible{{
           sample.total === 1 ? "" : "s"
         }}
         avec ces réglages :
       </template>
-      <template v-else-if="sample.isExact">
-        {{ sample.total }} tricks différents possibles avec ces réglages — en
-        voici {{ MAX_SHOWN }} :
-      </template>
       <template v-else>
         Réglages trop larges pour un calcul exact — au moins {{ sample.total }}
-        tricks différents possibles, en voici {{ MAX_SHOWN }} :
+        tricks différents trouvés sur {{ SAMPLE_ROLLS }} tirages :
       </template>
     </p>
 

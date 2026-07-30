@@ -82,7 +82,13 @@ watch(
   }
 );
 
-// Badges earned by the last landed trick pop up as a short toast.
+// Only when the CURRENT session was actually entered through the
+// Career flow (not just "this family happens to have a track", which
+// every built-in family does regardless of how it was started — see
+// state.isCareerSession) does Retour have a Career path screen to
+// return to instead of its regular giveUp behavior.
+const isCareerFamily = computed(() => state.isCareerSession);
+
 // "Terminer la session/partie" needs a tap-again-to-confirm, same
 // pattern as the reset buttons elsewhere — too easy to hit by accident
 // mid-session otherwise, and there's no undo once it's ended.
@@ -93,30 +99,29 @@ function onEndSessionClick() {
     return;
   }
   confirmingEndSession.value = false;
-  giveUp();
-}
-
-// Only a built-in Career family (has a track) has a path screen to
-// return to — a personal family or targeted training doesn't.
-const isCareerFamily = computed(() => Boolean(activeFamily.value?.track));
-
-const confirmingBackToCareer = ref(false);
-function onBackToCareerClick() {
-  if (!confirmingBackToCareer.value) {
-    confirmingBackToCareer.value = true;
-    return;
+  if (isCareerFamily.value) {
+    backToCareer();
+  } else {
+    giveUp();
   }
-  confirmingBackToCareer.value = false;
-  backToCareer();
 }
 
 // Badges earned in the same spin used to all stack on screen together
 // (with just a staggered slam-in animation) — now they queue up and
-// show one at a time, each getting its own full 4.5s, so a big
+// show one at a time, each getting its own display window, so a big
 // multi-badge moment doesn't turn into a wall of overlapping stamps.
 const badgeToast = ref([]); // always 0 or 1 badge, kept as an array so the template (v-for) doesn't need to change
 let badgeQueue = [];
 let badgeToastTimer = null;
+
+// Slightly shorter than before, and — importantly — the slot is fully
+// emptied (letting the .badge-stamp-leave-active transition finish)
+// before the next one appears, instead of swapping directly from one
+// badge straight to the next. That gap is what stopped the two from
+// visually overlapping: the next stamp always slams down into the
+// exact same spot only once the previous one is fully gone.
+const BADGE_DISPLAY_MS = 2200;
+const BADGE_GAP_MS = 450;
 
 function showNextBadge() {
   if (badgeQueue.length === 0) {
@@ -125,7 +130,13 @@ function showNextBadge() {
   }
   badgeToast.value = [badgeQueue.shift()];
   window.clearTimeout(badgeToastTimer);
-  badgeToastTimer = window.setTimeout(showNextBadge, 2500);
+  badgeToastTimer = window.setTimeout(hideThenShowNext, BADGE_DISPLAY_MS);
+}
+
+function hideThenShowNext() {
+  badgeToast.value = [];
+  window.clearTimeout(badgeToastTimer);
+  badgeToastTimer = window.setTimeout(showNextBadge, BADGE_GAP_MS);
 }
 
 watch(
@@ -211,26 +222,15 @@ function onReelStopped() {
 
 <template>
   <section class="game" :class="{ 'game--focus': settings.focusMode }">
-    <div v-if="!settings.focusMode" class="game__back-row">
-      <button
-        class="btn btn--ghost game__back"
-        :class="{ 'btn--confirm': confirmingEndSession }"
-        @click="onEndSessionClick()"
-        @blur="confirmingEndSession = false"
-      >
-        &lsaquo; {{ confirmingEndSession ? "Retape pour confirmer" : "Retour" }}
-      </button>
-
-      <button
-        v-if="isCareerFamily"
-        class="btn btn--ghost game__back-career"
-        :class="{ 'btn--confirm': confirmingBackToCareer }"
-        @click="onBackToCareerClick()"
-        @blur="confirmingBackToCareer = false"
-      >
-        &lsaquo; {{ confirmingBackToCareer ? "Retape pour confirmer" : "Carrière" }}
-      </button>
-    </div>
+    <button
+      v-if="!settings.focusMode"
+      class="btn btn--ghost game__back"
+      :class="{ 'btn--confirm': confirmingEndSession }"
+      @click="onEndSessionClick()"
+      @blur="confirmingEndSession = false"
+    >
+      &lsaquo; {{ confirmingEndSession ? "Confirmer" : "Retour" }}
+    </button>
 
     <button
       v-if="!settings.focusMode"
@@ -256,7 +256,7 @@ function onReelStopped() {
       @blur="confirmingEndSession = false"
     >
       <AppIcon name="flag" :size="13" />
-      {{ confirmingEndSession ? "Retape pour confirmer" : "Terminer la session" }}
+      {{ confirmingEndSession ? "Confirmer" : "Terminer la session" }}
     </button>
 
     <button
@@ -333,7 +333,7 @@ function onReelStopped() {
                 @blur="confirmingEndSession = false"
               >
                 <AppIcon name="flag" :size="16" />
-                {{ confirmingEndSession ? "Retape pour confirmer" : "Terminer la session" }}
+                {{ confirmingEndSession ? "Confirmer" : "Terminer la session" }}
               </button>
             </div>
           </template>
@@ -374,7 +374,7 @@ function onReelStopped() {
                 @blur="confirmingEndSession = false"
               >
                 <AppIcon name="flag" :size="16" />
-                {{ confirmingEndSession ? "Retape pour confirmer" : "Terminer la session" }}
+                {{ confirmingEndSession ? "Confirmer" : "Terminer la session" }}
               </button>
               <button
                 class="btn btn--ghost"
@@ -425,7 +425,7 @@ function onReelStopped() {
               @blur="confirmingEndSession = false"
             >
               <AppIcon name="flag" :size="16" />
-              {{ confirmingEndSession ? "Retape pour confirmer" : "Terminer la partie" }}
+              {{ confirmingEndSession ? "Confirmer" : "Terminer la partie" }}
             </button>
           </div>
         </template>
@@ -533,18 +533,8 @@ function onReelStopped() {
   position: relative;
 }
 
-.game__back-row {
-  display: flex;
-  gap: 8px;
-  align-self: flex-start;
-}
-
 .game__back {
-  font-size: 13px;
-  padding: 10px 16px;
-}
-
-.game__back-career {
+  align-self: flex-start;
   font-size: 13px;
   padding: 10px 16px;
 }
