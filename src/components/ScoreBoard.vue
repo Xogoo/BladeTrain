@@ -13,9 +13,6 @@ const { familyIndex, sessionById, targetedTrainingItems } = useCollection();
 const showChecklist = ref(false);
 const showTargetedChecklist = ref(false);
 
-// "X/Y" for the Grinds block when there's no active family — X = how
-// many of the currently-enabled grinds have been landed at least once,
-// Y = how many are enabled at all.
 // "X/Y" for the Grinds block when there's no active family — same
 // item list (standalone grinds + switch-up combos, each counted as
 // ONE trick) as TargetedTrainingChecklistPanel, so the two never

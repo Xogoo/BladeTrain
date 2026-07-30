@@ -37,7 +37,7 @@ const onReset = () => {
   confirmingReset.value = false;
 };
 
-// Every built-in family (both tracks, all 19 tiers) plus the player's
+// Every built-in family (both tracks, all 20 tiers) plus the player's
 // own, each with its completion — a quick "where do I stand" overview
 // without having to open Carrière/Familles one at a time. Sorted
 // normal-then-switch-by-tier so it reads the same order as Carrière;

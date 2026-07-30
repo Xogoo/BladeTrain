@@ -606,7 +606,6 @@ export function useSettings() {
     settings,
     applyLevel,
     setTrick,
-    reset,
     levelName,
     reelSpeedMs,
     saveCustomFamily,

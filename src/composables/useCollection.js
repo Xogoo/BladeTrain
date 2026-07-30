@@ -81,8 +81,8 @@ export const BADGES = [
     desc: `Termine la famille "${family.name}"`,
   })),
   // The big one: every family of a whole Career track, in order.
-  { id: "career-normal", name: "Blade Runner", desc: "Termine les 19 familles de la Carrière Normal" },
-  { id: "career-switch", name: "Switchblade", desc: "Termine les 19 familles de la Carrière Switch" },
+  { id: "career-normal", name: "Blade Runner", desc: "Termine les 20 familles de la Carrière Normal" },
+  { id: "career-switch", name: "Switchblade", desc: "Termine les 20 familles de la Carrière Switch" },
 ];
 
 const SOUL_PLATE_GRINDS = GRINDS.filter((g) => !g.isGroove && !g.isSoulGroove);
