@@ -440,11 +440,6 @@ export function useSettings() {
     settings.level = CUSTOM_LEVEL;
   };
 
-  const reset = () => {
-    Object.assign(settings, defaultSettings());
-    Object.assign(settings.tricks, ALL_TRICKS_OFF);
-  };
-
   const grindEnabled = (name) => settings.grinds[name] !== false;
   // Presets define a grind selection too, so custom picks flip the level.
   const setGrind = (name, value) => {

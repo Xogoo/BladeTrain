@@ -488,17 +488,11 @@ function onReelStopped() {
           />
         </filter>
       </svg>
-      <transition-group
-        name="badge-stamp"
-        tag="div"
-        class="badge-stamp-stack"
-        :class="{ 'badge-stamp-stack--multi': badgeToast.length > 1 }"
-      >
+      <transition-group name="badge-stamp" tag="div" class="badge-stamp-stack">
         <div
-          v-for="(badge, i) in badgeToast"
+          v-for="badge in badgeToast"
           :key="badge.id"
           class="badge-stamp"
-          :style="{ '--stamp-delay': `${i * 0.2}s` }"
         >
           <div class="badge-stamp__shape" aria-hidden="true">
             <div class="badge-stamp__ink" />
@@ -941,40 +935,8 @@ function onReelStopped() {
   justify-content: center;
   width: min(78vw, 340px);
   aspect-ratio: 1;
-  animation: badge-stamp-slam 1s var(--stamp-delay, 0s) cubic-bezier(0.22, 0.68, 0.32, 1)
-      both,
-    badge-stamp-shake 0.5s calc(var(--stamp-delay, 0s) + 1s) ease-out;
-}
-
-/* Two or more badges landing at once used to stack at full size and
-   overflow the screen — shrink each stamp (and its inner content)
-   once there's more than one so the whole stack fits and reads
-   clearly instead of spilling off-screen. */
-.badge-stamp-stack--multi {
-  gap: 10px;
-}
-
-.badge-stamp-stack--multi .badge-stamp {
-  width: min(52vw, 220px);
-}
-
-.badge-stamp-stack--multi .badge-stamp__content {
-  padding: 16px 14px;
-  gap: 6px;
-}
-
-.badge-stamp-stack--multi .badge-stamp__icon {
-  width: 52px;
-  height: 52px;
-}
-
-.badge-stamp-stack--multi .badge-stamp__text strong {
-  font-size: 17px;
-}
-
-.badge-stamp-stack--multi .badge-stamp__text span {
-  font-size: 12px;
-  max-width: 150px;
+  animation: badge-stamp-slam 1s cubic-bezier(0.22, 0.68, 0.32, 1) both,
+    badge-stamp-shake 0.5s 1s ease-out;
 }
 
 /* Everything that should look like rough-edged ink — clipped to a
@@ -990,7 +952,7 @@ function onReelStopped() {
   background: rgba(var(--bg-0-rgb), 0.96);
   box-shadow: var(--glow-red);
   filter: url(#badge-stamp-ink);
-  animation: badge-stamp-glow 1.8s calc(var(--stamp-delay, 0s) + 1.5s) ease-in-out infinite;
+  animation: badge-stamp-glow 1.8s 1.5s ease-in-out infinite;
 }
 
 /* A second, slightly offset outline behind the main one — the classic

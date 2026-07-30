@@ -5,7 +5,7 @@ import TrickPreviewPanel from "./TrickPreviewPanel.vue";
 import ColorWheel from "./ColorWheel.vue";
 import { useGame } from "../composables/useGame.js";
 import { GRINDS, RARE_GRIND_NAME_PARTS } from "../game/trickData.js";
-import { computeAccentPalette } from "../game/accentPalette.js";
+import { computeAccentPalette, computeAccentGlow } from "../game/accentPalette.js";
 import {
   LEVELS,
   SOLO_LEVELS,
@@ -40,13 +40,20 @@ const {
   setSwitchUpGrindsByType,
 } = useSettings();
 
-// A representative swatch for the "Personnalisé" button itself, so it
-// previews the chosen hue even while looking at Monochrome.
-const currentAccentSwatch = computed(
-  () =>
-    computeAccentPalette(settings.accentHue, settings.invertedTheme, settings.accentSaturation)
-      .red
-);
+// Full CTA-ready palette + matching glow for the chosen hue, so the
+// "Personnalisé" button can use the exact same recipe as Monochrome's
+// own .btn--primary look (gradient, contrast-checked text color,
+// matching halo) instead of a flat swatch with a hardcoded dark text
+// color and no glow at all — the two looked inconsistent otherwise.
+const currentAccentPreview = computed(() => {
+  const palette = computeAccentPalette(
+    settings.accentHue,
+    settings.invertedTheme,
+    settings.accentSaturation
+  );
+  const glow = computeAccentGlow(palette, settings.invertedTheme);
+  return { palette, glow };
+});
 
 const { lastBackupAt, exportBackup, restoreBackup } = useBackup();
 
@@ -230,8 +237,12 @@ const grindList = [
           :class="settings.accentColor === 'custom' ? 'btn--primary' : 'btn--ghost'"
           :style="
             settings.accentColor === 'custom'
-              ? { background: currentAccentSwatch, borderColor: currentAccentSwatch, color: '#111' }
-              : {}
+              ? {
+                  background: `linear-gradient(135deg, ${currentAccentPreview.palette.redHi}, ${currentAccentPreview.palette.red})`,
+                  color: currentAccentPreview.palette.ctaText,
+                  boxShadow: currentAccentPreview.glow.glowRed,
+                }
+              : { borderColor: currentAccentPreview.palette.redHi, color: currentAccentPreview.palette.redHi }
           "
           @click="settings.accentColor = 'custom'"
         >
