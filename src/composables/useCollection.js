@@ -147,8 +147,12 @@ function loadCollection() {
 // under the old ids would otherwise be silently orphaned — instead,
 // split its landedKeys between the two new ids by looking up whether
 // each entry's grind is soul or groove, then drop the old ids. Safe to
-// run every load: it's a no-op once the old ids are gone.
-function migrateZerospinSplit(data) {
+// run every load: it's a no-op once the old ids are gone. Exported so
+// useBackup.js's restoreBackup can run an OLDER backup through the
+// same migration instead of dropping it straight into the live
+// collection unmigrated (a restore mid-session doesn't go through
+// loadCollection() at all otherwise).
+export function migrateZerospinSplit(data) {
   const isGrooveGrindName = (grindName) =>
     GRINDS.find((g) => g.name === grindName)?.isGroove ?? false;
 

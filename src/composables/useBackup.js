@@ -1,5 +1,5 @@
 import { computed } from "vue";
-import { useCollection } from "./useCollection.js";
+import { useCollection, migrateZerospinSplit } from "./useCollection.js";
 import { useSettings } from "./useSettings.js";
 
 // There is no server here, and this app is sideloaded (not from the
@@ -173,7 +173,11 @@ export function useBackup() {
     ) {
       throw new Error("Ce fichier ne ressemble pas à une sauvegarde BLADE.");
     }
-    Object.assign(collection, payload.collection);
+    // A backup made before the Zerospin family split (see
+    // useCollection.js) never goes through loadCollection()'s own
+    // migration when restored mid-session — run it here too, or that
+    // family's progress comes back orphaned under the old ids.
+    Object.assign(collection, migrateZerospinSplit(payload.collection));
     if (payload.settings) {
       Object.assign(settings, payload.settings);
     }
