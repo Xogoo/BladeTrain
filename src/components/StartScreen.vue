@@ -337,7 +337,7 @@ function removePlayer(index) {
   <!-- step 1: pick a mode, nothing else -->
   <section v-if="step === 'mode'" class="start rise-in">
     <div class="start__logo">
-      <img class="start__logo-mark" src="/img/blade-skater-silhouette.png" alt="" aria-hidden="true" />
+      <div class="start__logo-mark" aria-hidden="true" />
       <h1 class="start__logo-text sticker-text">BLADE</h1>
     </div>
 
@@ -746,8 +746,27 @@ function removePlayer(index) {
 
 .start__logo-mark {
   width: min(280px, 60%);
-  height: auto;
+  aspect-ratio: 700 / 656;
+  -webkit-mask-image: url(/img/blade-skater-silhouette.png);
+  mask-image: url(/img/blade-skater-silhouette.png);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  /* The source PNG is plain white — this used to be recolored with a
+     CSS invert() filter for the inverted (light) theme instead. Now
+     that it's a mask, the accent color takes over automatically
+     whenever one's picked (--red-hi is only ever set on <body> when
+     accentColor is "custom" — see App.vue), falling back to that same
+     white/black split for Monochrome. */
+  background-color: var(--red-hi, #ffffff);
   filter: drop-shadow(0 6px 20px rgba(var(--fg-rgb), 0.25));
+}
+
+body.theme-inverted .start__logo-mark {
+  background-color: var(--red-hi, #000000);
 }
 
 .start__logo-text {
@@ -756,6 +775,12 @@ function removePlayer(index) {
   font-weight: 900;
   letter-spacing: 0.06em;
   line-height: 1;
+  /* Same idea as the logo mark: picks up the custom accent when one's
+     set, otherwise falls back to .sticker-text's own normal fill so
+     Monochrome looks exactly as it always did. The outline stays
+     .sticker-text's own (theme-contrasted) color either way — it's
+     read against the page background, not the accent. */
+  color: var(--red-hi, var(--sticker-fill));
   filter: drop-shadow(0 8px 34px rgba(var(--fg-rgb), 0.35));
 }
 

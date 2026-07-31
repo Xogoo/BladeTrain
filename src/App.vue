@@ -184,7 +184,7 @@ const openPanel = ref(requestedPanel ?? null);
 <template>
   <transition name="intro-out">
     <div v-if="!showApp" class="app-loading">
-      <img class="app-loading__logo-mark" src="/img/blade-skater-silhouette.png" alt="" aria-hidden="true" />
+      <div class="app-loading__logo-mark" aria-hidden="true" />
       <span class="app-loading__logo-text">BLADE</span>
       <button v-if="showStart" class="btn btn--go app-loading__start" @click="start()">
         <AppIcon name="play" :size="20" /> Démarrer
@@ -302,8 +302,21 @@ const openPanel = ref(requestedPanel ?? null);
 
 .app-loading__logo-mark {
   width: min(200px, 55vw);
-  height: auto;
+  aspect-ratio: 700 / 656;
   margin-bottom: 10px;
+  -webkit-mask-image: url(/img/blade-skater-silhouette.png);
+  mask-image: url(/img/blade-skater-silhouette.png);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  background-color: var(--red-hi, #ffffff);
+}
+
+body.theme-inverted .app-loading__logo-mark {
+  background-color: var(--red-hi, #000000);
 }
 
 .app-loading__logo-text {
@@ -311,7 +324,7 @@ const openPanel = ref(requestedPanel ?? null);
   font-size: clamp(52px, 15vw, 88px);
   font-weight: 900;
   letter-spacing: 0.06em;
-  color: var(--text);
+  color: var(--red-hi, var(--text));
   animation: intro-logo-pulse 1.6s ease-in-out infinite;
 }
 

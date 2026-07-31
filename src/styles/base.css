@@ -475,9 +475,7 @@ body.theme-inverted {
    doesn't hit the backdrop-filter compositing bug a page-wide invert
    caused. */
 body.theme-inverted .gameover__stamp,
-body.theme-inverted .logo-rain img,
-body.theme-inverted .start__logo-mark,
-body.theme-inverted .app-loading__logo-mark {
+body.theme-inverted .logo-rain img {
   filter: invert(1);
 
 }
