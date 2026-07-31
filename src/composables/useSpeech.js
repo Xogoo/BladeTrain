@@ -1,4 +1,4 @@
-import { reactive } from "vue";
+import { reactive, ref } from "vue";
 import {
   GRINDS,
   GRIND_SYNONYMS,
@@ -6,6 +6,9 @@ import {
   thumbUrl,
   synonymThumbUrl,
 } from "../game/trickData.js";
+import { useSettings } from "./useSettings.js";
+
+const settingsApi = useSettings();
 
 /**
  * Text-to-speech sampler: trick names are concatenations of a small
@@ -143,15 +146,25 @@ const SPOKEN = [
 
 const MAX_PHRASE_WORDS = 4; // longest sample key ("to 540 rewind out")
 
+// Expands abbreviations into full words a synthesized voice needs to
+// actually pronounce correctly (a screen reader-style engine reading
+// "BS"/"FS"/"AO" literally as letters would be unintelligible) — also
+// used ahead of the sample-based tokenizer below, since a few sample
+// keys are recorded under the expanded form too.
+function buildSpokenText(name) {
+  let text = name;
+  for (const [pattern, spoken] of SPOKEN) {
+    text = text.replace(pattern, spoken);
+  }
+  return text;
+}
+
 /**
  * Splits a trick name into sample keys, longest match first. Words
  * without a sample are dropped. Exported for tests.
  */
 export function matchSamples(name, hasSample) {
-  let text = name;
-  for (const [pattern, spoken] of SPOKEN) {
-    text = text.replace(pattern, spoken);
-  }
+  const text = buildSpokenText(name);
   const words = text.split(/\s+/).filter(Boolean);
 
   const keys = [];
@@ -245,6 +258,62 @@ export function stopSpeech() {
     }
   }
   playing = [];
+  if (typeof window !== "undefined" && window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+}
+
+// French (or French-tagged) voices the browser/OS exposes for
+// SpeechSynthesis — populated once and refreshed on "voiceschanged"
+// (most browsers load the actual voice list asynchronously, so it's
+// often empty on the very first call). Exported so SettingsPanel can
+// offer a picker without duplicating this.
+const synthesisVoices = ref([]);
+const isSynthesisSupported =
+  typeof window !== "undefined" && "speechSynthesis" in window;
+
+function refreshSynthesisVoices() {
+  if (!isSynthesisSupported) {
+    return;
+  }
+  const all = window.speechSynthesis.getVoices();
+  // Trick names are English skate vocabulary (Alley-Oop, Backslide,
+  // Fishbrain...) read out through French sentences elsewhere in the
+  // app — an English voice tends to actually pronounce them right,
+  // where a French one guesses at English spelling rules. Show every
+  // voice (nothing here is French-app-only), just with English ones
+  // listed first since they're the more likely pick.
+  synthesisVoices.value = [...all].sort((a, b) => {
+    const aEn = a.lang?.toLowerCase().startsWith("en") ? 0 : 1;
+    const bEn = b.lang?.toLowerCase().startsWith("en") ? 0 : 1;
+    return aEn - bEn;
+  });
+}
+
+if (isSynthesisSupported) {
+  refreshSynthesisVoices();
+  window.speechSynthesis.addEventListener("voiceschanged", refreshSynthesisVoices);
+}
+
+function speakWithSynthesis(name) {
+  if (!isSynthesisSupported) {
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(buildSpokenText(name));
+  const voice = synthesisVoices.value.find(
+    (v) => v.voiceURI === settingsApi.settings.speechVoiceURI
+  );
+  if (voice) {
+    utterance.voice = voice;
+    // Match the utterance's declared language to the chosen voice's
+    // own — forcing fr-FR while an English voice is selected fights
+    // the very reason to pick an English voice in the first place.
+    utterance.lang = voice.lang;
+  } else {
+    utterance.lang = "fr-FR";
+  }
+  window.speechSynthesis.speak(utterance);
 }
 
 export function toggleMute() {
@@ -281,8 +350,16 @@ export function playKeys(keys) {
   }
 }
 
-/** Reads a trick name aloud from the preloaded samples. */
+/** Reads a trick name aloud — via the recorded samples, or the
+ * browser's speech synthesis with a chosen voice, per settings.speechEngine. */
 export function speakTrick(name) {
+  if (state.muted) {
+    return;
+  }
+  if (settingsApi.settings.speechEngine === "synthesis") {
+    speakWithSynthesis(name);
+    return;
+  }
   playKeys(matchSamples(name, (key) => buffers.has(key)));
 }
 
@@ -374,5 +451,7 @@ export function useSpeech() {
     unlockAudio,
     stopSpeech,
     toggleMute,
+    synthesisVoices,
+    isSynthesisSupported,
   };
 }

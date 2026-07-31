@@ -519,6 +519,70 @@ export function useCollection() {
   const sessionLands = (sessionId) =>
     collection.lands.filter((l) => l.sessionId === sessionId);
 
+  // "YYYY-MM" keys for every month that has at least one landed trick,
+  // most recent first — feeds the month picker in MonthlyReportPanel so
+  // it only ever offers months with something to actually show.
+  const monthsWithActivity = computed(() => {
+    const keys = new Set(collection.lands.map((l) => l.date.slice(0, 7)));
+    return [...keys].sort().reverse();
+  });
+
+  /**
+   * Everything worth showing for one calendar month ("YYYY-MM"), built
+   * straight from the flat `lands` log plus badges/family progress
+   * filtered to that same window — no separate monthly bookkeeping to
+   * keep in sync, this just re-aggregates on demand.
+   */
+  const monthlyReport = (monthKey) => {
+    const lands = collection.lands.filter((l) => l.date.slice(0, 7) === monthKey);
+
+    const tricksCount = {};
+    const byDay = {};
+    let totalTries = 0;
+    let totalScore = 0;
+    for (const land of lands) {
+      tricksCount[land.trickName] = (tricksCount[land.trickName] || 0) + 1;
+      const day = land.date.slice(0, 10);
+      byDay[day] = (byDay[day] || 0) + 1;
+      totalTries += land.tries || 1;
+      totalScore += land.score || 0;
+    }
+
+    const topTricks = Object.entries(tricksCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, count]) => ({ name, count }));
+
+    const bestDayEntry = Object.entries(byDay).sort((a, b) => b[1] - a[1])[0] || null;
+
+    const badgesEarned = Object.entries(collection.badges)
+      .filter(([, date]) => date && date.slice(0, 7) === monthKey)
+      .map(([id]) => BADGES.find((b) => b.id === id))
+      .filter(Boolean);
+
+    const familiesCompleted = Object.entries(collection.familyProgress)
+      .filter(([, progress]) => progress.completedAt && progress.completedAt.slice(0, 7) === monthKey)
+      .map(([id]) => resolveFamilyById(id))
+      .filter(Boolean);
+
+    const sessionsThisMonth = collection.sessions.filter(
+      (s) => s.startedAt.slice(0, 7) === monthKey
+    );
+
+    return {
+      monthKey,
+      totalLands: lands.length,
+      totalTries,
+      totalScore,
+      daysPracticed: Object.keys(byDay).length,
+      sessionsCount: sessionsThisMonth.length,
+      topTricks,
+      bestDay: bestDayEntry ? { date: bestDayEntry[0], count: bestDayEntry[1] } : null,
+      badgesEarned,
+      familiesCompleted,
+    };
+  };
+
   /**
    * Every badge earned during a session's time window — a session's
    * own `endedAt` isn't set yet while it's still the active one, so
@@ -1071,6 +1135,8 @@ export function useCollection() {
     endSession,
     sessionById,
     sessionHistory,
+    monthlyReport,
+    monthsWithActivity,
     sessionLands,
     sessionBadges,
     sessionFamilyProgress,

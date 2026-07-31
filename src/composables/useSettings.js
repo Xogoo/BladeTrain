@@ -239,6 +239,18 @@ function defaultSettings() {
     // .game--focus in GameScreen.vue and the header/nav toggle in
     // App.vue.
     focusMode: false,
+    // Hands-free "réussi"/"raté"/"passer" via speech recognition during
+    // a solo session — off by default (experimental, browser support
+    // varies a lot). See useVoiceControl.js.
+    voiceControl: false,
+    // Which engine reads trick names aloud: "samples" (default) plays
+    // the recorded human-voice audio clips; "synthesis" uses the
+    // browser's own SpeechSynthesis with a chosen voice instead — see
+    // useSpeech.js. speechVoiceURI is that voice's own voiceURI
+    // (browser-assigned, not something to hand-author), empty meaning
+    // "whatever the browser defaults to".
+    speechEngine: "samples",
+    speechVoiceURI: "",
     // Only used to pre-fill the "to" field when sharing/emailing a
     // backup export — never sent anywhere on its own, see
     // useBackup.js.

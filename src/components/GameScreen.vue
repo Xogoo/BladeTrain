@@ -9,6 +9,7 @@ import { LETTERS, useGame } from "../composables/useGame.js";
 import { useSettings } from "../composables/useSettings.js";
 import { useSpeech } from "../composables/useSpeech.js";
 import { useCollection } from "../composables/useCollection.js";
+import { useVoiceControl } from "../composables/useVoiceControl.js";
 
 const REEL_STAGGER_MS = 320;
 
@@ -159,6 +160,35 @@ const visibleReels = computed(() =>
   state.spin ? state.spin.reels.filter((reel) => !reel.hidden) : []
 );
 const isResult = computed(() => state.phase === "result");
+
+// Hands-free "réussi"/"raté, on rejoue"/"passer" during a solo session
+// (see useVoiceControl.js) — "solo" here covers all of Carrière,
+// Famille, and plain Solo (they're all state.mode === "solo", just
+// with different training around them), so this listens continuously
+// for the whole session, from the moment it starts to whenever it
+// ends — not gated to the result screen, so it's already listening by
+// the time a trick lands. Only actually paused for group mode (no
+// voice flow designed for it — multiple players, turn order) and
+// while a panel is open on top (so a stray "passe" while reading the
+// trick explainer doesn't skip anything).
+const { isSupported: voiceSupported, isListening: voiceListening, lastHeard: voiceLastHeard, start: startVoice, stop: stopVoice } =
+  useVoiceControl();
+
+watch(
+  () => settings.voiceControl && isSolo.value && !openPanel.value,
+  (shouldListen) => {
+    if (shouldListen) {
+      startVoice({
+        onLand: () => landTrick(settings),
+        onSkip: () => skipTrick(settings),
+        onFail: () => addTry(),
+      });
+    } else {
+      stopVoice();
+    }
+  },
+  { immediate: true }
+);
 
 // Roster info for group mode: whether a player already attempted the
 // current trick, is up now, or is out of the game.
@@ -342,6 +372,12 @@ function onReelStopped() {
             <div class="result__score">
               <AppIcon name="zap" :size="18" />
               {{ state.spin.score }} point{{ state.spin.score === 1 ? "" : "s" }}
+            </div>
+
+            <div v-if="settings.voiceControl && voiceSupported" class="voice-indicator">
+              <span class="voice-indicator__dot" :class="{ 'voice-indicator__dot--live': voiceListening }" />
+              {{ voiceListening ? "À l'écoute…" : "Micro en pause" }}
+              <span v-if="voiceLastHeard" class="voice-indicator__heard">« {{ voiceLastHeard }} »</span>
             </div>
 
             <!-- attempt counter: tap once per failed real-life try before
@@ -777,6 +813,44 @@ function onReelStopped() {
   font-size: 15px;
   color: var(--text);
   text-shadow: var(--glow-white);
+}
+
+.voice-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.voice-indicator__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  flex: none;
+}
+
+.voice-indicator__dot--live {
+  background: var(--red-hi, #e33);
+  box-shadow: 0 0 8px rgba(var(--fg-rgb), 0.5);
+  animation: voice-pulse 1.4s ease-in-out infinite;
+}
+
+.voice-indicator__heard {
+  font-style: italic;
+}
+
+@keyframes voice-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
 }
 
 .result__tries {

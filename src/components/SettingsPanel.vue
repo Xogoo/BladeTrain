@@ -6,6 +6,11 @@ import ColorWheel from "./ColorWheel.vue";
 import { useGame } from "../composables/useGame.js";
 import { GRINDS, RARE_GRIND_NAME_PARTS } from "../game/trickData.js";
 import { computeAccentPalette, computeAccentGlow } from "../game/accentPalette.js";
+import { useVoiceControl } from "../composables/useVoiceControl.js";
+import { useSpeech } from "../composables/useSpeech.js";
+
+const { isSupported: voiceSupported } = useVoiceControl();
+const { synthesisVoices, isSynthesisSupported } = useSpeech();
 import {
   LEVELS,
   SOLO_LEVELS,
@@ -214,6 +219,69 @@ const grindList = [
         <span class="track" />
       </span>
     </label>
+
+    <label class="option option--inline theme-toggle">
+      <span>Contrôle vocal (bêta)</span>
+      <span class="switch">
+        <input
+          type="checkbox"
+          v-model="settings.voiceControl"
+          :disabled="!voiceSupported"
+        />
+        <span class="track" />
+      </span>
+    </label>
+    <p class="hint voice-hint">
+      <template v-if="voiceSupported">
+        Dis "réussi", "raté" ou "passe" pendant une session solo au lieu de
+        toucher l'écran. Le micro n'écoute que pendant l'entraînement solo,
+        jamais ailleurs.
+      </template>
+      <template v-else>
+        Pas disponible sur ce navigateur/appareil.
+      </template>
+    </p>
+
+    <div class="option-block">
+      <span class="option-block__label">Voix qui lit les tricks</span>
+      <div class="speech-engine">
+        <button
+          class="btn"
+          :class="settings.speechEngine === 'samples' ? 'btn--primary' : 'btn--ghost'"
+          @click="settings.speechEngine = 'samples'"
+        >
+          Voix enregistrée
+        </button>
+        <button
+          class="btn"
+          :class="settings.speechEngine === 'synthesis' ? 'btn--primary' : 'btn--ghost'"
+          :disabled="!isSynthesisSupported"
+          @click="settings.speechEngine = 'synthesis'"
+        >
+          Synthèse (bêta)
+        </button>
+      </div>
+
+      <template v-if="settings.speechEngine === 'synthesis'">
+        <select
+          v-if="synthesisVoices.length"
+          class="select speech-voice-select"
+          v-model="settings.speechVoiceURI"
+        >
+          <option value="">Voix par défaut de l'appareil</option>
+          <option v-for="voice in synthesisVoices" :key="voice.voiceURI" :value="voice.voiceURI">
+            {{ voice.name }} ({{ voice.lang }})
+          </option>
+        </select>
+        <p class="hint">
+          Prononciation plus robotique que la voix enregistrée, mais tu
+          choisis qui lit. La liste des voix dépend de ton appareil.
+        </p>
+      </template>
+      <p v-else-if="!isSynthesisSupported" class="hint">
+        Synthèse vocale non disponible sur ce navigateur/appareil.
+      </p>
+    </div>
 
     <div class="accent-picker">
       <span class="accent-picker__label">Couleur d'accent</span>
@@ -441,6 +509,33 @@ const grindList = [
   align-items: center;
   gap: 14px;
   margin: 4px 0 20px;
+}
+
+.option-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 20px;
+}
+
+.option-block__label {
+  font-size: 15px;
+  color: var(--text);
+}
+
+.speech-engine {
+  display: flex;
+  gap: 8px;
+}
+
+.speech-engine .btn {
+  flex: 1;
+  font-size: 13px;
+  padding: 10px 12px;
+}
+
+.speech-voice-select {
+  width: 100%;
 }
 
 .accent-picker__label {

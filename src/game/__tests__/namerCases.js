@@ -74,7 +74,7 @@ export const testData = [
     ],
   },
   {
-    expected: "360 Sweatstance to 180 rewind out",
+    expected: "360 Kindgrind to 180 rewind out",
     data: [
       { name: "Grind", winner: { name: "Mizou" } },
       { name: "GrindVariation", winner: { name: "Topside" } },
@@ -445,7 +445,7 @@ export const testData = [
     ],
   },
   {
-    expected: "360 Torque Soul",
+    expected: "360 Soyale",
     data: [
       {
         name: "Approach",
@@ -463,7 +463,7 @@ export const testData = [
     ],
   },
   {
-    expected: "Switch 360 Torque Soul",
+    expected: "Switch 360 Soyale",
     data: [
       {
         name: "Approach",

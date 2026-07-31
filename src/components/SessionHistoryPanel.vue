@@ -5,6 +5,7 @@ import AppIcon from "./AppIcon.vue";
 import AttemptsChart from "./AttemptsChart.vue";
 import SessionSummary from "./SessionSummary.vue";
 import SwitchUpHistoryPanel from "./SwitchUpHistoryPanel.vue";
+import MonthlyReportPanel from "./MonthlyReportPanel.vue";
 import { useCollection } from "../composables/useCollection.js";
 
 defineEmits(["close"]);
@@ -69,10 +70,16 @@ const selectedSeries = computed(
 );
 
 const showSwitchUps = ref(false);
+const showMonthlyReport = ref(false);
 </script>
 
 <template>
   <AppModal title="Historique" @close="$emit('close')">
+    <button class="btn monthly-report-teaser" @click="showMonthlyReport = true">
+      <AppIcon name="zap" :size="16" />
+      Rapport mensuel
+    </button>
+
     <h3 class="section-title">Progression</h3>
 
     <div v-if="rankedTricks.length" class="trick-picker">
@@ -132,6 +139,7 @@ const showSwitchUps = ref(false);
   </AppModal>
 
   <SwitchUpHistoryPanel v-if="showSwitchUps" @close="showSwitchUps = false" />
+  <MonthlyReportPanel v-if="showMonthlyReport" @close="showMonthlyReport = false" />
 </template>
 
 <style scoped>
@@ -192,6 +200,15 @@ const showSwitchUps = ref(false);
   align-items: center;
   gap: 8px;
   margin-bottom: 4px;
+}
+
+.monthly-report-teaser {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  width: 100%;
+  justify-content: center;
 }
 
 .sessions {
