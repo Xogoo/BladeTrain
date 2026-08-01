@@ -27,6 +27,7 @@ function staggerFor(baseMs) {
 const {
   state,
   isSolo,
+  isVs,
   currentPlayer,
   onLastLetter,
   attempt,
@@ -39,6 +40,8 @@ const {
   continueFreePlay,
   nextCareerFamily,
   addTry,
+  vsAttempt,
+  nextVsRound,
   giveUp,
   backToCareer,
   onReelsSettled,
@@ -310,7 +313,7 @@ function onReelStopped() {
       {{ familyIndex(activeFamilyProgressId, activeFamily.entries) }}/{{ activeFamily.entries.length }} tricks réussis
     </button>
 
-    <div v-if="!isSolo" class="roster">
+    <div v-if="!isSolo && !isVs" class="roster">
       <div
         v-for="(player, i) in state.players"
         :key="i"
@@ -325,6 +328,18 @@ function onReelStopped() {
         />
         <span class="roster__name">{{ player.name }}</span>
         <span class="roster__letters">{{ lettersOf(player) || "—" }}</span>
+      </div>
+    </div>
+
+    <div v-if="isVs" class="vs-scoreboard panel">
+      <div class="vs-scoreboard__side">
+        <span class="vs-scoreboard__name">{{ state.players[0]?.name }}</span>
+        <span class="vs-scoreboard__letters">{{ lettersOf(state.players[0]) || "—" }}</span>
+      </div>
+      <span class="vs-scoreboard__vs">VS</span>
+      <div class="vs-scoreboard__side">
+        <span class="vs-scoreboard__name">{{ state.players[1]?.name }}</span>
+        <span class="vs-scoreboard__letters">{{ lettersOf(state.players[1]) || "—" }}</span>
       </div>
     </div>
 
@@ -434,6 +449,75 @@ function onReelStopped() {
               </button>
             </div>
           </template>
+        </template>
+
+        <!-- vs: you against the robot, 3 tries each at the same trick -->
+        <template v-else-if="isVs">
+          <template v-if="state.vsRoundResult">
+            <div class="vs-result">
+              <div
+                class="vs-result__row"
+                :class="state.vsRoundResult.playerLanded ? 'vs-result__row--land' : 'vs-result__row--bail'"
+              >
+                <AppIcon :name="state.vsRoundResult.playerLanded ? 'check' : 'flag'" :size="16" />
+                <span
+                  >Toi —
+                  {{ state.vsRoundResult.playerLanded ? "réussi !" : "loupé, +1 lettre" }}</span
+                >
+              </div>
+              <div
+                class="vs-result__row"
+                :class="state.vsRoundResult.robotLanded ? 'vs-result__row--land' : 'vs-result__row--bail'"
+              >
+                <AppIcon :name="state.vsRoundResult.robotLanded ? 'check' : 'flag'" :size="16" />
+                <span>Robot —
+                  {{
+                    state.vsRoundResult.robotLanded
+                      ? `réussi (essai ${state.vsRoundResult.robotTries}/3)`
+                      : "loupé, +1 lettre"
+                  }}</span
+                >
+              </div>
+            </div>
+            <div class="result__actions">
+              <button class="btn btn--go" @click="nextVsRound(settings)">
+                <AppIcon name="forward" :size="18" /> Trick suivant
+              </button>
+            </div>
+          </template>
+
+          <template v-else>
+            <div class="result__tries">
+              <span class="result__tries-label">
+                Essai {{ state.vsTries }}/3
+              </span>
+            </div>
+
+            <div class="result__actions">
+              <button class="btn" @click="openPanel = 'explain'">
+                <AppIcon name="question" :size="18" /> Explication
+              </button>
+              <button class="btn" @click="vsAttempt(false, settings)">
+                <AppIcon name="flag" :size="18" />
+                {{ state.vsTries < 3 ? "Raté, on retente" : "Loupé" }}
+              </button>
+              <button class="btn btn--go" @click="vsAttempt(true, settings)">
+                <AppIcon name="check" :size="18" /> Réussi
+              </button>
+            </div>
+          </template>
+
+          <div class="result__actions result__actions--secondary">
+            <button
+              class="btn btn--ghost"
+              :class="{ 'btn--confirm': confirmingEndSession }"
+              @click="onEndSessionClick()"
+              @blur="confirmingEndSession = false"
+            >
+              <AppIcon name="flag" :size="16" />
+              {{ confirmingEndSession ? "Confirmer" : "Terminer la partie" }}
+            </button>
+          </div>
         </template>
 
         <!-- group: every player attempts the same trick, bails cost a letter -->
@@ -962,6 +1046,75 @@ function onReelStopped() {
   letter-spacing: 0.1em;
   color: var(--red);
   text-shadow: var(--glow-red);
+}
+
+/* ---------- BLADE VS ---------- */
+
+.vs-scoreboard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 10px 16px;
+}
+
+.vs-scoreboard__side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 90px;
+}
+
+.vs-scoreboard__name {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.vs-scoreboard__letters {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  color: var(--red);
+  text-shadow: var(--glow-red);
+}
+
+.vs-scoreboard__vs {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.vs-result {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+.vs-result__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.vs-result__row--land {
+  color: var(--green-hi);
+  border-color: rgba(124, 255, 138, 0.3);
+}
+
+.vs-result__row--bail {
+  color: var(--red);
 }
 
 .result__actions {

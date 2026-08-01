@@ -20,7 +20,7 @@ import { useBackup } from "../composables/useBackup.js";
 const emit = defineEmits(["open-settings"]);
 
 const { settings, applyLevel, saveCustomFamily, deleteCustomFamily } = useSettings();
-const { startGame, startFamilySession, startWeakPointsSession, WEAK_POINTS_FAMILY_ID, hasOpenSessionToday, endOpenSession, state } =
+const { startGame, startFamilySession, startMixSession, startWeakPointsSession, WEAK_POINTS_FAMILY_ID, hasOpenSessionToday, endOpenSession, state } =
   useGame();
 const {
   familyIndex,
@@ -188,6 +188,46 @@ function startFamilyModeSession() {
   }
 }
 
+// Mix: pick any number of families (built-in AND/OR personal at once)
+// to draw from together — see startMixSession in useGame.js. Kept as
+// a plain array (not a Set) since it's serialized nowhere and a
+// simple includes()/splice() is plenty at this scale.
+const selectedMixFamilyIds = ref([]);
+function isMixFamilySelected(id) {
+  return selectedMixFamilyIds.value.includes(id);
+}
+function toggleMixFamily(id) {
+  const i = selectedMixFamilyIds.value.indexOf(id);
+  if (i >= 0) {
+    selectedMixFamilyIds.value.splice(i, 1);
+  } else {
+    selectedMixFamilyIds.value.push(id);
+  }
+}
+function findMixFamily(id) {
+  return (
+    builtinFamilyOptions.value.find((f) => f.id === id) ||
+    visibleCustomFamilies.value.find((f) => f.id === id) ||
+    null
+  );
+}
+// Total tricks across everything currently selected — just shown as
+// context on the Démarrer button, doesn't gate anything: the draw now
+// pulls from every entry (landed or not), so there's no "nothing left"
+// state to guard against once at least one family is checked.
+const mixEntryCount = computed(() =>
+  selectedMixFamilyIds.value.reduce((total, id) => {
+    const family = findMixFamily(id);
+    return total + (family ? family.entries.length : 0);
+  }, 0)
+);
+function startMixModeSession() {
+  if (!selectedMixFamilyIds.value.length) {
+    return;
+  }
+  startMixSession(selectedMixFamilyIds.value, settings);
+}
+
 // Career: two fully independent progressions (Normal / Switch), each
 // walking the same families.js order — see game/families.js `tier`,
 // which is now a strict 1..N progression rather than a grouping (each
@@ -315,6 +355,11 @@ const MODES = [
     tagline: "Entraîne une famille précise, intégrée ou perso",
   },
   {
+    id: "mix",
+    name: "Mix",
+    tagline: "Coche plusieurs familles — le tirage pioche dans tout ça",
+  },
+  {
     id: "career",
     name: "Carrière",
     tagline: "Deux progressions indépendantes — Normal et Switch",
@@ -324,9 +369,14 @@ const MODES = [
     name: "Groupe",
     tagline: "S.K.A.T.E entre potes — loupe et récolte B·L·A·D·E",
   },
+  {
+    id: "vs",
+    name: "BLADE VS",
+    tagline: "Toi contre le robot — 3 essais chacun, un B·L·A·D·E qui compte",
+  },
 ];
 
-const step = ref(state.pendingCareerTrack ? "career-track" : "mode"); // 'mode' | 'family' | 'career' | 'career-track' | 'setup'
+const step = ref(state.pendingCareerTrack ? "career-track" : "mode"); // 'mode' | 'family' | 'mix' | 'career' | 'career-track' | 'setup'
 if (state.pendingCareerTrack) {
   state.pendingCareerTrack = null;
 }
@@ -350,6 +400,11 @@ function chooseMode(modeId) {
   }
   if (modeId === "family") {
     step.value = "family";
+    fadeOutMusic();
+    return;
+  }
+  if (modeId === "mix") {
+    step.value = "mix";
     fadeOutMusic();
     return;
   }
@@ -680,6 +735,87 @@ function removePlayer(index) {
     </button>
   </section>
 
+  <!-- step 1e: Mix — several families at once, built-in and/or perso -->
+  <section v-else-if="step === 'mix'" class="start setup rise-in">
+    <div class="setup__top">
+      <button class="btn btn--ghost setup__back" @click="step = 'mode'">
+        &lsaquo; Retour
+      </button>
+    </div>
+    <h2 class="setup__title sticker-text">Mix</h2>
+    <p class="setup__hint setup__hint--standalone">
+      Coche les familles à mélanger — le tirage pioche au hasard dans
+      tout ce qui est sélectionné, réussi ou pas. Chaque trick réussi
+      fait quand même avancer sa propre famille, comme si tu
+      l'entraînais seule.
+    </p>
+
+    <div class="setup__section">
+      <span class="setup__label">Familles de tricks</span>
+      <div class="mix-family-list">
+        <label
+          v-for="family in builtinFamilyOptions"
+          :key="family.id"
+          class="mix-family-row"
+        >
+          <input
+            type="checkbox"
+            :checked="isMixFamilySelected(family.id)"
+            @change="toggleMixFamily(family.id)"
+          />
+          <span class="mix-family-row__name">{{ familyBaseName(family.name) }}</span>
+          <span class="mix-family-row__pct" :style="{ color: familyOptionColor(family) }">
+            {{
+              isFamilyComplete(displayProgressId(family), family.entries)
+                ? "Terminée ✓"
+                : `${familyPercent(family)}%`
+            }}
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <div class="setup__section">
+      <span class="setup__label">Familles perso</span>
+      <div v-if="visibleCustomFamilies.length" class="mix-family-list">
+        <label
+          v-for="family in visibleCustomFamilies"
+          :key="family.id"
+          class="mix-family-row"
+        >
+          <input
+            type="checkbox"
+            :checked="isMixFamilySelected(family.id)"
+            @change="toggleMixFamily(family.id)"
+          />
+          <span class="mix-family-row__name">{{ familyBaseName(family.name) }}</span>
+          <span class="mix-family-row__pct" :style="{ color: familyOptionColor(family) }">
+            {{
+              isFamilyComplete(displayProgressId(family), family.entries)
+                ? "Terminée ✓"
+                : `${familyPercent(family)}%`
+            }}
+          </span>
+        </label>
+      </div>
+      <p v-else class="setup__hint">
+        Aucune famille perso pour l'instant — crée-en une depuis l'aperçu des
+        tricks possibles (Réglages &gt; Terminé).
+      </p>
+    </div>
+
+    <button
+      class="btn btn--go setup__go"
+      :disabled="!selectedMixFamilyIds.length"
+      @click="startMixModeSession()"
+    >
+      <AppIcon name="play" :size="20" /> Démarrer le mix
+      ({{ selectedMixFamilyIds.length }}
+      famille{{ selectedMixFamilyIds.length > 1 ? "s" : "" }},
+      {{ mixEntryCount }} trick{{ mixEntryCount > 1 ? "s" : "" }})
+    </button>
+  </section>
+
   <!-- step 2: difficulty + mode specifics + start -->
   <section v-else class="start setup rise-in">
     <div class="setup__top">
@@ -688,7 +824,13 @@ function removePlayer(index) {
       </button>
     </div>
     <h2 class="setup__title sticker-text">
-      {{ settings.mode === "solo" ? "Session Solo" : "Partie de groupe" }}
+      {{
+        settings.mode === "solo"
+          ? "Session Solo"
+          : settings.mode === "vs"
+          ? "BLADE VS"
+          : "Partie de groupe"
+      }}
     </h2>
 
     <div class="setup__section">
@@ -721,6 +863,35 @@ function removePlayer(index) {
       Pas de fin de partie — tourne aussi longtemps que tu veux. Les roues
       favorisent les tricks que tu n'as pas encore réussis.
     </p>
+
+    <template v-else-if="settings.mode === 'vs'">
+      <div class="setup__section">
+        <span class="setup__label">
+          Niveau du robot — {{ settings.vsRobotChance }}% de réussite par essai
+        </span>
+        <input
+          type="range"
+          class="vs-chance-slider"
+          min="0"
+          max="100"
+          step="5"
+          v-model.number="settings.vsRobotChance"
+        />
+        <p class="setup__hint">
+          Sa chance de réussir CHAQUE essai — sur 3 essais, ça monte vite. 50%
+          par essai, c'est déjà presque 9 sur 10 de réussir au moins une fois.
+        </p>
+      </div>
+
+      <div class="setup__section">
+        <p class="setup__hint">
+          La roue lance un trick. Toi et le robot avez chacun 3 essais.
+          Personne ne l'a landé ? Vous prenez chacun une lettre de
+          B&middot;L&middot;A&middot;D&middot;E. Cinq lettres et t'es
+          éliminé — premier éliminé perd.
+        </p>
+      </div>
+    </template>
 
     <template v-else>
       <div class="setup__section">
@@ -1022,6 +1193,49 @@ body.theme-inverted .start__logo-mark {
   display: none;
 }
 
+/* ---------- Mix: checkbox family lists ---------- */
+
+.mix-family-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.mix-family-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.mix-family-row input[type="checkbox"] {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--red-hi);
+}
+
+.mix-family-row__name {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text);
+}
+
+.mix-family-row__pct {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .family-picker .select {
   flex: 1 1 160px;
   min-width: 0;
@@ -1053,6 +1267,40 @@ body.theme-inverted .start__logo-mark {
 .setup__hint--standalone {
   margin-top: -6px;
   margin-bottom: 6px;
+}
+
+/* ---------- BLADE VS: robot chance slider ---------- */
+
+.vs-chance-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  margin: 10px 0 4px;
+  border-radius: 999px;
+  background: rgba(var(--fg-rgb), 0.14);
+  outline: none;
+}
+
+.vs-chance-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--knob-fill);
+  box-shadow: 0 0 8px rgba(var(--fg-rgb), 0.5);
+  cursor: pointer;
+}
+
+.vs-chance-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: var(--knob-fill);
+  box-shadow: 0 0 8px rgba(var(--fg-rgb), 0.5);
+  cursor: pointer;
 }
 
 /* ---------- career screens ---------- */

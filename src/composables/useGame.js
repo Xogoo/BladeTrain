@@ -47,6 +47,18 @@ const state = reactive({
   // — a random pick among entries not yet landed, redrawn on every spin
   // (skip included). null when no family is active.
   activeFamilyEntryIndex: null,
+  // Mix training: draws across several selected families at once
+  // (built-in "Familles de tricks" and/or personal families) instead
+  // of just one — see startMixSession/buildMixPool below. Empty array
+  // when no Mix session is active. Mix always writes to each family's
+  // plain "::practice" progress bucket (isCareer is never true here),
+  // so it shares progress with training a family on its own, and this
+  // can never touch Career progress.
+  activeFamilyIds: [],
+  // Which family the CURRENT spin's forced entry actually came from,
+  // and its index within THAT family's own entries — { familyId,
+  // index } | null. Mix's equivalent of activeFamilyEntryIndex.
+  activeMixEntry: null,
   // The family object just finished by the last landTrick() call, or
   // null. While set, the game screen shows a completion pause instead
   // of drawing the next spin automatically — the player explicitly
@@ -89,6 +101,19 @@ const state = reactive({
   turnOrder: [], // player indices attempting the current trick, in order
   turnPos: 0, // position within turnOrder
   rerollsLeft: 0, // trick swaps the turn's starting player has left
+
+  // BLADE VS state — you against the robot, same trick generation and
+  // BLADE-letters scoring as group mode, but each side gets up to 3
+  // tries at the SAME trick instead of one shared attempt, and the
+  // robot's outcome is rolled instead of tapped in. state.players is
+  // reused here too: [{ name: "Toi", letters }, { name: "Robot", letters }]
+  // — GameOverScreen's standings table works unmodified.
+  vsTries: 1, // player's try count this round (1-3)
+  // Set once the round is decided (player landed, or exhausted 3
+  // tries) — { playerLanded, robotLanded, robotTries } | null. While
+  // set, the game screen shows the round's outcome instead of the
+  // Raté/Réussi buttons, until "Trick suivant" is tapped.
+  vsRoundResult: null,
 });
 
 const collection = useCollection();
@@ -167,6 +192,7 @@ const activeIndices = () =>
 export function useGame() {
   const spinsLeft = computed(() => state.spinsTotal - state.spinsUsed);
   const isSolo = computed(() => state.mode === "solo");
+  const isVs = computed(() => state.mode === "vs");
   const currentPlayer = computed(() =>
     state.mode === "group" && state.turnOrder.length > state.turnPos
       ? state.players[state.turnOrder[state.turnPos]]
@@ -206,6 +232,8 @@ export function useGame() {
     state.mode = mode;
     state.activeFamilyId = null;
     state.activeFamilyEntryIndex = null;
+    state.activeFamilyIds = [];
+    state.activeMixEntry = null;
     state.familyJustCompleted = null;
     state.careerJustCompleted = null;
     state.freeLoopFamilyId = null;
@@ -222,8 +250,9 @@ export function useGame() {
       return;
     }
 
-    // Group mode always starts a clean slate — and closes out any solo
-    // session left dangling open rather than abandoning it silently.
+    // Group/VS both always start a clean slate — and close out any
+    // solo session left dangling open rather than abandoning it
+    // silently.
     if (state.sessionId) {
       collection.endSession(state.sessionId);
       backupApi.autoBackupIfDue();
@@ -235,6 +264,17 @@ export function useGame() {
     state.skipped = [];
     state.usedGrinds = [];
     state.newBadges = [];
+
+    if (mode === "vs") {
+      state.players = [
+        { name: "Toi", letters: 0 },
+        { name: "Robot", letters: 0 },
+      ];
+      state.round = 0;
+      beginVsRound(settings);
+      return;
+    }
+
     state.players = settings.players.map((name, i) => ({
       name: String(name).trim() || `Joueur ${i + 1}`,
       letters: 0,
@@ -254,6 +294,8 @@ export function useGame() {
     state.lockedPairs = pairs;
     state.activeFamilyId = null;
     state.activeFamilyEntryIndex = null;
+    state.activeFamilyIds = [];
+    state.activeMixEntry = null;
     state.familyJustCompleted = null;
     state.careerJustCompleted = null;
     state.freeLoopFamilyId = null;
@@ -276,6 +318,8 @@ export function useGame() {
     state.lockedPairs = null;
     state.activeFamilyId = familyId;
     state.activeFamilyEntryIndex = null;
+    state.activeFamilyIds = [];
+    state.activeMixEntry = null;
     state.familyJustCompleted = null;
     state.careerJustCompleted = null;
     state.freeLoopFamilyId = null;
@@ -292,6 +336,38 @@ export function useGame() {
     state.spinsTotal = Infinity;
     beginOrContinueSoloSession();
     nextSpin(settings);
+  };
+
+  /**
+   * Solo only: Mix training — draws randomly across every entry of
+   * several selected families (built-in and/or personal) at once,
+   * landed or not (see buildMixPool/nextSpin) — landing still advances
+   * that entry's OWN family's plain "::practice" progress, same bucket
+   * the regular single-family picker uses, so Mix shares progress with
+   * training a family alone and never touches Career (isCareerSession
+   * is always false here). Returns false without starting anything if
+   * the selection is empty or resolves to no real families.
+   */
+  const startMixSession = (familyIds, settings) => {
+    const ids = [...new Set(familyIds)].filter((id) => resolveFamilyById(id));
+    if (!ids.length || !buildMixPool(ids).length) {
+      return false;
+    }
+    state.mode = "solo";
+    state.lockedPairs = null;
+    state.activeFamilyId = null;
+    state.activeFamilyEntryIndex = null;
+    state.activeFamilyIds = ids;
+    state.activeMixEntry = null;
+    state.familyJustCompleted = null;
+    state.careerJustCompleted = null;
+    state.freeLoopFamilyId = null;
+    state.isCareerSession = false;
+    state.screen = "game";
+    state.spinsTotal = Infinity;
+    beginOrContinueSoloSession();
+    nextSpin(settings);
+    return true;
   };
 
   // "Points faibles" isn't a real family the player built or unlocked —
@@ -338,6 +414,72 @@ export function useGame() {
   };
 
   /**
+   * VS: one round = one trick both sides attempt independently, up to
+   * 3 tries each (see vsAttempt/resolveVsRound below) — no turn order,
+   * no rerolls, both go at once.
+   */
+  const beginVsRound = (settings) => {
+    state.round += 1;
+    state.vsTries = 1;
+    state.vsRoundResult = null;
+    nextSpin(settings);
+  };
+
+  /** VS: rolls the robot's 3 independent attempts at settings.vsRobotChance
+   * each; lands on the first success, or fails all 3. */
+  function rollRobot(settings) {
+    const chance = Math.min(100, Math.max(0, settings.vsRobotChance ?? 50)) / 100;
+    for (let i = 1; i <= 3; i++) {
+      if (Math.random() < chance) {
+        return { landed: true, tries: i };
+      }
+    }
+    return { landed: false, tries: 3 };
+  }
+
+  /** VS: resolves the round once the player either lands it or has
+   * exhausted their 3 tries — rolls the robot, applies a BLADE letter
+   * to whichever side (or both) failed to land it, and ends the game
+   * the instant either side hits 5 letters. */
+  function resolveVsRound(playerLanded, settings) {
+    const robot = rollRobot(settings);
+    const [player, bot] = state.players;
+    if (!playerLanded) {
+      player.letters += 1;
+    }
+    if (!robot.landed) {
+      bot.letters += 1;
+    }
+    if (player.letters >= LETTERS.length || bot.letters >= LETTERS.length) {
+      endGame();
+      return;
+    }
+    state.vsRoundResult = {
+      playerLanded,
+      robotLanded: robot.landed,
+      robotTries: robot.tries,
+    };
+  }
+
+  /**
+   * VS: the player's attempt this round. A "Réussi" always resolves
+   * the round on the spot; a "Raté" only resolves it once all 3 tries
+   * are spent — otherwise the same trick stays up for another go.
+   */
+  const vsAttempt = (landed, settings) => {
+    if (!landed && state.vsTries < 3) {
+      state.vsTries += 1;
+      return;
+    }
+    resolveVsRound(landed, settings);
+  };
+
+  /** VS: advances past the round-result panel into the next round. */
+  const nextVsRound = (settings) => {
+    beginVsRound(settings);
+  };
+
+  /**
    * Group: the starting player swaps the trick for a fresh spin. Only
    * possible before anyone attempted it, and at most 3 times per turn.
    */
@@ -349,6 +491,22 @@ export function useGame() {
     nextSpin(settings);
   };
 
+  /** Mix: pool of every {familyId, index} across ALL the given
+   * families, landed or not — landing still advances that family's
+   * plain "::practice" progress (see landTrick), it just no longer
+   * restricts what can come up again. Mix never touches Career. */
+  function buildMixPool(familyIds) {
+    const pool = [];
+    for (const familyId of familyIds) {
+      const fam = resolveFamilyById(familyId);
+      if (!fam) {
+        continue;
+      }
+      fam.entries.forEach((_, index) => pool.push({ familyId, index }));
+    }
+    return pool;
+  }
+
   const nextSpin = (settings) => {
     state.spinsUsed += 1;
     state.tries = 1;
@@ -356,6 +514,8 @@ export function useGame() {
     const bias = state.mode === "solo" ? collection.grindBias() : null;
     const family = resolveFamilyById(state.activeFamilyId);
     let forcedTrick = null;
+    state.activeFamilyEntryIndex = null;
+    state.activeMixEntry = null;
     if (family) {
       const remaining = collection.familyRemainingIndices(
         progressFamilyId(family, state.isCareerSession),
@@ -368,8 +528,14 @@ export function useGame() {
         state.activeFamilyEntryIndex =
           remaining[Math.floor(Math.random() * remaining.length)];
         forcedTrick = family.entries[state.activeFamilyEntryIndex];
-      } else {
-        state.activeFamilyEntryIndex = null;
+      }
+    } else if (state.activeFamilyIds.length) {
+      const pool = buildMixPool(state.activeFamilyIds);
+      if (pool.length) {
+        state.activeMixEntry = pool[Math.floor(Math.random() * pool.length)];
+        forcedTrick = resolveFamilyById(state.activeMixEntry.familyId).entries[
+          state.activeMixEntry.index
+        ];
       }
     } else if (state.freeLoopFamilyId) {
       // "Continuer en mode libre" after completion — every entry is
@@ -381,11 +547,7 @@ export function useGame() {
           Math.random() * loopFamily.entries.length
         );
         forcedTrick = loopFamily.entries[state.activeFamilyEntryIndex];
-      } else {
-        state.activeFamilyEntryIndex = null;
       }
-    } else {
-      state.activeFamilyEntryIndex = null;
     }
     state.spin = generateSpin(
       settings.tricks,
@@ -464,26 +626,33 @@ export function useGame() {
     captureUndoSnapshot();
     state.points += state.spin.score;
     state.tricks.push(currentTrick());
-    const activeFamilyForLand = state.activeFamilyId
-      ? resolveFamilyById(state.activeFamilyId)
+
+    // Single family or Mix — whichever is active tells us which
+    // family (if any) this land's entry actually belongs to.
+    const landFamilyId = state.activeFamilyId ?? state.activeMixEntry?.familyId ?? null;
+    const landFamily = landFamilyId ? resolveFamilyById(landFamilyId) : null;
+    const landEntryIndex = state.activeFamilyId
+      ? state.activeFamilyEntryIndex
+      : state.activeMixEntry
+      ? state.activeMixEntry.index
       : null;
     const activeEntryForLand =
-      activeFamilyForLand && state.activeFamilyEntryIndex !== null
-        ? activeFamilyForLand.entries[state.activeFamilyEntryIndex]
-        : null;
+      landFamily && landEntryIndex !== null ? landFamily.entries[landEntryIndex] : null;
+
     let badges =
       state.mode === "solo"
         ? collection.recordLand(
             state.spin,
             state.tries,
             state.sessionId,
-            state.activeFamilyId,
+            landFamilyId,
             activeEntryForLand
           )
         : [];
+
     let justCompletedFamily = null;
     if (state.activeFamilyId) {
-      const family = activeFamilyForLand;
+      const family = landFamily;
       if (family && state.activeFamilyEntryIndex !== null) {
         const progressId = progressFamilyId(family, state.isCareerSession);
         const familyBadge = collection.advanceFamilyProgress(
@@ -500,7 +669,27 @@ export function useGame() {
           state.activeFamilyEntryIndex = null;
         }
       }
+    } else if (state.activeMixEntry) {
+      const family = landFamily;
+      if (family) {
+        // Mix never trains Career — always the plain "::practice"
+        // bucket, same one the single-family picker itself writes to.
+        // Landing still advances/completes that family normally (and
+        // still awards its badge the first time it's fully landed);
+        // it just no longer removes anything from the draw — a family
+        // being complete doesn't pause or shrink the Mix pool anymore.
+        const progressId = progressFamilyId(family, false);
+        const familyBadge = collection.advanceFamilyProgress(
+          family,
+          family.entries[state.activeMixEntry.index],
+          progressId
+        );
+        if (familyBadge) {
+          badges = [...badges, familyBadge];
+        }
+      }
     }
+
     state.newBadges = badges;
     if (justCompletedFamily) {
       // The last family of a whole Career track finishing is a bigger
@@ -567,16 +756,19 @@ export function useGame() {
     captureUndoSnapshot();
     state.skipped.push(currentTrick());
     if (state.mode === "solo") {
-      const family = state.activeFamilyId ? resolveFamilyById(state.activeFamilyId) : null;
-      const entry =
-        family && state.activeFamilyEntryIndex !== null
-          ? family.entries[state.activeFamilyEntryIndex]
-          : null;
+      const familyId = state.activeFamilyId ?? state.activeMixEntry?.familyId ?? null;
+      const family = familyId ? resolveFamilyById(familyId) : null;
+      const entryIndex = state.activeFamilyId
+        ? state.activeFamilyEntryIndex
+        : state.activeMixEntry
+        ? state.activeMixEntry.index
+        : null;
+      const entry = family && entryIndex !== null ? family.entries[entryIndex] : null;
       collection.recordSkip(
         state.spin,
         state.tries,
         state.sessionId,
-        state.activeFamilyId,
+        familyId,
         entry
       );
     }
@@ -681,11 +873,13 @@ export function useGame() {
     state,
     spinsLeft,
     isSolo,
+    isVs,
     currentPlayer,
     onLastLetter,
     startGame,
     startReviewSession,
     startFamilySession,
+    startMixSession,
     startWeakPointsSession,
     WEAK_POINTS_FAMILY_ID,
     activeFamily,
@@ -700,6 +894,8 @@ export function useGame() {
     continueFreePlay,
     nextCareerFamily,
     addTry,
+    vsAttempt,
+    nextVsRound,
     giveUp,
     goToStart,
     backToCareer,

@@ -11,11 +11,12 @@ import { useSettings } from "./useSettings.js";
 const settingsApi = useSettings();
 
 /**
- * Text-to-speech sampler: trick names are concatenations of a small
- * token vocabulary, so one audio sample per token is enough to read
- * any trick aloud. All samples are preloaded and decoded before the
- * app starts; missing samples (not every token is recorded yet) are
- * skipped when speaking.
+ * Retired: trick names used to be read aloud via a recorded-sample
+ * tokenizer (one audio clip per token, concatenated). The app now
+ * always uses the browser's SpeechSynthesis instead (see speakTrick
+ * below) — SAMPLE_FILES/matchSamples are kept only because
+ * useSpeech.spec.js still exercises the pure tokenizer; the clips
+ * themselves are no longer preloaded or played.
  */
 
 const AUDIO_BASE = "audio/";
@@ -192,10 +193,7 @@ const MUTE_KEY = "aight-muted";
 const state = reactive({
   ready: false,
   loaded: 0,
-  total:
-    Object.keys(SAMPLE_FILES).length +
-    Object.keys(GAME_SAMPLE_FILES).length +
-    IMAGE_URLS.length,
+  total: Object.keys(GAME_SAMPLE_FILES).length + IMAGE_URLS.length,
   failed: [], // files that could not be fetched/decoded
   // guarded: this module is also imported in node-based tests
   muted:
@@ -242,7 +240,6 @@ export async function preloadSpeech() {
     });
 
   await Promise.all([
-    ...Object.entries(SAMPLE_FILES).map((e) => load(e, AUDIO_BASE)),
     ...Object.entries(GAME_SAMPLE_FILES).map((e) => load(e, GAME_AUDIO_BASE)),
     ...IMAGE_URLS.map(loadImage),
   ]);
@@ -350,17 +347,13 @@ export function playKeys(keys) {
   }
 }
 
-/** Reads a trick name aloud — via the recorded samples, or the
- * browser's speech synthesis with a chosen voice, per settings.speechEngine. */
+/** Reads a trick name aloud via the browser's speech synthesis, with
+ * whatever voice was picked in settings (see speakWithSynthesis). */
 export function speakTrick(name) {
   if (state.muted) {
     return;
   }
-  if (settingsApi.settings.speechEngine === "synthesis") {
-    speakWithSynthesis(name);
-    return;
-  }
-  playKeys(matchSamples(name, (key) => buffers.has(key)));
+  speakWithSynthesis(name);
 }
 
 /** Group mode: announce whose turn starts ("Player 3"). */
@@ -449,10 +442,9 @@ export function unlockAudio(withMusic) {
 
 /**
  * Short spoken phrases that aren't trick names — confirmations like
- * "Trick validé !" — always go through speech synthesis regardless of
- * settings.speechEngine, since these words were never recorded as
- * samples (there's no "validé.wav"). Uses whatever voice was picked
- * for synthesis if one was, otherwise the browser default.
+ * "Trick validé !" — always go through speech synthesis. Uses
+ * whatever voice was picked for synthesis if one was, otherwise the
+ * browser default.
  */
 export function speakPhrase(text, onEnd) {
   if (state.muted || !isSynthesisSupported) {

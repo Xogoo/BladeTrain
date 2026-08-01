@@ -18,6 +18,13 @@ const winners = computed(() =>
 const winnerNames = computed(() =>
   winners.value.map((p) => p.name).join(" & ")
 );
+// VS is the one mode where both sides can hit 5 letters on the exact
+// same round (see resolveVsRound in useGame.js) — group mode always
+// ends the instant a bail leaves only one player standing, so this
+// can't happen there. When it does, nobody actually "won".
+const isDraw = computed(() =>
+  state.players.every((p) => p.letters >= LETTERS.length)
+);
 
 function lettersOf(player) {
   return LETTERS.slice(0, player.letters).split("").join(" ");
@@ -25,7 +32,7 @@ function lettersOf(player) {
 
 // "Player N ... wins" — only when there is a single winner to call out.
 onMounted(() => {
-  if (winners.value.length === 1) {
+  if (!isDraw.value && winners.value.length === 1) {
     announceWinner(state.players.indexOf(winners.value[0]) + 1);
   }
 });
@@ -69,8 +76,13 @@ const rain = Array.from({ length: 22 }, () => ({
 
     <p class="gameover__winner">
       <AppIcon name="trophy" :size="18" />
-      <strong>{{ winnerNames }}</strong>
-      {{ winners.length > 1 ? "partagent la couronne !" : "prend la couronne !" }}
+      <template v-if="isDraw">
+        <strong>Match nul</strong>
+      </template>
+      <template v-else>
+        <strong>{{ winnerNames }}</strong>
+        {{ winners.length > 1 ? "partagent la couronne !" : "prend la couronne !" }}
+      </template>
     </p>
 
     <div class="gameover__standings panel">
@@ -94,7 +106,7 @@ const rain = Array.from({ length: 22 }, () => ({
     </div>
 
     <div class="gameover__actions">
-      <button class="btn btn--go" @click="startGame(settings, 'group')">
+      <button class="btn btn--go" @click="startGame(settings, state.mode)">
         <AppIcon name="play" :size="18" /> Revanche
       </button>
       <button class="btn" @click="goToStart()">Changer la config</button>

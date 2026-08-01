@@ -243,9 +243,13 @@ function allGrindsOff() {
 
 function defaultSettings() {
   return {
-    mode: "solo", // solo | group
+    mode: "solo", // solo | group | vs
     level: 1,
     players: ["Joueur 1", "Joueur 2"],
+    // BLADE VS: the robot's chance (0-100) of landing the trick on any
+    // ONE of its 3 attempts, rolled independently per attempt — see
+    // vsAttempt in useGame.js. Adjustable on the mode's setup screen.
+    vsRobotChance: 50,
     reelSpeed: "fast",
     introMusic: false,
     // Quick test toggle: swaps to a real light palette — see
@@ -270,13 +274,10 @@ function defaultSettings() {
     // a solo session — off by default (experimental, browser support
     // varies a lot). See useVoiceControl.js.
     voiceControl: false,
-    // Which engine reads trick names aloud: "samples" (default) plays
-    // the recorded human-voice audio clips; "synthesis" uses the
-    // browser's own SpeechSynthesis with a chosen voice instead — see
-    // useSpeech.js. speechVoiceURI is that voice's own voiceURI
-    // (browser-assigned, not something to hand-author), empty meaning
-    // "whatever the browser defaults to".
-    speechEngine: "samples",
+    // Trick names are read aloud via the browser's own SpeechSynthesis.
+    // speechVoiceURI is the chosen voice's own voiceURI (browser-
+    // assigned, not something to hand-author), empty meaning "whatever
+    // the browser defaults to". See useSpeech.js.
     speechVoiceURI: "",
     // Only used to pre-fill the "to" field when sharing/emailing a
     // backup export — never sent anywhere on its own, see
@@ -332,9 +333,16 @@ function loadSettings() {
       merged.players = [...defaults.players];
     }
     merged.players = merged.players.slice(0, MAX_PLAYERS);
-    if (merged.mode !== "solo" && merged.mode !== "group") {
+    if (merged.mode !== "solo" && merged.mode !== "group" && merged.mode !== "vs") {
       merged.mode = "solo";
     }
+    if (
+      typeof merged.vsRobotChance !== "number" ||
+      Number.isNaN(merged.vsRobotChance)
+    ) {
+      merged.vsRobotChance = defaults.vsRobotChance;
+    }
+    merged.vsRobotChance = Math.min(100, Math.max(0, merged.vsRobotChance));
     merged.introMusic = false;
     if (!merged.grinds || typeof merged.grinds !== "object") {
       merged.grinds = {};

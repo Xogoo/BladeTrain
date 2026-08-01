@@ -262,7 +262,7 @@ const grindList = [
     </label>
 
     <label class="option option--inline theme-toggle">
-      <span>Contrôle vocal (bêta)</span>
+      <span>Contrôle vocal</span>
       <span class="switch">
         <input
           type="checkbox"
@@ -285,25 +285,8 @@ const grindList = [
 
     <div class="option-block">
       <span class="option-block__label">Voix qui lit les tricks</span>
-      <div class="speech-engine">
-        <button
-          class="btn"
-          :class="settings.speechEngine === 'samples' ? 'btn--primary' : 'btn--ghost'"
-          @click="settings.speechEngine = 'samples'"
-        >
-          Voix enregistrée
-        </button>
-        <button
-          class="btn"
-          :class="settings.speechEngine === 'synthesis' ? 'btn--primary' : 'btn--ghost'"
-          :disabled="!isSynthesisSupported"
-          @click="settings.speechEngine = 'synthesis'"
-        >
-          Synthèse (bêta)
-        </button>
-      </div>
 
-      <template v-if="settings.speechEngine === 'synthesis'">
+      <template v-if="isSynthesisSupported">
         <select
           v-if="synthesisVoices.length"
           class="select speech-voice-select"
@@ -314,12 +297,9 @@ const grindList = [
             {{ voice.name }} ({{ voice.lang }})
           </option>
         </select>
-        <p class="hint">
-          Prononciation plus robotique que la voix enregistrée, mais tu
-          choisis qui lit. La liste des voix dépend de ton appareil.
-        </p>
+        <p class="hint">Choisis qui lit. La liste des voix dépend de ton appareil.</p>
       </template>
-      <p v-else-if="!isSynthesisSupported" class="hint">
+      <p v-else class="hint">
         Synthèse vocale non disponible sur ce navigateur/appareil.
       </p>
     </div>
@@ -598,17 +578,6 @@ const grindList = [
 .option-block__label {
   font-size: 15px;
   color: var(--text);
-}
-
-.speech-engine {
-  display: flex;
-  gap: 8px;
-}
-
-.speech-engine .btn {
-  flex: 1;
-  font-size: 13px;
-  padding: 10px 12px;
 }
 
 .speech-voice-select {
