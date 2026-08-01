@@ -108,6 +108,22 @@ function resolveFamilyById(familyId) {
   return familyId ? resolveFamily(familyId, settingsApi.settings.customFamilies) : null;
 }
 
+// A built-in Career family (has a track) is reachable two ways — the
+// Carrière flow itself, or the plain "Familles de tricks" picker — and
+// those two are meant to be entirely independent: training a family
+// outside Carrière must never advance Carrière's own progress, and
+// vice versa. Personal/custom families (track === null) only have one
+// way to reach them, so there's nothing to separate. This is the one
+// place that decides which of the two a given landed trick actually
+// counts towards — every progress read/write for a family goes
+// through this rather than the family's own `.id` directly.
+function progressFamilyId(family, isCareer) {
+  if (!family) {
+    return null;
+  }
+  return family.track !== null && !isCareer ? `${family.id}::practice` : family.id;
+}
+
 // Undo, for a mistapped Blade!/Passer/Loupé/Réussi — a full snapshot of
 // both state and the collection right before the action mutates
 // anything, restored wholesale rather than trying to surgically
@@ -264,8 +280,13 @@ export function useGame() {
     state.careerJustCompleted = null;
     state.freeLoopFamilyId = null;
     state.isCareerSession = isCareer;
-    if (restart || collection.isFamilyComplete(familyId)) {
-      collection.resetFamilyProgress(familyId);
+    const resolvedFamily = resolveFamilyById(familyId);
+    const progressId = progressFamilyId(resolvedFamily, isCareer);
+    if (
+      progressId &&
+      (restart || collection.isFamilyComplete(progressId, resolvedFamily?.entries))
+    ) {
+      collection.resetFamilyProgress(progressId);
     }
     state.screen = "game";
     state.spinsTotal = Infinity;
@@ -337,7 +358,7 @@ export function useGame() {
     let forcedTrick = null;
     if (family) {
       const remaining = collection.familyRemainingIndices(
-        state.activeFamilyId,
+        progressFamilyId(family, state.isCareerSession),
         family.entries
       );
       // Should only be empty for one frame right as the family
@@ -464,14 +485,16 @@ export function useGame() {
     if (state.activeFamilyId) {
       const family = activeFamilyForLand;
       if (family && state.activeFamilyEntryIndex !== null) {
+        const progressId = progressFamilyId(family, state.isCareerSession);
         const familyBadge = collection.advanceFamilyProgress(
           family,
-          family.entries[state.activeFamilyEntryIndex]
+          family.entries[state.activeFamilyEntryIndex],
+          progressId
         );
         if (familyBadge) {
           badges = [...badges, familyBadge];
         }
-        if (collection.isFamilyComplete(state.activeFamilyId)) {
+        if (collection.isFamilyComplete(progressId, family.entries)) {
           justCompletedFamily = family;
           state.activeFamilyId = null;
           state.activeFamilyEntryIndex = null;

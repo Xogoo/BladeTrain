@@ -90,6 +90,19 @@ watch(
 // return to instead of its regular giveUp behavior.
 const isCareerFamily = computed(() => state.isCareerSession);
 
+// Mirrors useGame.js's progressFamilyId exactly — the Focus-mode "X/Y
+// tricks réussis" readout has to reflect whichever progress bucket
+// this session is actually writing to (Career vs plain "Familles de
+// tricks" training), not always the family's own plain id.
+const activeFamilyProgressId = computed(() => {
+  if (!activeFamily.value) {
+    return null;
+  }
+  return activeFamily.value.track !== null && !state.isCareerSession
+    ? `${activeFamily.value.id}::practice`
+    : activeFamily.value.id;
+});
+
 // "Terminer la session/partie" needs a tap-again-to-confirm, same
 // pattern as the reset buttons elsewhere — too easy to hit by accident
 // mid-session otherwise, and there's no undo once it's ended.
@@ -294,7 +307,7 @@ function onReelStopped() {
       class="focus-family-progress"
       @click="openPanel = 'familyChecklist'"
     >
-      {{ familyIndex(activeFamily.id) }}/{{ activeFamily.entries.length }} tricks réussis
+      {{ familyIndex(activeFamilyProgressId, activeFamily.entries) }}/{{ activeFamily.entries.length }} tricks réussis
     </button>
 
     <div v-if="!isSolo" class="roster">
@@ -500,6 +513,7 @@ function onReelStopped() {
     <FamilyChecklistPanel
       v-if="openPanel === 'familyChecklist' && activeFamily"
       :family-id="activeFamily.id"
+      :is-career="state.isCareerSession"
       @close="openPanel = null"
     />
 

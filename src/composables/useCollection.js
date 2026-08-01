@@ -278,7 +278,14 @@ function hasVariation(pattern) {
 // family already fully finished, badge earned) is preserved either
 // way; partial progress is not carried over and restarts at 0 rather
 // than risk misattributing it to the wrong tricks.
-function familyProgressEntry(familyId) {
+// `entries` lets a caller supply a family's entry list directly for
+// the self-heal check below, instead of relying on
+// resolveFamilyById(familyId) to find it — needed for a Career
+// family's "::practice" progress id (see useGame.js's
+// progressFamilyId), which is a storage key only and never resolves
+// back to an actual family on its own. Without this, the self-heal
+// below would just silently skip for every practice-context entry.
+function familyProgressEntry(familyId, entries = null) {
   const existing = collection.familyProgress[familyId];
   if (!existing || !Array.isArray(existing.landedKeys)) {
     collection.familyProgress[familyId] = {
@@ -297,10 +304,10 @@ function familyProgressEntry(familyId) {
   // the completion badge/toast normally instead of staying silently
   // stuck on a stale "done".
   if (progress.completedAt) {
-    const family = resolveFamilyById(familyId);
-    if (family) {
+    const currentEntries = entries ?? resolveFamilyById(familyId)?.entries;
+    if (currentEntries) {
       const keys = new Set(progress.landedKeys);
-      const stillComplete = family.entries.every((entry) => keys.has(familyEntryKey(entry)));
+      const stillComplete = currentEntries.every((entry) => keys.has(familyEntryKey(entry)));
       if (!stillComplete) {
         progress.completedAt = null;
       }
@@ -309,22 +316,29 @@ function familyProgressEntry(familyId) {
   return progress;
 }
 
-function familyLandedKeySet(familyId) {
-  return new Set(familyProgressEntry(familyId).landedKeys);
+function familyLandedKeySet(familyId, entries = null) {
+  return new Set(familyProgressEntry(familyId, entries).landedKeys);
 }
 
 /** How many of the family's CURRENT entries have been landed so far. */
-function familyIndex(familyId) {
-  const family = resolveFamilyById(familyId);
-  if (!family) {
+// `entries` lets a caller pass a family's entry list directly instead
+// of relying on resolveFamilyById(familyId) to find it — needed for a
+// Career family's "::practice" progress id (see useGame.js's
+// progressFamilyId), which is a storage key only and was never meant
+// to resolve back to an actual family on its own. Every caller that
+// might pass one of those already has the real family object (and
+// therefore its entries) on hand.
+function familyIndex(familyId, entries = null) {
+  const list = entries ?? resolveFamilyById(familyId)?.entries;
+  if (!list) {
     return 0;
   }
-  const keys = familyLandedKeySet(familyId);
-  return family.entries.filter((entry) => keys.has(familyEntryKey(entry))).length;
+  const keys = familyLandedKeySet(familyId, list);
+  return list.filter((entry) => keys.has(familyEntryKey(entry))).length;
 }
 
-function isFamilyComplete(familyId) {
-  return Boolean(familyProgressEntry(familyId).completedAt);
+function isFamilyComplete(familyId, entries = null) {
+  return Boolean(familyProgressEntry(familyId, entries).completedAt);
 }
 
 /**
@@ -393,8 +407,16 @@ function familyRemainingIndices(familyId, entries) {
  * "newly earned" shape as recordLand, so the game screen's badge toast
  * can handle both the same way.
  */
-function advanceFamilyProgress(family, entry) {
-  const progress = familyProgressEntry(family.id);
+// `progressId` is the context-aware key (see useGame.js's
+// progressFamilyId) — Career and plain "Familles de tricks" training
+// track a Career family's landedKeys/completedAt completely
+// separately, so this never assumes `family.id` itself is the right
+// storage key. The family-specific BADGE, though, is intentionally
+// shared no matter which context actually finished it — "have you
+// ever mastered this family" isn't a Career-only question — so it
+// stays keyed off `family.id` itself either way.
+function advanceFamilyProgress(family, entry, progressId = family.id) {
+  const progress = familyProgressEntry(progressId, family.entries);
   const key = familyEntryKey(entry);
   if (!progress.landedKeys.includes(key)) {
     progress.landedKeys.push(key);
@@ -715,8 +737,15 @@ export function useCollection() {
    * tries), so the history screen can show exactly what happened
    * rather than a generic label.
    */
-  function familyEntryStatuses(family) {
-    const keys = familyLandedKeySet(family.id);
+  // `progressId` is the context-aware key (see useGame.js's
+  // progressFamilyId) deciding which landedKeys bucket to check a
+  // Career family's entries against — Career and plain "Familles de
+  // tricks" training track it separately. The actual land/skip
+  // RECORDS looked up below still key off `family.id` itself: those
+  // just say "you trained this real family, ever", regardless of
+  // which context's progress they ultimately counted towards.
+  function familyEntryStatuses(family, progressId = family.id) {
+    const keys = familyLandedKeySet(progressId, family.entries);
     // Landed entries are matched back to their actual land record via
     // the exact key stored on it at landing time (see recordLand) —
     // the most recent one if it was somehow landed more than once

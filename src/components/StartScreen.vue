@@ -36,9 +36,23 @@ function startSoloSession() {
   startGame(settings);
 }
 
+// A built-in Career family (has a track) is reachable two ways — the
+// Carrière flow, or this plain family picker — and they're meant to be
+// entirely independent (see useGame.js's progressFamilyId, which this
+// mirrors exactly). Personal/custom families never have a track at
+// all, so they always just use their own id — there's only one way to
+// reach them.
+function displayProgressId(family) {
+  return family.track === "normal" || family.track === "switch"
+    ? `${family.id}::practice`
+    : family.id;
+}
+
 function familyPercent(family) {
   return family.entries.length
-    ? Math.round((familyIndex(family.id) / family.entries.length) * 100)
+    ? Math.round(
+        (familyIndex(displayProgressId(family), family.entries) / family.entries.length) * 100
+      )
     : 0;
 }
 
@@ -46,12 +60,14 @@ function familyPercent(family) {
 // can't hold rich markup, so the done/not-done color and the percent
 // both have to live in this one plain-text label.
 function familyOptionLabel(family) {
-  return isFamilyComplete(family.id)
+  return isFamilyComplete(displayProgressId(family), family.entries)
     ? `${familyBaseName(family.name)} — Terminée ✓`
     : `${familyBaseName(family.name)} — ${familyPercent(family)}%`;
 }
 function familyOptionColor(family) {
-  return isFamilyComplete(family.id) ? "var(--green-hi)" : "var(--danger-hi)";
+  return isFamilyComplete(displayProgressId(family), family.entries)
+    ? "var(--green-hi)"
+    : "var(--danger-hi)";
 }
 
 // Famille mode: built-in ("Familles de tricks") or personal
@@ -139,6 +155,11 @@ function onImportFamiliesFileChosen(event) {
 
 const selectedFamilyId = computed(() =>
   familySection.value === "builtin" ? selectedBuiltinFamilyId.value : selectedCustomFamilyId.value
+);
+const selectedFamilyObject = computed(() =>
+  familySection.value === "builtin"
+    ? builtinFamilyOptions.value.find((f) => f.id === selectedFamilyId.value)
+    : visibleCustomFamilies.value.find((f) => f.id === selectedFamilyId.value)
 );
 
 // Recomputed live off the same data the training itself uses, so the
@@ -263,14 +284,14 @@ function onCareerReset() {
 // that family's progress, not the whole Career/Collection.
 const confirmingFamilyReset = ref(false);
 function onFamilyReset() {
-  if (!selectedFamilyId.value) {
+  if (!selectedFamilyId.value || !selectedFamilyObject.value) {
     return;
   }
   if (!confirmingFamilyReset.value) {
     confirmingFamilyReset.value = true;
     return;
   }
-  resetFamilyProgress(selectedFamilyId.value);
+  resetFamilyProgress(displayProgressId(selectedFamilyObject.value));
   confirmingFamilyReset.value = false;
 }
 // The confirm must only ever fire on the SAME button/family that

@@ -14,6 +14,7 @@ import { useSettings } from "../composables/useSettings.js";
 // this is meant to be glanced at mid-session, not read like a report.
 const props = defineProps({
   familyId: { type: String, required: true },
+  isCareer: { type: Boolean, default: false },
 });
 defineEmits(["close"]);
 
@@ -21,7 +22,22 @@ const { settings } = useSettings();
 const { familyEntryStatuses, familyIndex } = useCollection();
 
 const family = computed(() => resolveFamily(props.familyId, settings.customFamilies));
-const statuses = computed(() => (family.value ? familyEntryStatuses(family.value) : []));
+// Mirrors useGame.js's progressFamilyId exactly — a Career family
+// (has a track) tracks Career-mode progress separately from plain
+// "Familles de tricks" training, so this checklist has to read
+// whichever one actually matches how the current session was
+// started, not always the family's own plain id.
+const progressId = computed(() => {
+  if (!family.value) {
+    return props.familyId;
+  }
+  return family.value.track !== null && !props.isCareer
+    ? `${family.value.id}::practice`
+    : family.value.id;
+});
+const statuses = computed(() =>
+  family.value ? familyEntryStatuses(family.value, progressId.value) : []
+);
 
 function displayName(status) {
   return status.land ? status.land.trickName : nameEntry(status.entry);
@@ -35,7 +51,7 @@ function displayName(status) {
   >
     <template v-if="family">
       <p class="checklist-progress">
-        {{ familyIndex(family.id) }}/{{ family.entries.length }} réussis
+        {{ familyIndex(progressId) }}/{{ family.entries.length }} réussis
       </p>
       <div class="checklist">
         <div

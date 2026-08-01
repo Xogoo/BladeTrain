@@ -79,16 +79,25 @@ const familyProgress = computed(() => {
     .map((family) => ({
       id: family.id,
       name: family.name,
-      landed: familyIndex(family.id),
+      // A Career family tracks Career-mode progress separately from
+      // plain "Familles de tricks" training (see useGame.js's
+      // progressFamilyId) — this summary shows whichever of the two
+      // is further along, so training it either way still counts here
+      // instead of one route silently looking incomplete.
+      landed: Math.max(
+        familyIndex(family.id, family.entries),
+        familyIndex(`${family.id}::practice`, family.entries)
+      ),
       total: family.entries.length,
     }));
   const custom = [...settings.customFamilies]
+    .filter((family) => family.id !== "weak-points")
     .slice()
     .reverse()
     .map((family) => ({
       id: family.id,
       name: family.name,
-      landed: familyIndex(family.id),
+      landed: familyIndex(family.id, family.entries),
       total: family.entries.length,
     }));
   return [...builtIn, ...custom];

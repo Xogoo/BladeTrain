@@ -19,12 +19,24 @@ const { familyEntryStatuses, familyTriesSeries, isFamilyComplete, familyIndex } 
 
 const family = computed(() => resolveFamily(props.familyId, settings.customFamilies));
 
+// This panel is only ever opened from the plain "Familles de tricks"
+// picker (never from within Carrière itself), so a Career family
+// (has a track) always reads its practice-mode progress here — same
+// separation as useGame.js's progressFamilyId, just never the Career
+// branch of it since that's not reachable from here.
+const progressId = computed(() => {
+  if (!family.value) {
+    return props.familyId;
+  }
+  return family.value.track !== null ? `${family.value.id}::practice` : family.value.id;
+});
+
 function familyBaseName(name) {
   return name.replace(/ \((Normal|Switch)\)$/, "");
 }
 
 const statuses = computed(() =>
-  family.value ? familyEntryStatuses(family.value) : []
+  family.value ? familyEntryStatuses(family.value, progressId.value) : []
 );
 const landed = computed(() => statuses.value.filter((s) => s.landed));
 const notLanded = computed(() => statuses.value.filter((s) => !s.landed));
@@ -89,7 +101,7 @@ const easiestTricks = computed(() => {
     <template v-if="family">
       <div class="history-stats">
         <div class="history-stat">
-          <span class="history-stat__value">{{ familyIndex(family.id) }}/{{
+          <span class="history-stat__value">{{ familyIndex(progressId, family.entries) }}/{{
             family.entries.length
           }}</span>
           <span class="history-stat__label">réussis</span>
@@ -104,7 +116,7 @@ const easiestTricks = computed(() => {
         </div>
       </div>
 
-      <p v-if="isFamilyComplete(family.id)" class="history-complete">
+      <p v-if="isFamilyComplete(progressId, family.entries)" class="history-complete">
         <AppIcon name="check" :size="16" /> Famille complétée
       </p>
 

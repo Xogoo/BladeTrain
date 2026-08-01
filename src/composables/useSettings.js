@@ -401,19 +401,21 @@ export function useSettings() {
   const applyLevel = (levelId) => {
     settings.level = levelId;
     if (LEVEL_PRESETS[levelId]) {
-      // Mode entraînement ciblé is independent of the level presets —
-      // applying one (including "Tout remettre à zéro", which is just
-      // re-applying the Custom/Entraînement ciblé preset) must never
-      // flip it either way. Only the checkbox itself, tapped manually,
-      // does — so its value is snapshotted and restored around the
-      // preset merge below rather than left to whatever that preset
-      // happens to declare.
-      const trainingFocus = settings.tricks.trainingFocus;
+      // Mode entraînement ciblé is independent of the level presets in
+      // general (applying 1-4 must never flip it either way, so it's
+      // preserved as-is) — but "Tout remettre à zéro" (CUSTOM_LEVEL)
+      // is the one exception: it always leaves it checked, since
+      // that's meant to be the default starting point every time this
+      // button is pressed, not whatever was left over from before.
+      const trainingFocus =
+        levelId === CUSTOM_LEVEL ? true : settings.tricks.trainingFocus;
       Object.assign(settings.tricks, LEVEL_PRESETS[levelId]);
       settings.tricks.trainingFocus = trainingFocus;
       settings.grinds =
         levelId === CUSTOM_LEVEL ? allGrindsOff() : presetGrinds(levelId);
       settings.switchUpGrinds =
+        levelId === CUSTOM_LEVEL ? allGrindsOff() : presetGrinds(levelId);
+      settings.switchUp2Grinds =
         levelId === CUSTOM_LEVEL ? allGrindsOff() : presetGrinds(levelId);
     }
   };
