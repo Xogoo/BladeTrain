@@ -6,6 +6,7 @@ import { FAMILIES } from "../game/families.js";
 import { useCollection } from "../composables/useCollection.js";
 import { useGame } from "../composables/useGame.js";
 import { useSettings } from "../composables/useSettings.js";
+import { useBackup } from "../composables/useBackup.js";
 
 const emit = defineEmits(["close"]);
 
@@ -24,9 +25,38 @@ const {
 } = useCollection();
 const { startReviewSession } = useGame();
 const { settings } = useSettings();
+const { listAutoBackups, restoreAutoBackup } = useBackup();
 
 // Two-tap confirm so a stray tap can't wipe lifetime progress.
 const confirmingReset = ref(false);
+
+// Silent local safety net (see useBackup.js's autoBackupIfDue) — not a
+// substitute for the player's own real export, just something to fall
+// back on if something goes locally wrong between two real exports.
+const autoBackups = ref([]);
+const confirmingRestoreTimestamp = ref(null);
+listAutoBackups().then((rows) => {
+  autoBackups.value = rows;
+});
+
+function formatSnapshotDate(iso) {
+  return new Date(iso).toLocaleString("fr-FR", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+async function onRestoreAutoBackup(timestamp) {
+  if (confirmingRestoreTimestamp.value !== timestamp) {
+    confirmingRestoreTimestamp.value = timestamp;
+    return;
+  }
+  await restoreAutoBackup(timestamp);
+  confirmingRestoreTimestamp.value = null;
+  emit("close");
+}
 
 const onReset = () => {
   if (!confirmingReset.value) {
@@ -192,6 +222,28 @@ function startReview() {
       </div>
     </div>
 
+    <section v-if="autoBackups.length" class="section">
+      <h3 class="section-title">Sauvegardes automatiques locales</h3>
+      <p class="hint">
+        Un filet de sécurité silencieux sur cet appareil — pas un
+        remplacement de ton propre export. Utile si quelque chose se
+        passe mal localement, pas si tu changes d'appareil.
+      </p>
+      <ul class="auto-backup-list">
+        <li v-for="snap in autoBackups" :key="snap.timestamp">
+          <span>{{ formatSnapshotDate(snap.timestamp) }}</span>
+          <button
+            class="btn btn--ghost auto-backup-list__restore"
+            :class="{ 'btn--confirm': confirmingRestoreTimestamp === snap.timestamp }"
+            @click="onRestoreAutoBackup(snap.timestamp)"
+            @blur="confirmingRestoreTimestamp = null"
+          >
+            {{ confirmingRestoreTimestamp === snap.timestamp ? "Confirmer" : "Restaurer" }}
+          </button>
+        </li>
+      </ul>
+    </section>
+
     <div class="actions">
       <button
         class="btn btn--ghost reset-btn"
@@ -279,9 +331,40 @@ function startReview() {
   margin: 20px 0 10px;
 }
 
+.section {
+  margin-bottom: 16px;
+}
+
 .hint {
   color: var(--text-dim);
   font-size: 14px;
+}
+
+.auto-backup-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.auto-backup-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  font-size: 14px;
+}
+
+.auto-backup-list__restore {
+  font-size: 12px;
+  padding: 8px 10px;
+  white-space: nowrap;
 }
 
 .review-controls {

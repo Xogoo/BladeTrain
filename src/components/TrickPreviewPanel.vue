@@ -35,7 +35,9 @@ const sample = computed(() => {
   const exact = enumeratePossibleTricks(
     props.settings.tricks,
     props.settings.grinds,
-    props.settings.switchUpGrinds
+    props.settings.switchUpGrinds,
+    {},
+    props.settings.switchUp2Grinds
   );
   if (exact.exact) {
     return {
@@ -53,7 +55,10 @@ const sample = computed(() => {
       [],
       null,
       props.settings.grinds,
-      props.settings.switchUpGrinds
+      props.settings.switchUpGrinds,
+      null,
+      null,
+      props.settings.switchUp2Grinds
     );
     names.add(spin.name);
   }

@@ -3,6 +3,7 @@ import { generateSpin } from "../game/trickGenerator.js";
 import { FAMILIES, resolveFamily } from "../game/families.js";
 import { useCollection } from "./useCollection.js";
 import { useSettings, CUSTOM_LEVEL } from "./useSettings.js";
+import { useBackup } from "./useBackup.js";
 
 // Group mode is S.K.A.T.E with the letters A.I.G.H.T: bail a trick and
 // you collect the next letter; five letters and you are out.
@@ -91,6 +92,12 @@ const state = reactive({
 });
 
 const collection = useCollection();
+// Fire-and-forget: a solo session ending is a good, natural moment to
+// check whether today's silent local auto-backup is still due (see
+// useBackup.js's autoBackupIfDue) — never awaited here since it must
+// never hold up or fail the actual session-ending flow it's called
+// from.
+const backupApi = useBackup();
 const settingsApi = useSettings();
 
 // Resolves either a built-in family (families.js) or a player-built one
@@ -203,6 +210,7 @@ export function useGame() {
     // session left dangling open rather than abandoning it silently.
     if (state.sessionId) {
       collection.endSession(state.sessionId);
+      backupApi.autoBackupIfDue();
       state.sessionId = null;
     }
     state.points = 0;
@@ -263,6 +271,37 @@ export function useGame() {
     state.spinsTotal = Infinity;
     beginOrContinueSoloSession();
     nextSpin(settings);
+  };
+
+  // "Points faibles" isn't a real family the player built or unlocked —
+  // it's rebuilt fresh every time from whichever landed tricks you
+  // currently skip/fail the most (see collection.weakPointsEntries),
+  // then run through the exact same family-training machinery as any
+  // other family (forced draw, checklist, one at a time until landed).
+  // Reusing settings.customFamilies as where it lives is just a
+  // convenient, already-working storage/resolution slot — StartScreen
+  // filters this specific id back out of the visible "Familles perso"
+  // picker so it doesn't show up there as if the player made it.
+  // Always restarts fresh: yesterday's weak list may not even be
+  // today's, so carrying over old progress under the same id wouldn't
+  // mean much.
+  const WEAK_POINTS_FAMILY_ID = "weak-points";
+  const startWeakPointsSession = (settings, { limit = 15 } = {}) => {
+    const entries = collection.weakPointsEntries(limit);
+    if (!entries.length) {
+      return false;
+    }
+    const family = { id: WEAK_POINTS_FAMILY_ID, name: "Points faibles", entries };
+    const existingIndex = settings.customFamilies.findIndex(
+      (f) => f.id === WEAK_POINTS_FAMILY_ID
+    );
+    if (existingIndex >= 0) {
+      settings.customFamilies.splice(existingIndex, 1, family);
+    } else {
+      settings.customFamilies.push(family);
+    }
+    startFamilySession(WEAK_POINTS_FAMILY_ID, settings, { restart: true });
+    return true;
   };
 
   // One round = one trick that every player still in the game attempts.
@@ -334,7 +373,8 @@ export function useGame() {
       settings.grinds,
       settings.switchUpGrinds,
       state.lockedPairs,
-      forcedTrick
+      forcedTrick,
+      settings.switchUp2Grinds
     );
     state.usedGrinds.push(
       state.spin.reels.find((r) => r.name === "Grind").winner.name
@@ -342,6 +382,10 @@ export function useGame() {
     const switchUpReel = state.spin.reels.find((r) => r.name === "SwitchUp");
     if (switchUpReel && switchUpReel.winner) {
       state.usedGrinds.push(switchUpReel.winner.name);
+    }
+    const switchUp2Reel = state.spin.reels.find((r) => r.name === "SwitchUp2");
+    if (switchUp2Reel && switchUp2Reel.winner) {
+      state.usedGrinds.push(switchUp2Reel.winner.name);
     }
     // A switch-up spin pushes 2 names (grind + switch-up grind) in one
     // go, so trimming needs a loop, not a single shift — one shift per
@@ -528,6 +572,7 @@ export function useGame() {
     if (state.mode === "solo") {
       if (state.sessionId) {
         collection.endSession(state.sessionId);
+        backupApi.autoBackupIfDue();
         state.lastSessionId = state.sessionId;
         state.sessionId = null;
       }
@@ -558,6 +603,7 @@ export function useGame() {
     clearUndoSnapshot();
     if (state.sessionId) {
       collection.endSession(state.sessionId);
+      backupApi.autoBackupIfDue();
       state.lastSessionId = state.sessionId;
       state.sessionId = null;
     }
@@ -591,6 +637,7 @@ export function useGame() {
     const today = new Date().toISOString().slice(0, 10);
     if (startedDay !== today) {
       collection.endSession(state.sessionId);
+      backupApi.autoBackupIfDue();
       state.lastSessionId = state.sessionId;
       state.sessionId = null;
     }
@@ -616,6 +663,8 @@ export function useGame() {
     startGame,
     startReviewSession,
     startFamilySession,
+    startWeakPointsSession,
+    WEAK_POINTS_FAMILY_ID,
     activeFamily,
     onReelsSettled,
     attempt,

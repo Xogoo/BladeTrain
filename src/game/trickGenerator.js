@@ -21,7 +21,8 @@ export function generateSpin(
   grindToggles = null,
   switchUpGrindToggles = null,
   lockedPairs = null,
-  forcedTrick = null
+  forcedTrick = null,
+  switchUp2GrindToggles = null
 ) {
   const grindPool = grindCandidates(settings, usedGrinds, grindBias, grindToggles);
 
@@ -119,9 +120,68 @@ export function generateSpin(
       switchSpin = pickWeighted(switchSpinPool);
     }
 
-    switchUpVariationPool = variationCandidates(switchUp, settings, true);
-    switchUpVariation = hasVariationReel(settings, true)
+    switchUpVariationPool = variationCandidates(switchUp, settings, 1);
+    switchUpVariation = hasVariationReel(settings, 1)
       ? pickWeighted(switchUpVariationPool)
+      : null;
+  }
+
+  // Second switch-up (3rd grind) — same idea as the first, one level
+  // further out: only ever possible when the first switch-up actually
+  // happened (switchUp is truthy). Everything below mirrors the first
+  // switch-up's own block on purpose — same forced-trick precision,
+  // same pool-building, just one level over (grind1->grind2 becomes
+  // grind2->grind3), because Pierre confirmed a third grind composes
+  // its orientation exactly the same way a second one does off of it
+  // (see trickNamer.js's buildSwitchUpSegment for where that actually
+  // matters).
+  let switchUp2Pool = [];
+  let switchUp2 = null;
+  let switchSpin2Pool = [];
+  let switchSpin2 = null;
+  let switchUp2VariationPool = [];
+  let switchUp2Variation = null;
+  if (forcedTrick && forcedTrick.switchUp2GrindName && switchUp) {
+    switchUp2 = GRINDS.find((g) => g.name === forcedTrick.switchUp2GrindName) || null;
+    switchUp2Pool = switchUp2 ? [switchUp2] : [];
+    if (switchUp2) {
+      switchSpin2 =
+        baseSwitchSpinPool(switchUp, switchUp2).find(
+          (s) => s.name === (forcedTrick.switchSpin2Name || "None")
+        ) || null;
+      switchSpin2Pool = switchSpin2 ? [switchSpin2] : [];
+      switchUp2Variation =
+        forcedTrick.switchUp2VariationName && forcedTrick.switchUp2VariationName !== "None"
+          ? variationByName(forcedTrick.switchUp2VariationName)
+          : null;
+      switchUp2VariationPool = switchUp2Variation ? [switchUp2Variation] : [];
+    }
+  } else if (switchUp && hasSwitchUp2Reel(settings) && !forcedTrick) {
+    const excludeNoSwitch2 = (candidates) =>
+      settings.switchUp2Switch ? candidates.filter((g) => !g.noSwitch) : candidates;
+
+    switchUp2Pool = excludeNoSwitch2(
+      grindCandidates(
+        settings,
+        usedGrinds,
+        grindBias,
+        switchUp2GrindToggles !== null
+          ? switchUp2GrindToggles
+          : switchUpGrindToggles !== null
+          ? switchUpGrindToggles
+          : grindToggles
+      )
+    );
+    switchUp2 = pickWeighted(switchUp2Pool);
+
+    if (hasSwitchSpin2Reel(settings)) {
+      switchSpin2Pool = switchSpinCandidates(switchUp, switchUp2, settings, "spinBetween2");
+      switchSpin2 = pickWeighted(switchSpin2Pool);
+    }
+
+    switchUp2VariationPool = variationCandidates(switchUp2, settings, 2);
+    switchUp2Variation = hasVariationReel(settings, 2)
+      ? pickWeighted(switchUp2VariationPool)
       : null;
   }
 
@@ -163,12 +223,15 @@ export function generateSpin(
     reel("SwitchSpin", "Spin", switchSpinPool, switchSpin),
     reel("SwitchUp", "To", switchUpPool, switchUp),
     reel("SwitchUpVariation", "Variation", switchUpVariationPool, switchUpVariation),
+    reel("SwitchSpin2", "Spin", switchSpin2Pool, switchSpin2),
+    reel("SwitchUp2", "To", switchUp2Pool, switchUp2),
+    reel("SwitchUp2Variation", "Variation", switchUp2VariationPool, switchUp2Variation),
     reel("SpinOff", "Spin out", spinOffPool, spinOff),
   ];
 
   const { parsed, orig } = nameTrick(
     reels.map(({ name, winner }) => ({ name, winner })),
-    { switchUpSwitch: !!settings.switchUpSwitch }
+    { switchUpSwitch: !!settings.switchUpSwitch, switchUp2Switch: !!settings.switchUp2Switch }
   );
 
   return { reels, name: parsed, orig, score: scoreSpin(reels) };
@@ -182,8 +245,9 @@ export function hasApproachReel(settings) {
   return settings.fakie || settings.switch;
 }
 
-export function hasVariationReel(settings, forSwitchUp = false) {
-  const topsideEnabled = forSwitchUp ? settings.switchUpTopside : settings.topside;
+export function hasVariationReel(settings, level = 0) {
+  const topsideEnabled =
+    level === 2 ? settings.switchUp2Topside : level === 1 ? settings.switchUpTopside : settings.topside;
   return (
     settings.negative ||
     topsideEnabled ||
@@ -206,6 +270,16 @@ export function hasSwitchUpReel(settings) {
 // of its degree checkboxes already collapses it down to "None" only.
 export function hasSwitchSpinReel(settings) {
   return !!settings.switchUp;
+}
+
+// Same idea, one level further out — the 3rd grind only ever makes
+// sense once the 2nd one (switchUp) is itself active.
+export function hasSwitchUp2Reel(settings) {
+  return !!settings.switchUp && !!settings.switchUp2;
+}
+
+export function hasSwitchSpin2Reel(settings) {
+  return !!settings.switchUp && !!settings.switchUp2;
 }
 
 function pickWeighted(pool) {
@@ -243,12 +317,14 @@ function grindCandidates(settings, usedGrinds, grindBias, grindToggles) {
   });
 }
 
-function variationCandidates(grind, settings, forSwitchUp = false) {
-  // Topside can be set independently for the 2nd grind (switch up) so
-  // combos like "Top Soul to True Top Soul" are trainable — every
-  // other variation type stays shared between both grinds, since only
-  // Topside/Alley-oop/True were asked to be split out.
-  const topsideEnabled = forSwitchUp ? settings.switchUpTopside : settings.topside;
+function variationCandidates(grind, settings, level = 0) {
+  // Topside can be set independently per grind (1st, switch-up, 2nd
+  // switch-up) so combos like "Top Soul to True Top Soul" are
+  // trainable — every other variation type stays shared across all
+  // three, since only Topside/Alley-oop/True were asked to be split
+  // out.
+  const topsideEnabled =
+    level === 2 ? settings.switchUp2Topside : level === 1 ? settings.switchUpTopside : settings.topside;
   const excludedParts = [
     [settings.negative, "Negative"],
     [topsideEnabled, "Topside"],
@@ -460,7 +536,7 @@ function spinOffCandidates(grind, settings) {
 // through a Frontside groove grind kept the raw Inspin entries, which
 // nameSwitchSpin's own (already-correct) flip then displays as True —
 // the exact opposite of what got checked.
-function filterSwitchSpinDirection(pool, settings, flipDirection = false) {
+function filterSwitchSpinDirection(pool, settings, flipDirection = false, prefix = "spinBetween") {
   return pool.filter((entry) => {
     if (entry.name === "None") {
       return true;
@@ -468,9 +544,9 @@ function filterSwitchSpinDirection(pool, settings, flipDirection = false) {
     const isInspin = entry.name.includes("Inspin");
     const readsAsAlleyOop = flipDirection ? !isInspin : isInspin;
     if (readsAsAlleyOop) {
-      return settings.spinBetweenAlleyOop !== false;
+      return settings[`${prefix}AlleyOop`] !== false;
     }
-    return settings.spinBetweenTrue !== false;
+    return settings[`${prefix}True`] !== false;
   });
 }
 
@@ -505,7 +581,7 @@ function baseSwitchSpinPool(grind, switchUpGrind) {
       ];
 }
 
-function switchSpinCandidates(grind, switchUpGrind, settings) {
+function switchSpinCandidates(grind, switchUpGrind, settings, prefix = "spinBetween") {
   const sameType = grind.isGroove === switchUpGrind.isGroove;
   let pool = sameType
     ? [
@@ -532,7 +608,7 @@ function switchSpinCandidates(grind, switchUpGrind, settings) {
     crossTypeGrooveGrind &&
     (crossTypeGrooveGrind.name === "Frontside" || crossTypeGrooveGrind.name.includes("FS "))
   );
-  pool = filterSwitchSpinDirection(pool, settings, flipDirection);
+  pool = filterSwitchSpinDirection(pool, settings, flipDirection, prefix);
   // If both directions got switched off at once, fall back to the
   // unfiltered pool rather than leaving nothing to spin (mirrors the
   // Spin in reel's own safety net).
@@ -560,15 +636,15 @@ function switchSpinCandidates(grind, switchUpGrind, settings) {
   // spinToCandidates above: doing it the other way around let training
   // focus's "strip None" step get baked into the degree filter's own
   // fallback pool.
-  pool = filterSpinDegrees(pool, settings, "spinBetween");
+  pool = filterSpinDegrees(pool, settings, prefix);
   // Same idea again: with training focus on and the direction and/or a
   // degree narrowed, force an actual rotation between the two grinds
   // instead of sometimes landing on "no rotation between them" — only
   // if something real is actually left afterwards.
   if (
     settings.trainingFocus &&
-    (!(settings.spinBetweenAlleyOop && settings.spinBetweenTrue) ||
-      hasAnyDegreeChecked(settings, "spinBetween"))
+    (!(settings[`${prefix}AlleyOop`] && settings[`${prefix}True`]) ||
+      hasAnyDegreeChecked(settings, prefix))
   ) {
     const withoutNone = pool.filter((entry) => entry.name !== "None");
     if (withoutNone.length > 0) {
@@ -633,7 +709,8 @@ export function enumeratePossibleTricks(
   settings,
   grindToggles,
   switchUpGrindToggles,
-  { cap = ENUMERATE_CAP } = {}
+  { cap = ENUMERATE_CAP } = {},
+  switchUp2GrindToggles = null
 ) {
   const grindPool = grindCandidates(settings, [], null, grindToggles);
   const byName = new Map(); // name -> full descriptor, for turning this into a personal family's entries later
@@ -658,25 +735,61 @@ export function enumeratePossibleTricks(
         switchUpGrindToggles !== null ? switchUpGrindToggles : grindToggles
       );
     }
-    // [{ switchUp, switchSpin, switchUpVariation }], or a single
-    // all-null entry when Switch up is off entirely.
+    // [{ switchUp, switchSpin, switchUpVariation, switchUp2Branches }],
+    // or a single all-null entry when Switch up is off entirely.
+    // switchUp2Branches nests the exact same idea one level further
+    // out, for the second switch-up (3rd grind) — a single all-null
+    // branch of its own whenever that's off, so the loop below never
+    // needs to care whether it's actually active.
     const switchUpBranches = hasSwitchUpReel(settings)
       ? switchUpPool.flatMap((switchUp) => {
           const switchSpinOutcomes = hasSwitchSpinReel(settings)
             ? switchSpinCandidates(grind, switchUp, settings)
             : [null];
-          const switchUpVariationOutcomes = hasVariationReel(settings, true)
-            ? variationCandidates(switchUp, settings, true)
+          const switchUpVariationOutcomes = hasVariationReel(settings, 1)
+            ? variationCandidates(switchUp, settings, 1)
             : [null];
+
+          let switchUp2Pool = [];
+          if (hasSwitchUp2Reel(settings)) {
+            switchUp2Pool = grindCandidates(
+              settings,
+              [],
+              null,
+              switchUp2GrindToggles !== null
+                ? switchUp2GrindToggles
+                : switchUpGrindToggles !== null
+                ? switchUpGrindToggles
+                : grindToggles
+            );
+          }
+          const switchUp2Branches = hasSwitchUp2Reel(settings)
+            ? switchUp2Pool.flatMap((switchUp2) => {
+                const switchSpin2Outcomes = hasSwitchSpin2Reel(settings)
+                  ? switchSpinCandidates(switchUp, switchUp2, settings, "spinBetween2")
+                  : [null];
+                const switchUp2VariationOutcomes = hasVariationReel(settings, 2)
+                  ? variationCandidates(switchUp2, settings, 2)
+                  : [null];
+                const branches2 = [];
+                for (const switchSpin2 of switchSpin2Outcomes) {
+                  for (const switchUp2Variation of switchUp2VariationOutcomes) {
+                    branches2.push({ switchUp2, switchSpin2, switchUp2Variation });
+                  }
+                }
+                return branches2;
+              })
+            : [{ switchUp2: null, switchSpin2: null, switchUp2Variation: null }];
+
           const branches = [];
           for (const switchSpin of switchSpinOutcomes) {
             for (const switchUpVariation of switchUpVariationOutcomes) {
-              branches.push({ switchUp, switchSpin, switchUpVariation });
+              branches.push({ switchUp, switchSpin, switchUpVariation, switchUp2Branches });
             }
           }
           return branches;
         })
-      : [{ switchUp: null, switchSpin: null, switchUpVariation: null }];
+      : [{ switchUp: null, switchSpin: null, switchUpVariation: null, switchUp2Branches: [{ switchUp2: null, switchSpin2: null, switchUp2Variation: null }] }];
 
     for (const variation of variationOutcomes) {
       for (const approach of approachOutcomes) {
@@ -684,37 +797,48 @@ export function enumeratePossibleTricks(
         for (const spinTo of spinToOutcomes) {
           for (const spinOff of spinOffOutcomes) {
             for (const branch of switchUpBranches) {
-              count += 1;
-              if (count > cap) {
-                truncated = true;
-                break outer;
-              }
-              const reels = [
-                { name: "Approach", winner: approach },
-                { name: "SpinTo", winner: spinTo },
-                { name: "Grind", winner: grind },
-                { name: "GrindVariation", winner: variation },
-                { name: "SwitchSpin", winner: branch.switchSpin },
-                { name: "SwitchUp", winner: branch.switchUp },
-                { name: "SwitchUpVariation", winner: branch.switchUpVariation },
-                { name: "SpinOff", winner: spinOff },
-              ];
-              const name = nameTrick(reels, {
-                switchUpSwitch: !!settings.switchUpSwitch,
-              }).parsed;
-              if (!byName.has(name)) {
-                byName.set(name, {
-                  grindName: grind.name,
-                  variationName: variation ? variation.name : "None",
-                  approach: approach ? approach.name : "Forwards",
-                  spinToName: spinTo.name,
-                  spinOffName: spinOff.name,
-                  switchUpGrindName: branch.switchUp ? branch.switchUp.name : null,
-                  switchUpVariationName: branch.switchUpVariation
-                    ? branch.switchUpVariation.name
-                    : null,
-                  switchSpinName: branch.switchSpin ? branch.switchSpin.name : null,
-                });
+              for (const branch2 of branch.switchUp2Branches) {
+                count += 1;
+                if (count > cap) {
+                  truncated = true;
+                  break outer;
+                }
+                const reels = [
+                  { name: "Approach", winner: approach },
+                  { name: "SpinTo", winner: spinTo },
+                  { name: "Grind", winner: grind },
+                  { name: "GrindVariation", winner: variation },
+                  { name: "SwitchSpin", winner: branch.switchSpin },
+                  { name: "SwitchUp", winner: branch.switchUp },
+                  { name: "SwitchUpVariation", winner: branch.switchUpVariation },
+                  { name: "SwitchSpin2", winner: branch2.switchSpin2 },
+                  { name: "SwitchUp2", winner: branch2.switchUp2 },
+                  { name: "SwitchUp2Variation", winner: branch2.switchUp2Variation },
+                  { name: "SpinOff", winner: spinOff },
+                ];
+                const name = nameTrick(reels, {
+                  switchUpSwitch: !!settings.switchUpSwitch,
+                  switchUp2Switch: !!settings.switchUp2Switch,
+                }).parsed;
+                if (!byName.has(name)) {
+                  byName.set(name, {
+                    grindName: grind.name,
+                    variationName: variation ? variation.name : "None",
+                    approach: approach ? approach.name : "Forwards",
+                    spinToName: spinTo.name,
+                    spinOffName: spinOff.name,
+                    switchUpGrindName: branch.switchUp ? branch.switchUp.name : null,
+                    switchUpVariationName: branch.switchUpVariation
+                      ? branch.switchUpVariation.name
+                      : null,
+                    switchSpinName: branch.switchSpin ? branch.switchSpin.name : null,
+                    switchUp2GrindName: branch2.switchUp2 ? branch2.switchUp2.name : null,
+                    switchUp2VariationName: branch2.switchUp2Variation
+                      ? branch2.switchUp2Variation.name
+                      : null,
+                    switchSpin2Name: branch2.switchSpin2 ? branch2.switchSpin2.name : null,
+                  });
+                }
               }
             }
           }
@@ -746,6 +870,9 @@ export function nameEntry(entry) {
   const switchUpGrind = entry.switchUpGrindName
     ? GRINDS.find((g) => g.name === entry.switchUpGrindName)
     : null;
+  const switchUp2Grind = entry.switchUp2GrindName
+    ? GRINDS.find((g) => g.name === entry.switchUp2GrindName)
+    : null;
   const approach = APPROACHES.find((a) => a.name === entry.approach) || {
     name: entry.approach || "Forwards",
     isFakie: false,
@@ -758,6 +885,10 @@ export function nameEntry(entry) {
     entry.switchUpVariationName && entry.switchUpVariationName !== "None"
       ? variationByName(entry.switchUpVariationName)
       : null;
+  const switchUp2Variation =
+    entry.switchUp2VariationName && entry.switchUp2VariationName !== "None"
+      ? variationByName(entry.switchUp2VariationName)
+      : null;
   const reels = [
     { name: "Approach", winner: approach },
     { name: "SpinTo", winner: { name: entry.spinToName || "None" } },
@@ -766,6 +897,12 @@ export function nameEntry(entry) {
     { name: "SwitchSpin", winner: entry.switchSpinName ? { name: entry.switchSpinName } : null },
     { name: "SwitchUp", winner: switchUpGrind },
     { name: "SwitchUpVariation", winner: switchUpGrind ? switchUpVariation : null },
+    {
+      name: "SwitchSpin2",
+      winner: entry.switchSpin2Name ? { name: entry.switchSpin2Name } : null,
+    },
+    { name: "SwitchUp2", winner: switchUp2Grind },
+    { name: "SwitchUp2Variation", winner: switchUp2Grind ? switchUp2Variation : null },
     {
       name: "SpinOff",
       winner: { name: entry.spinOffName || (grind.isGroove ? "Forwards" : "None") },

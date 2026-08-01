@@ -124,6 +124,10 @@ function defaultCollection() {
     // shown — once per calendar month, regardless of whether the
     // player actually exported when it appeared. null means "never".
     lastMonthlyPromptMonth: null,
+    // "YYYY-MM-DD" of the last silent local auto-backup snapshot (see
+    // useBackup.js's autoBackupIfDue) — at most one per day, separate
+    // from the manual export reminder above.
+    lastAutoBackupDate: null,
     // Family training progress: which entries (by index into
     // family.entries) have been landed so far — drawn at random among
     // whatever's left, not in a fixed order (see useGame.js). completedAt
@@ -181,7 +185,34 @@ export function migrateZerospinSplit(data) {
   return data;
 }
 
-const collection = reactive(migrateZerospinSplit(loadCollection()));
+// One-time migration: familyEntryKey (see families.js) grew 3 more
+// fields for the optional 3rd grind (a switch-up of the switch-up) —
+// every existing landed key (old format, 8 pipe-separated fields)
+// needs those 3 empty fields appended, or it silently stops matching
+// what familyEntryKey(entry) now computes for that exact same
+// (2-grind-only) entry, and every family's progress — every built-in
+// Career tier, every personal family — would appear to reset to 0%
+// on next load. Safe to run every load: a no-op on keys that already
+// have the new field count. Exported for the same reason
+// migrateZerospinSplit is (restoreBackup needs it too).
+export function migrateFamilyEntryKeyFormat(data) {
+  if (!data.familyProgress) {
+    return data;
+  }
+  for (const progress of Object.values(data.familyProgress)) {
+    if (!Array.isArray(progress.landedKeys)) {
+      continue;
+    }
+    progress.landedKeys = progress.landedKeys.map((key) =>
+      key.split("|").length === 8 ? `${key}|||` : key
+    );
+  }
+  return data;
+}
+
+const collection = reactive(
+  migrateFamilyEntryKeyFormat(migrateZerospinSplit(loadCollection()))
+);
 
 watch(
   collection,
@@ -518,6 +549,53 @@ export function useCollection() {
 
   const sessionLands = (sessionId) =>
     collection.lands.filter((l) => l.sessionId === sessionId);
+
+  /**
+   * The N tricks you've landed at least once but still struggle with
+   * most — ranked by how often you skip past them relative to how
+   * often you land them (ties broken by raw attempt count, so a trick
+   * seen often reads as "weak" ahead of one seen only a couple of
+   * times). Only ever includes tricks landed at least once: that's
+   * the only case where the exact recipe (grind/variation/approach/
+   * spin-in/spin-out/switch-up) needed to redraw the SAME trick is on
+   * record at all (see recordLand below) — a trick only ever skipped
+   * has no such recipe saved, just a skip count, so there'd be no
+   * reliable way to bring back that exact trick on purpose.
+   */
+  const weakPointsEntries = (limit = 15) => {
+    const recipeByName = {};
+    for (const land of collection.lands) {
+      recipeByName[land.trickName] = land;
+    }
+    return Object.entries(collection.tricks)
+      .map(([name, stats]) => {
+        const totalAttempts = stats.landed + stats.skipped;
+        return {
+          name,
+          totalAttempts,
+          failRatio: totalAttempts ? stats.skipped / totalAttempts : 0,
+        };
+      })
+      .filter((t) => t.totalAttempts >= 2 && recipeByName[t.name])
+      .sort((a, b) => b.failRatio - a.failRatio || b.totalAttempts - a.totalAttempts)
+      .slice(0, limit)
+      .map(({ name }) => {
+        const r = recipeByName[name];
+        return {
+          grindName: r.grindName,
+          variationName: r.variationName,
+          approach: r.approach,
+          spinToName: r.spinToName,
+          spinOffName: r.spinOffName,
+          switchUpGrindName: r.switchUpGrindName,
+          switchUpVariationName: r.switchUpVariationName,
+          switchSpinName: r.switchSpinName,
+          switchUp2GrindName: r.switchUp2GrindName,
+          switchUp2VariationName: r.switchUp2VariationName,
+          switchSpin2Name: r.switchSpin2Name,
+        };
+      });
+  };
 
   // "YYYY-MM" keys for every month that has at least one landed trick,
   // most recent first — feeds the month picker in MonthlyReportPanel so
@@ -940,6 +1018,16 @@ export function useCollection() {
       switchUpVariationName:
         winners.SwitchUp !== "None" ? winners.SwitchUpVariation : null,
       switchSpinName: winners.SwitchUp !== "None" ? winners.SwitchSpin : null,
+      // Second switch-up (3rd grind), same idea one level further out —
+      // only ever set when the first switch-up itself happened too.
+      switchUp2GrindName:
+        winners.SwitchUp !== "None" && winners.SwitchUp2 !== "None" ? winners.SwitchUp2 : null,
+      switchUp2VariationName:
+        winners.SwitchUp !== "None" && winners.SwitchUp2 !== "None"
+          ? winners.SwitchUp2Variation
+          : null,
+      switchSpin2Name:
+        winners.SwitchUp !== "None" && winners.SwitchUp2 !== "None" ? winners.SwitchSpin2 : null,
       // Which family (if any) was being trained when this was landed —
       // feeds the end-of-session recap's "families progressed" list.
       familyId,
@@ -1137,6 +1225,7 @@ export function useCollection() {
     sessionHistory,
     monthlyReport,
     monthsWithActivity,
+    weakPointsEntries,
     sessionLands,
     sessionBadges,
     sessionFamilyProgress,

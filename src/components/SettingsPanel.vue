@@ -43,6 +43,10 @@ const {
   setSwitchUpGrind,
   setAllSwitchUpGrinds,
   setSwitchUpGrindsByType,
+  switchUp2GrindEnabled,
+  setSwitchUp2Grind,
+  setAllSwitchUp2Grinds,
+  setSwitchUp2GrindsByType,
 } = useSettings();
 
 // Full CTA-ready palette + matching glow for the chosen hue, so the
@@ -123,6 +127,14 @@ const TRICK_GROUPS = [
     options: [["switchUp", "Second grind (switch up)"]],
   },
   {
+    title: "Switch up (2ème)",
+    // A switch-up of the switch-up — only makes sense once the first
+    // one is itself on, same nested-visibility rule as everything else
+    // gated on requiresSwitchUp below.
+    requiresSwitchUp: true,
+    options: [["switchUp2", "Troisième grind (switch up du switch up)"]],
+  },
+  {
     title: "Variation du premier grind",
     // Rendered as its own 3-column row (see .options--featured) instead
     // of falling into the generic 1-or-2-column list below — these are
@@ -150,12 +162,29 @@ const TRICK_GROUPS = [
     // Same idea as the featured row above, but for the 2nd grind (the
     // switch-up target) and the rotation between the two grinds —
     // trains combos like "Top Soul to Switch True Top Soul"
-    // independently of the 1st grind's settings above.
+    // independently of the 1st grind's settings above. None of this
+    // means anything without switchUp itself on, so it's hidden until
+    // then (see requiresSwitchUp below) rather than cluttering the
+    // panel with settings that can't currently do anything.
+    requiresSwitchUp: true,
     featured: [
       ["switchUpSwitch", "Tricks switch (2nd)"],
       ["switchUpTopside", "Grinds topside (2nd)"],
       ["spinBetweenAlleyOop", "Alley oop (2nd, inspin)"],
       ["spinBetweenTrue", "True (2nd, outspin)"],
+    ],
+    options: [],
+  },
+  {
+    title: "Variation du troisième grind",
+    // Same idea again, one level further out — none of this means
+    // anything unless BOTH switchUp and switchUp2 are on.
+    requiresSwitchUp2: true,
+    featured: [
+      ["switchUp2Switch", "Tricks switch (3ème)"],
+      ["switchUp2Topside", "Grinds topside (3ème)"],
+      ["spinBetween2AlleyOop", "Alley oop (3ème, inspin)"],
+      ["spinBetween2True", "True (3ème, outspin)"],
     ],
     options: [],
   },
@@ -171,12 +200,24 @@ const TRICK_GROUPS = [
   },
   {
     title: "Rotation entre les grinds (Spin between)",
+    requiresSwitchUp: true,
     options: [
       ["spinBetween180", "Rotations 180"],
       ["spinBetween270", "Rotations 270 (groove)"],
       ["spinBetween360", "Rotations 360"],
       ["spinBetween450", "Rotations 450 (groove)"],
       ["spinBetween540", "Rotations 540"],
+    ],
+  },
+  {
+    title: "Rotation entre le 2ème et 3ème grind",
+    requiresSwitchUp2: true,
+    options: [
+      ["spinBetween2180", "Rotations 180"],
+      ["spinBetween2270", "Rotations 270 (groove)"],
+      ["spinBetween2360", "Rotations 360"],
+      ["spinBetween2450", "Rotations 450 (groove)"],
+      ["spinBetween2540", "Rotations 540"],
     ],
   },
   {
@@ -394,34 +435,41 @@ const grindList = [
     <p class="hint">Modifier une option ci-dessous bascule le préréglage sur Custom.</p>
 
     <template v-for="group in TRICK_GROUPS" :key="group.title">
-      <h3 class="section-title">{{ group.title }}</h3>
-      <p v-if="group.hint" class="hint hint--top">{{ group.hint }}</p>
-      <div v-if="group.featured" class="options options--featured">
-        <label v-for="[key, text] in group.featured" :key="key" class="option">
-          <span class="switch">
-            <input
-              type="checkbox"
-              :checked="settings.tricks[key]"
-              @change="setTrick(key, $event.target.checked)"
-            />
-            <span class="track" />
-          </span>
-          <span>{{ text }}</span>
-        </label>
-      </div>
-      <div class="options">
-        <label v-for="[key, text] in group.options" :key="key" class="option">
-          <span class="switch">
-            <input
-              type="checkbox"
-              :checked="settings.tricks[key]"
-              @change="setTrick(key, $event.target.checked)"
-            />
-            <span class="track" />
-          </span>
-          <span>{{ text }}</span>
-        </label>
-      </div>
+      <template
+        v-if="
+          (!group.requiresSwitchUp || settings.tricks.switchUp) &&
+          (!group.requiresSwitchUp2 || (settings.tricks.switchUp && settings.tricks.switchUp2))
+        "
+      >
+        <h3 class="section-title">{{ group.title }}</h3>
+        <p v-if="group.hint" class="hint hint--top">{{ group.hint }}</p>
+        <div v-if="group.featured" class="options options--featured">
+          <label v-for="[key, text] in group.featured" :key="key" class="option">
+            <span class="switch">
+              <input
+                type="checkbox"
+                :checked="settings.tricks[key]"
+                @change="setTrick(key, $event.target.checked)"
+              />
+              <span class="track" />
+            </span>
+            <span>{{ text }}</span>
+          </label>
+        </div>
+        <div class="options">
+          <label v-for="[key, text] in group.options" :key="key" class="option">
+            <span class="switch">
+              <input
+                type="checkbox"
+                :checked="settings.tricks[key]"
+                @change="setTrick(key, $event.target.checked)"
+              />
+              <span class="track" />
+            </span>
+            <span>{{ text }}</span>
+          </label>
+        </div>
+      </template>
     </template>
 
     <h3 class="section-title">Grinds (premier trick)</h3>
@@ -451,30 +499,59 @@ const grindList = [
       </label>
     </div>
 
-    <h3 class="section-title">Grinds (second trick &mdash; switch up)</h3>
-    <p class="hint hint--top">
-      Indépendant de la liste au-dessus &mdash; ne compte que si le switch up
-      est activé. Entraîne le second grind séparément du premier.
-    </p>
-    <div class="grind-bulk">
-      <button class="btn btn--ghost" @click="setAllSwitchUpGrinds(true)">Tout activer</button>
-      <button class="btn btn--ghost" @click="setAllSwitchUpGrinds(false)">Tout désactiver</button>
-      <button class="btn btn--ghost" @click="setSwitchUpGrindsByType('soul')">Soul uniquement</button>
-      <button class="btn btn--ghost" @click="setSwitchUpGrindsByType('groove')">Groove uniquement</button>
-    </div>
-    <div class="options">
-      <label v-for="grind in grindList" :key="grind.name" class="option">
-        <span class="switch">
-          <input
-            type="checkbox"
-            :checked="switchUpGrindEnabled(grind.name)"
-            @change="setSwitchUpGrind(grind.name, $event.target.checked)"
-          />
-          <span class="track" />
-        </span>
-        <span>{{ grind.name }}</span>
-      </label>
-    </div>
+    <template v-if="settings.tricks.switchUp">
+      <h3 class="section-title">Grinds (second trick &mdash; switch up)</h3>
+      <p class="hint hint--top">
+        Indépendant de la liste au-dessus &mdash; entraîne le second grind
+        séparément du premier.
+      </p>
+      <div class="grind-bulk">
+        <button class="btn btn--ghost" @click="setAllSwitchUpGrinds(true)">Tout activer</button>
+        <button class="btn btn--ghost" @click="setAllSwitchUpGrinds(false)">Tout désactiver</button>
+        <button class="btn btn--ghost" @click="setSwitchUpGrindsByType('soul')">Soul uniquement</button>
+        <button class="btn btn--ghost" @click="setSwitchUpGrindsByType('groove')">Groove uniquement</button>
+      </div>
+      <div class="options">
+        <label v-for="grind in grindList" :key="grind.name" class="option">
+          <span class="switch">
+            <input
+              type="checkbox"
+              :checked="switchUpGrindEnabled(grind.name)"
+              @change="setSwitchUpGrind(grind.name, $event.target.checked)"
+            />
+            <span class="track" />
+          </span>
+          <span>{{ grind.name }}</span>
+        </label>
+      </div>
+    </template>
+
+    <template v-if="settings.tricks.switchUp && settings.tricks.switchUp2">
+      <h3 class="section-title">Grinds (troisième trick &mdash; switch up du switch up)</h3>
+      <p class="hint hint--top">
+        Indépendant des deux listes au-dessus &mdash; entraîne le troisième
+        grind séparément des deux premiers.
+      </p>
+      <div class="grind-bulk">
+        <button class="btn btn--ghost" @click="setAllSwitchUp2Grinds(true)">Tout activer</button>
+        <button class="btn btn--ghost" @click="setAllSwitchUp2Grinds(false)">Tout désactiver</button>
+        <button class="btn btn--ghost" @click="setSwitchUp2GrindsByType('soul')">Soul uniquement</button>
+        <button class="btn btn--ghost" @click="setSwitchUp2GrindsByType('groove')">Groove uniquement</button>
+      </div>
+      <div class="options">
+        <label v-for="grind in grindList" :key="grind.name" class="option">
+          <span class="switch">
+            <input
+              type="checkbox"
+              :checked="switchUp2GrindEnabled(grind.name)"
+              @change="setSwitchUp2Grind(grind.name, $event.target.checked)"
+            />
+            <span class="track" />
+          </span>
+          <span>{{ grind.name }}</span>
+        </label>
+      </div>
+    </template>
 
     <p class="hint">Les réglages sont sauvegardés sur cet appareil et s'appliquent à la prochaine partie.</p>
 

@@ -20,9 +20,16 @@ import { useBackup } from "../composables/useBackup.js";
 const emit = defineEmits(["open-settings"]);
 
 const { settings, applyLevel, saveCustomFamily, deleteCustomFamily } = useSettings();
-const { startGame, startFamilySession, hasOpenSessionToday, endOpenSession, state } = useGame();
-const { familyIndex, isFamilyComplete, careerProgress, resetCareerProgress, resetFamilyProgress } =
-  useCollection();
+const { startGame, startFamilySession, startWeakPointsSession, WEAK_POINTS_FAMILY_ID, hasOpenSessionToday, endOpenSession, state } =
+  useGame();
+const {
+  familyIndex,
+  isFamilyComplete,
+  careerProgress,
+  resetCareerProgress,
+  resetFamilyProgress,
+  weakPointsEntries,
+} = useCollection();
 const { needsBackupReminder, exportBackup, exportFamilies, importFamilies } = useBackup();
 
 function startSoloSession() {
@@ -65,8 +72,9 @@ const selectedCustomFamilyId = ref(null);
 watch(
   () => settings.customFamilies,
   (list) => {
-    if (!list.some((f) => f.id === selectedCustomFamilyId.value)) {
-      selectedCustomFamilyId.value = list[0]?.id ?? null;
+    const visible = list.filter((f) => f.id !== "weak-points");
+    if (!visible.some((f) => f.id === selectedCustomFamilyId.value)) {
+      selectedCustomFamilyId.value = visible[0]?.id ?? null;
     }
   },
   { immediate: true, deep: true }
@@ -131,6 +139,25 @@ function onImportFamiliesFileChosen(event) {
 
 const selectedFamilyId = computed(() =>
   familySection.value === "builtin" ? selectedBuiltinFamilyId.value : selectedCustomFamilyId.value
+);
+
+// Recomputed live off the same data the training itself uses, so the
+// button disables/enables in step with whether there's actually
+// enough attempt history yet — no separate "enough data" flag to keep
+// in sync.
+const hasWeakPoints = computed(() => weakPointsEntries(1).length > 0);
+
+function onStartWeakPoints() {
+  startWeakPointsSession(settings);
+}
+
+// "Points faibles" lives in settings.customFamilies (see
+// startWeakPointsSession) purely as a convenient, already-working
+// storage slot — it's rebuilt fresh each time from stats, not
+// something the player made, so it's filtered back out of the picker
+// here rather than showing up as if it were a real personal family.
+const visibleCustomFamilies = computed(() =>
+  settings.customFamilies.filter((family) => family.id !== WEAK_POINTS_FAMILY_ID)
 );
 
 function startFamilyModeSession() {
@@ -481,6 +508,21 @@ function removePlayer(index) {
     <h2 class="setup__title sticker-text">Famille</h2>
 
     <div class="setup__section">
+      <button
+        class="btn btn--go weak-points-btn"
+        :disabled="!hasWeakPoints"
+        @click="onStartWeakPoints"
+      >
+        <AppIcon name="zap" :size="16" />
+        Travailler mes points faibles
+      </button>
+      <p v-if="!hasWeakPoints" class="setup__hint">
+        Pas encore assez de données — reviens après avoir réussi et passé
+        quelques tricks plusieurs fois.
+      </p>
+    </div>
+
+    <div class="setup__section">
       <div class="pills">
         <button
           class="pill"
@@ -537,10 +579,10 @@ function removePlayer(index) {
 
     <div v-else class="setup__section">
       <span class="setup__label">Choisis une famille perso</span>
-      <div v-if="settings.customFamilies.length" class="family-picker">
+      <div v-if="visibleCustomFamilies.length" class="family-picker">
         <select class="select" v-model="selectedCustomFamilyId">
           <option
-            v-for="family in settings.customFamilies"
+            v-for="family in visibleCustomFamilies"
             :key="family.id"
             :value="family.id"
             :style="{ color: familyOptionColor(family) }"
@@ -580,7 +622,7 @@ function removePlayer(index) {
       <div class="family-import-actions">
         <button
           class="btn btn--ghost"
-          :disabled="!settings.customFamilies.length"
+          :disabled="!visibleCustomFamilies.length"
           @click="onExportFamiliesClick"
         >
           Exporter
@@ -919,6 +961,14 @@ body.theme-inverted .start__logo-mark {
   gap: 6px;
   font-size: 14px;
   color: var(--text-dim);
+}
+
+.weak-points-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
 }
 
 .training-history-btn {

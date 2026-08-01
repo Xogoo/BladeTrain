@@ -356,5 +356,8 @@ export function familyEntryKey(entry) {
     entry.switchUpGrindName || "",
     entry.switchUpVariationName || "",
     entry.switchSpinName || "",
+    entry.switchUp2GrindName || "",
+    entry.switchUp2VariationName || "",
+    entry.switchSpin2Name || "",
   ].join("|");
 }

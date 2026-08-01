@@ -429,13 +429,52 @@ export function fadeOutMusic(seconds = 1.4) {
  * audio before one). Optionally starts the intro music.
  */
 export function unlockAudio(withMusic) {
-  if (!ctx) {
+  if (ctx) {
+    const resumed = ctx.state === "suspended" ? ctx.resume() : Promise.resolve();
+    if (withMusic) {
+      resumed.then(() => startMusic());
+    }
+  }
+  // Most browsers (Safari/iOS especially) only allow speechSynthesis
+  // to actually speak the FIRST time as a direct result of a user
+  // gesture — after that, calls from a watcher/timer (like the
+  // automatic "read the trick once it lands" below) keep working for
+  // the rest of the session. Speaking an empty utterance right here,
+  // on the Démarrer tap, "primes" it once so the automatic reads
+  // later on aren't silently swallowed.
+  if (isSynthesisSupported) {
+    window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+  }
+}
+
+/**
+ * Short spoken phrases that aren't trick names — confirmations like
+ * "Trick validé !" — always go through speech synthesis regardless of
+ * settings.speechEngine, since these words were never recorded as
+ * samples (there's no "validé.wav"). Uses whatever voice was picked
+ * for synthesis if one was, otherwise the browser default.
+ */
+export function speakPhrase(text, onEnd) {
+  if (state.muted || !isSynthesisSupported) {
+    onEnd?.();
     return;
   }
-  const resumed = ctx.state === "suspended" ? ctx.resume() : Promise.resolve();
-  if (withMusic) {
-    resumed.then(() => startMusic());
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  const voice = synthesisVoices.value.find(
+    (v) => v.voiceURI === settingsApi.settings.speechVoiceURI
+  );
+  if (voice) {
+    utterance.voice = voice;
+    utterance.lang = voice.lang;
+  } else {
+    utterance.lang = "fr-FR";
   }
+  if (onEnd) {
+    utterance.onend = onEnd;
+    utterance.onerror = onEnd;
+  }
+  window.speechSynthesis.speak(utterance);
 }
 
 export function useSpeech() {
@@ -453,5 +492,6 @@ export function useSpeech() {
     toggleMute,
     synthesisVoices,
     isSynthesisSupported,
+    speakPhrase,
   };
 }

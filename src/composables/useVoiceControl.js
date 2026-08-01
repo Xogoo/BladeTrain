@@ -1,4 +1,11 @@
 import { ref, onUnmounted } from "vue";
+import { speakPhrase } from "./useSpeech.js";
+
+const CONFIRMATION_PHRASES = {
+  land: "Trick validé !",
+  skip: "Trick passé !",
+  fail: "Raté, on recommence.",
+};
 
 // Kept short and forgiving on purpose — this listens to whatever's
 // picked up around a skate spot (wind, wheels, other people), so a
@@ -45,7 +52,8 @@ export function useVoiceControl() {
   const permissionDenied = ref(false);
 
   let recognition = null;
-  let shouldRestart = false;
+  let shouldRestart = false; // "the caller wants this listening right now"
+  let pausedForVisibility = false; // internal-only: temporarily stopped because the page went to the background, not because the caller stopped wanting it
   let handlers = {};
 
   function ensureRecognition() {
@@ -66,6 +74,32 @@ export function useVoiceControl() {
         return;
       }
       lastAction.value = action;
+      // The mic is still listening (continuous mode) — speaking the
+      // confirmation without pausing it first risks the recognizer
+      // picking its own voice back up through the phone speaker (e.g.
+      // "validé" is also a LAND keyword) and re-triggering the same
+      // action in a loop. Pause listening for the duration of the
+      // phrase, then resume once it's actually done speaking.
+      const wasListening = shouldRestart;
+      if (wasListening) {
+        shouldRestart = false;
+        try {
+          recognition.stop();
+        } catch {
+          // Already stopped.
+        }
+      }
+      speakPhrase(CONFIRMATION_PHRASES[action], () => {
+        if (wasListening) {
+          shouldRestart = true;
+          try {
+            recognition.start();
+            isListening.value = true;
+          } catch {
+            // Already running, or onend will pick it back up shortly.
+          }
+        }
+      });
       if (action === "land") handlers.onLand?.();
       else if (action === "skip") handlers.onSkip?.();
       else if (action === "fail") handlers.onFail?.();
@@ -99,6 +133,64 @@ export function useVoiceControl() {
     };
   }
 
+  // Leaving the app (switching apps, locking the phone, backgrounding
+  // the tab) doesn't unmount GameScreen — it's still the active Vue
+  // component, just not visible — so onUnmounted below never fires
+  // and the mic would otherwise keep listening (and keep the OS-level
+  // "microphone in use" indicator lit) for no reason. This explicitly
+  // stops it the moment the page is hidden, and picks back up on
+  // return — but only if it was actually still supposed to be
+  // listening, not unconditionally.
+  function handleVisibilityChange() {
+    if (typeof document === "undefined" || !recognition) {
+      return;
+    }
+    if (document.hidden) {
+      if (shouldRestart) {
+        pausedForVisibility = true;
+        shouldRestart = false; // keep onend from racing to restart it below
+        try {
+          recognition.stop();
+        } catch {
+          // Already stopped.
+        }
+        isListening.value = false;
+      }
+    } else if (pausedForVisibility) {
+      pausedForVisibility = false;
+      shouldRestart = true;
+      try {
+        recognition.start();
+        isListening.value = true;
+      } catch {
+        // Already running, or onend will pick it back up shortly.
+      }
+    }
+  }
+
+  let visibilityHandlerAttached = false;
+  function attachVisibilityHandler() {
+    if (visibilityHandlerAttached || typeof document === "undefined") {
+      return;
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    // Extra safety net for an outright close/reload (not just a
+    // background/foreground switch) — makes sure the mic doesn't
+    // stay "in use" for the brief moment before the page actually
+    // tears down.
+    window.addEventListener("pagehide", stop);
+    visibilityHandlerAttached = true;
+  }
+
+  function detachVisibilityHandler() {
+    if (!visibilityHandlerAttached || typeof document === "undefined") {
+      return;
+    }
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+    window.removeEventListener("pagehide", stop);
+    visibilityHandlerAttached = false;
+  }
+
   function start({ onLand, onSkip, onFail } = {}) {
     if (!isSupported) {
       return;
@@ -106,7 +198,9 @@ export function useVoiceControl() {
     handlers = { onLand, onSkip, onFail };
     permissionDenied.value = false;
     ensureRecognition();
+    attachVisibilityHandler();
     shouldRestart = true;
+    pausedForVisibility = false;
     try {
       recognition.start();
       isListening.value = true;
@@ -117,6 +211,8 @@ export function useVoiceControl() {
 
   function stop() {
     shouldRestart = false;
+    pausedForVisibility = false;
+    detachVisibilityHandler();
     try {
       recognition?.stop();
     } catch {

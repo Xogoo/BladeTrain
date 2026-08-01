@@ -109,6 +109,20 @@ const ALL_TRICKS_OFF = {
   spinOut360: false,
   spinOut450: false,
   spinOut540: false,
+  // Same idea one level further out — a switch-up of the switch-up
+  // (3rd grind), only ever meaningful when switchUp itself is also on
+  // (see trickGenerator.js's hasSwitchUp2Reel). Same mirrored set of
+  // independent counterparts as switchUp's own above.
+  switchUp2: false,
+  switchUp2Topside: false,
+  switchUp2Switch: false,
+  spinBetween2AlleyOop: true,
+  spinBetween2True: true,
+  spinBetween2180: false,
+  spinBetween2270: false,
+  spinBetween2360: false,
+  spinBetween2450: false,
+  spinBetween2540: false,
 };
 
 const LEVEL_PRESETS = {
@@ -140,10 +154,21 @@ const LEVEL_PRESETS = {
     spinBetween360: false,
     spinBetween450: false,
     spinBetween540: false,
+    // 3rd-grind training stays opt-in only, never turned on by a
+    // preset — it's still new/experimental enough that a player should
+    // reach it on purpose via Custom, not get it bundled in with
+    // "everything on".
+    switchUp2: false,
+    spinBetween2180: false,
+    spinBetween2270: false,
+    spinBetween2360: false,
+    spinBetween2450: false,
+    spinBetween2540: false,
   },
   4: {
     ...Object.fromEntries(Object.keys(ALL_TRICKS_OFF).map((k) => [k, true])),
     switchUp: true,
+    switchUp2: false,
   },
   // Clicking "Custom" itself (not just touching a single checkbox, which
   // silently flips the level without resetting anything) starts from a
@@ -155,6 +180,8 @@ const LEVEL_PRESETS = {
     spinInTrue: false,
     spinBetweenAlleyOop: false,
     spinBetweenTrue: false,
+    spinBetween2AlleyOop: false,
+    spinBetween2True: false,
   },
 };
 
@@ -263,6 +290,9 @@ function defaultSettings() {
     // Same idea but for the second grind (switch up) — fully
     // independent, so the two reels can be trained separately.
     switchUpGrinds: presetGrinds(1),
+    // Same idea again, one level further out — the 3rd grind (switch-up
+    // of the switch-up).
+    switchUp2Grinds: presetGrinds(1),
     // Each mode's parked difficulty config ({ level, tricks, grinds }).
     // The top-level fields always hold the current mode's config; the
     // other mode's is stored here and swapped in on mode change, so solo
@@ -312,6 +342,9 @@ function loadSettings() {
     if (!merged.switchUpGrinds || typeof merged.switchUpGrinds !== "object") {
       merged.switchUpGrinds = {};
     }
+    if (!merged.switchUp2Grinds || typeof merged.switchUp2Grinds !== "object") {
+      merged.switchUp2Grinds = {};
+    }
     if (!merged.modeConfigs || typeof merged.modeConfigs !== "object") {
       merged.modeConfigs = {};
     }
@@ -350,6 +383,7 @@ watch(
         tricks: settings.tricks,
         grinds: settings.grinds,
         switchUpGrinds: settings.switchUpGrinds,
+        switchUp2Grinds: settings.switchUp2Grinds,
       })
     );
     const parked = settings.modeConfigs[mode];
@@ -358,6 +392,7 @@ watch(
       Object.assign(settings.tricks, ALL_TRICKS_OFF, parked.tricks);
       settings.grinds = { ...parked.grinds };
       settings.switchUpGrinds = { ...(parked.switchUpGrinds || {}) };
+      settings.switchUp2Grinds = { ...(parked.switchUp2Grinds || {}) };
     }
   }
 );
@@ -404,6 +439,13 @@ export function useSettings() {
     "spinBetween450",
     "spinBetween540",
   ];
+  const SPIN_BETWEEN2_DEGREE_KEYS = [
+    "spinBetween2180",
+    "spinBetween2270",
+    "spinBetween2360",
+    "spinBetween2450",
+    "spinBetween2540",
+  ];
 
   const setTrick = (key, value) => {
     settings.tricks[key] = value;
@@ -448,6 +490,23 @@ export function useSettings() {
     ) {
       settings.tricks.spinBetween180 = false;
       settings.tricks.spinBetween270 = false;
+    }
+    if (
+      value &&
+      (key === "spinBetween2AlleyOop" || key === "spinBetween2True") &&
+      !SPIN_BETWEEN2_DEGREE_KEYS.some((k) => settings.tricks[k])
+    ) {
+      settings.tricks.spinBetween2180 = true;
+      settings.tricks.spinBetween2270 = true;
+    }
+    if (
+      !value &&
+      (key === "spinBetween2AlleyOop" || key === "spinBetween2True") &&
+      !settings.tricks.spinBetween2AlleyOop &&
+      !settings.tricks.spinBetween2True
+    ) {
+      settings.tricks.spinBetween2180 = false;
+      settings.tricks.spinBetween2270 = false;
     }
     settings.level = CUSTOM_LEVEL;
   };
@@ -502,6 +561,28 @@ export function useSettings() {
     settings.level = CUSTOM_LEVEL;
   };
 
+  const switchUp2GrindEnabled = (name) => settings.switchUp2Grinds[name] !== false;
+  const setSwitchUp2Grind = (name, value) => {
+    settings.switchUp2Grinds[name] = value;
+    settings.level = CUSTOM_LEVEL;
+  };
+  const setAllSwitchUp2Grinds = (value) => {
+    for (const grind of GRINDS) {
+      settings.switchUp2Grinds[grind.name] = value;
+    }
+    settings.level = CUSTOM_LEVEL;
+  };
+
+  const setSwitchUp2GrindsByType = (type) => {
+    for (const grind of GRINDS) {
+      settings.switchUp2Grinds[grind.name] =
+        type === "soul"
+          ? SOUL_ONLY_NAMES.includes(grind.name)
+          : grind.isGroove && !GROOVE_ONLY_EXCLUDED_NAMES.includes(grind.name);
+    }
+    settings.level = CUSTOM_LEVEL;
+  };
+
   const levelName = (id = settings.level) =>
     LEVELS.find((l) => l.id === id)?.name ?? "";
 
@@ -545,6 +626,7 @@ export function useSettings() {
       tricks: JSON.parse(JSON.stringify(settings.tricks)),
       grinds: JSON.parse(JSON.stringify(settings.grinds)),
       switchUpGrinds: JSON.parse(JSON.stringify(settings.switchUpGrinds)),
+      switchUp2Grinds: JSON.parse(JSON.stringify(settings.switchUp2Grinds)),
     };
     settings.targetedTrainingHistory.unshift({
       id: `training-${Date.now()}`,
@@ -569,6 +651,9 @@ export function useSettings() {
     settings.tricks = JSON.parse(JSON.stringify(entry.tricks));
     settings.grinds = JSON.parse(JSON.stringify(entry.grinds));
     settings.switchUpGrinds = JSON.parse(JSON.stringify(entry.switchUpGrinds));
+    settings.switchUp2Grinds = JSON.parse(
+      JSON.stringify(entry.switchUp2Grinds || presetGrinds(1))
+    );
   }
 
   function deleteTargetedTraining(id) {
@@ -634,5 +719,9 @@ export function useSettings() {
     setSwitchUpGrind,
     setAllSwitchUpGrinds,
     setSwitchUpGrindsByType,
+    switchUp2GrindEnabled,
+    setSwitchUp2Grind,
+    setAllSwitchUp2Grinds,
+    setSwitchUp2GrindsByType,
   };
 }
