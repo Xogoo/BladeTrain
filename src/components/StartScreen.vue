@@ -400,9 +400,19 @@ if (state.pendingCareerTrack) {
 const presetTitle = computed(() =>
   settings.mode === "solo" ? "Mode" : "Difficulté"
 );
-const presetLevels = computed(() =>
-  settings.mode === "solo" ? SOLO_LEVELS : LEVELS
-);
+// BLADE VS's own "Familles" tab already covers "I want to pick exactly
+// what comes up" — Entraînement ciblé (Custom) doesn't add anything
+// there anymore, so it's left out of VS's level list. Group mode keeps
+// the full LEVELS list (including Custom) unchanged.
+const presetLevels = computed(() => {
+  if (settings.mode === "solo") {
+    return SOLO_LEVELS;
+  }
+  if (settings.mode === "vs") {
+    return LEVELS.filter((level) => level.id !== CUSTOM_LEVEL);
+  }
+  return LEVELS;
+});
 
 // BLADE VS: settings.vsRobotChance is the robot's GLOBAL chance of
 // landing within its 3 tries (see rollRobot in useGame.js) — shown as
@@ -433,6 +443,9 @@ function chooseMode(modeId) {
   settings.mode = modeId;
   if (modeId === "solo" && !SOLO_LEVELS.some((l) => l.id === settings.level)) {
     applyLevel(CUSTOM_LEVEL);
+  }
+  if (modeId === "vs" && settings.level === CUSTOM_LEVEL) {
+    applyLevel(1);
   }
   step.value = "setup";
   fadeOutMusic();
