@@ -67,6 +67,8 @@ onUnmounted(() => {
   padding: 18px;
   background: rgba(4, 6, 16, 0.72);
   backdrop-filter: blur(6px);
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
 }
 
 .modal {
@@ -76,6 +78,8 @@ onUnmounted(() => {
   flex-direction: column;
   background: linear-gradient(180deg, var(--bg-2), var(--bg-1));
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
 }
 
 .modal__header {
@@ -95,6 +99,14 @@ onUnmounted(() => {
 
 .modal__body {
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  /* Only vertical panning is a real gesture in here — there's nothing
+     to scroll to sideways. Without this, a touch drag that's even
+     slightly diagonal can get misread as a horizontal swipe (rubber-
+     band bounce, or worse, the OS's own edge-swipe navigation), which
+     reads as the whole screen "swiping" instead of just scrolling. */
+  touch-action: pan-y;
   padding: 20px;
 }
 </style>

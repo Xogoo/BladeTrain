@@ -246,9 +246,10 @@ function defaultSettings() {
     mode: "solo", // solo | group | vs
     level: 1,
     players: ["Joueur 1", "Joueur 2"],
-    // BLADE VS: the robot's chance (0-100) of landing the trick on any
-    // ONE of its 3 attempts, rolled independently per attempt — see
-    // vsAttempt in useGame.js. Adjustable on the mode's setup screen.
+    // BLADE VS: the robot's GLOBAL chance (0-100) of landing the trick
+    // within its 3 tries, not a per-attempt chance — see rollRobot in
+    // useGame.js, which derives the per-attempt probability from this.
+    // Adjustable on the mode's setup screen.
     vsRobotChance: 50,
     // BLADE VS: draws either from the usual level-based trick pool
     // ("level", using settings.level/tricks/grinds like Group does) or

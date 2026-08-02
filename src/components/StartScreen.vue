@@ -404,6 +404,16 @@ const presetLevels = computed(() =>
   settings.mode === "solo" ? SOLO_LEVELS : LEVELS
 );
 
+// BLADE VS: settings.vsRobotChance is the robot's GLOBAL chance of
+// landing within its 3 tries (see rollRobot in useGame.js) — shown as
+// the main number since it's what actually matters to the person
+// setting it up. This derives the per-attempt chance just to show
+// alongside it in parentheses, for anyone curious about the mechanic.
+const vsRobotPerAttemptChance = computed(() => {
+  const global = Math.min(100, Math.max(0, settings.vsRobotChance)) / 100;
+  return Math.round((1 - Math.pow(1 - global, 1 / 3)) * 100);
+});
+
 const { fadeOutMusic } = useSpeech();
 
 // Committing to a mode ends the intro: the title music fades out here
@@ -914,7 +924,8 @@ function removePlayer(index) {
     <template v-else-if="settings.mode === 'vs'">
       <div class="setup__section">
         <span class="setup__label">
-          Niveau du robot — {{ settings.vsRobotChance }}% de réussite par essai
+          Niveau du robot — {{ settings.vsRobotChance }}% de réussite sur les 3
+          essais ({{ vsRobotPerAttemptChance }}% par essai)
         </span>
         <input
           type="range"
@@ -925,8 +936,9 @@ function removePlayer(index) {
           v-model.number="settings.vsRobotChance"
         />
         <p class="setup__hint">
-          Sa chance de réussir CHAQUE essai — sur 3 essais, ça monte vite. 50%
-          par essai, c'est déjà presque 9 sur 10 de réussir au moins une fois.
+          Sa chance de réussir le trick sur l'ensemble de ses 3 essais — le
+          chiffre entre parenthèses est la chance sur un seul essai pris à
+          part.
         </p>
       </div>
 

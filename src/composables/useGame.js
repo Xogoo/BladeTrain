@@ -436,12 +436,18 @@ export function useGame() {
     nextSpin(settings);
   };
 
-  /** VS: rolls the robot's 3 independent attempts at settings.vsRobotChance
-   * each; lands on the first success, or fails all 3. */
+  /** VS: settings.vsRobotChance is the robot's GLOBAL chance (0-100) of
+   * landing the trick within its 3 tries — more readable than a
+   * per-attempt number. Converted here to the per-attempt probability
+   * p that makes 1-(1-p)^3 equal that global chance, then rolled as 3
+   * independent tries at p each; lands on the first success, or fails
+   * all 3. See perAttemptVsChance in StartScreen.vue for the reverse
+   * (shown to the person in parentheses next to the slider). */
   function rollRobot(settings) {
-    const chance = Math.min(100, Math.max(0, settings.vsRobotChance ?? 50)) / 100;
+    const global = Math.min(100, Math.max(0, settings.vsRobotChance ?? 50)) / 100;
+    const perAttempt = 1 - Math.pow(1 - global, 1 / 3);
     for (let i = 1; i <= 3; i++) {
-      if (Math.random() < chance) {
+      if (Math.random() < perAttempt) {
         return { landed: true, tries: i };
       }
     }
