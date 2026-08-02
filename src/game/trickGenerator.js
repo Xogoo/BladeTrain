@@ -58,7 +58,7 @@ export function generateSpin(
         ? null
         : variationByName(lockedVariationName)
       : hasVariationReel(settings)
-      ? pickWeighted(variationPool)
+      ? resolveVariationWinner(variationPool, settings.topsideChance) ?? pickWeighted(variationPool)
       : null;
 
   let switchUpPool = [];
@@ -67,6 +67,11 @@ export function generateSpin(
   let switchSpin = null;
   let switchUpVariationPool = [];
   let switchUpVariation = null;
+  // Whether the switch-up (if any) is done in switch stance — defaults
+  // to the raw setting (forced/family tricks always just follow it
+  // as-is, same as before), overridden below by a per-spin roll only
+  // for genuinely random spins when settings.switchChance is set.
+  let resolvedSwitchUpSwitch = !!settings.switchUpSwitch;
   if (forcedTrick && forcedTrick.switchUpGrindName) {
     // A personal family built from "Aperçu des tricks possibles" can
     // include a switch-up as part of the exact trick it's training —
@@ -95,15 +100,23 @@ export function generateSpin(
       // nav) never came back without the failsafe timeout kicking in.
       switchUpVariationPool = switchUpVariation ? [switchUpVariation] : [];
     }
-  } else if (hasSwitchUpReel(settings) && !forcedTrick) {
+  } else if (hasSwitchUpReel(settings) && !forcedTrick && rollSwitchUpChance(settings)) {
     // Family training only ever pins grind/variation/approach/spin-in/
     // spin-out — a switch-up (2nd grind) is a whole extra trick bolted
     // on that has nothing to do with what the family is training
     // (unless the entry explicitly specifies one — see above), so it's
     // suppressed entirely here regardless of the player's own Switch
     // up setting.
+    //
+    // Whether THIS switch-up is done in switch stance is resolved once
+    // here (same exact-frequency idea as resolveApproachWinner/
+    // resolveDirectionWinner above) so the grind-pool filter below and
+    // the eventual "Switch X" naming both agree on the same roll.
+    const isSwitchUpSwitch =
+      !!settings.switchUpSwitch && rollChance(settings.switchChance);
+    resolvedSwitchUpSwitch = isSwitchUpSwitch;
     const excludeNoSwitch = (candidates) =>
-      settings.switchUpSwitch ? candidates.filter((g) => !g.noSwitch) : candidates;
+      isSwitchUpSwitch ? candidates.filter((g) => !g.noSwitch) : candidates;
 
     switchUpPool = excludeNoSwitch(
       grindCandidates(
@@ -117,12 +130,15 @@ export function generateSpin(
 
     if (hasSwitchSpinReel(settings)) {
       switchSpinPool = switchSpinCandidates(grind, switchUp, settings);
-      switchSpin = pickWeighted(switchSpinPool);
+      switchSpin =
+        resolveDirectionWinner(switchSpinPool, settings.alleyOopChance, settings.trueChance) ??
+        pickWeighted(switchSpinPool);
     }
 
     switchUpVariationPool = variationCandidates(switchUp, settings, 1);
     switchUpVariation = hasVariationReel(settings, 1)
-      ? pickWeighted(switchUpVariationPool)
+      ? resolveVariationWinner(switchUpVariationPool, settings.topsideChance) ??
+        pickWeighted(switchUpVariationPool)
       : null;
   }
 
@@ -189,7 +205,7 @@ export function generateSpin(
   const approach = forcedTrick
     ? APPROACHES.find((a) => a.name === forcedTrick.approach) || pickWeighted(approachPool)
     : hasApproachReel(settings)
-    ? pickWeighted(approachPool)
+    ? resolveApproachWinner(approachPool, settings) ?? pickWeighted(approachPool)
     : null;
 
   const spinToPool = spinToCandidates(grind, approach, settings);
@@ -198,7 +214,8 @@ export function generateSpin(
       ? baseSpinToPool(grind, approach ? approach.isFakie : false).find(
           (s) => s.name === forcedTrick.spinToName
         ) || pickWeighted(spinToPool)
-      : pickWeighted(spinToPool);
+      : resolveDirectionWinner(spinToPool, settings.alleyOopChance, settings.trueChance) ??
+        pickWeighted(spinToPool);
 
   const spinOffPool = spinOffCandidates(grind, settings);
   // Family training only ever pins grind/variation/approach/spin-IN —
@@ -231,7 +248,7 @@ export function generateSpin(
 
   const { parsed, orig } = nameTrick(
     reels.map(({ name, winner }) => ({ name, winner })),
-    { switchUpSwitch: !!settings.switchUpSwitch, switchUp2Switch: !!settings.switchUp2Switch }
+    { switchUpSwitch: resolvedSwitchUpSwitch, switchUp2Switch: !!settings.switchUp2Switch }
   );
 
   return { reels, name: parsed, orig, score: scoreSpin(reels) };
@@ -263,6 +280,115 @@ export function hasVariationReel(settings, level = 0) {
 
 export function hasSwitchUpReel(settings) {
   return !!settings.switchUp;
+}
+
+// Some presets (Classique) make switch up possible but rare rather
+// than a flat on/off — settings.switchUpChance is that global chance
+// (0-100) of it actually happening on any one spin, defaulting to 100
+// (always) when unset so every other preset/mode is unaffected. Only
+// used for actually rolling a spin — the "what tricks are possible"
+// enumeration (hasSwitchUpReel alone, used by computeAllPossibleTricks
+// et al.) still counts a switch-up combo as possible regardless of how
+// rare it is, since rare isn't the same as impossible.
+function rollSwitchUpChance(settings) {
+  const chance = settings.switchUpChance ?? 100;
+  return Math.random() * 100 < chance;
+}
+
+// Generic per-spin coin flip: null/undefined means "no chance
+// configured", i.e. always true, so every level/mode that never sets
+// one of the *Chance/*Percent fields below is completely unaffected.
+function rollChance(pct) {
+  return pct == null || Math.random() * 100 < pct;
+}
+
+/**
+ * Exact-frequency resolvers for Classique's tunable %s — unlike
+ * rollSwitchUpChance (a genuine on/off event), fakie/switch/alley-oop/
+ * true/topside are OPTIONS within a reel that also has other
+ * candidates (Forwards, the other direction, None…) competing for the
+ * same pick. Gating eligibility and leaving the pick to pickWeighted's
+ * own fixed EASY/MEDIUM/HARD weights makes the configured % nothing
+ * like the number actually observed — often far lower, once whatever
+ * else is left competes it down further (measured: 30% alley-oop
+ * chance produced ~4% observed Inspin in practice). These resolvers
+ * instead roll the ACTUAL outcome directly at the requested
+ * probability, and only fall back to pickWeighted when nothing was
+ * configured (returns null) or the resolved outcome has no matching
+ * candidate in this particular pool (grind doesn't support it, etc).
+ */
+
+// Approach: fakie and switch are independent yes/no rolls that
+// together pick one of Forwards/Fakie/Switch/Fakie & Switch.
+function resolveApproachWinner(pool, settings) {
+  if (settings.fakieChance == null && settings.switchChance == null) {
+    return null;
+  }
+  const wantFakie = !!settings.fakie && rollChance(settings.fakieChance);
+  const wantSwitch = !!settings.switch && rollChance(settings.switchChance);
+  return (
+    pool.find((a) => a.isFakie === wantFakie && a.isSwitch === wantSwitch) ||
+    pool.find((a) => a.isFakie === wantFakie) ||
+    pool.find((a) => !a.isFakie && !a.isSwitch) ||
+    pool[0] ||
+    null
+  );
+}
+
+// Spin direction (spin-in for the 1st grind, spin-between for the
+// switch-up's 2nd) — alleyOopPct and truePct are each a slice of the
+// same 0-100 roll, whatever's left over lands on "None" (no rotation
+// at all), so the three outcomes' shares always add up to exactly
+// 100% regardless of how the two sliders happen to be set. Once a
+// direction wins, the specific DEGREE (180/270/…) is still a normal
+// weighted pick among that direction's own candidates — only which
+// direction won is decided here.
+function resolveDirectionWinner(pool, alleyOopPct, truePct) {
+  if (alleyOopPct == null && truePct == null) {
+    return null;
+  }
+  const aPct = Math.max(0, alleyOopPct ?? 0);
+  const tPct = Math.max(0, truePct ?? 0);
+  const roll = Math.random() * 100;
+  const want = roll < aPct ? "alley" : roll < aPct + tPct ? "true" : "none";
+  if (want === "none") {
+    return pool.find((entry) => entry.name === "None") || null;
+  }
+  const wantedTag = want === "alley" ? "Inspin" : "Outspin";
+  const matches = pool.filter((entry) => entry.name.includes(wantedTag));
+  if (matches.length > 0) {
+    return pickWeighted(matches);
+  }
+  // This grind's spin-in table simply doesn't have the rolled
+  // direction at any currently-enabled degree — groove grinds split
+  // Frontside/Backside into separate tables that each only rotate one
+  // way at a given degree (e.g. a Frontside grind at 270 only has
+  // Outspin/True, never Inspin/Alley-oop, and vice versa for
+  // Backside). Falling back to the OTHER direction (if this grind has
+  // it) still gives a real rotation instead of silently collapsing to
+  // "no rotation at all", which is what was quietly inflating "None"
+  // well past its configured share.
+  const otherTag = want === "alley" ? "Outspin" : "Inspin";
+  const otherMatches = pool.filter((entry) => entry.name.includes(otherTag));
+  return otherMatches.length > 0 ? pickWeighted(otherMatches) : null;
+}
+
+// Grind variation: topside is the only variation type Classique ever
+// turns on, so this only ever decides topside-vs-none. If some other
+// level someday also sets topsideChance while other variation types
+// (negative, rough, …) are on too, those simply keep their existing
+// weighted-pool behavior — this only overrides the pick when a
+// topside-flavored candidate is actually present.
+function resolveVariationWinner(pool, topsidePercent) {
+  if (topsidePercent == null) {
+    return null;
+  }
+  const wantTopside = rollChance(topsidePercent);
+  if (!wantTopside) {
+    return pool.find((entry) => entry && entry.name === "None") || null;
+  }
+  const matches = pool.filter((entry) => entry && entry.name.includes("Topside"));
+  return matches.length > 0 ? pickWeighted(matches) : null;
 }
 
 // The spin between the two grinds only shows once switch up is active

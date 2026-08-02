@@ -50,24 +50,26 @@ const ALL_OFF = {
 
 const ALL_ON = Object.fromEntries(Object.keys(ALL_OFF).map((k) => [k, true]));
 
-// The Chill preset's grind selection: rare grinds and slides are off.
-const CHILL_EXCLUDED = [...RARE_GRIND_NAME_PARTS, "Pudslide", "Fastslide"];
-const CHILL_GRINDS = Object.fromEntries(
-  GRINDS.filter((g) => CHILL_EXCLUDED.some((part) => g.name.includes(part)))
+// A sample exclusion-based grind selection (rare grinds and slides off)
+// — this only exercises generateSpin's own grindToggles mechanics, it
+// isn't tied to any particular preset in useSettings.js.
+const SAMPLE_EXCLUDED = [...RARE_GRIND_NAME_PARTS, "Pudslide", "Fastslide"];
+const SAMPLE_GRINDS = Object.fromEntries(
+  GRINDS.filter((g) => SAMPLE_EXCLUDED.some((part) => g.name.includes(part)))
     .map((g) => [g.name, false])
 );
 
 describe("generateSpin", () => {
   it("with everything off only spins the grind and 180 spin reels", () => {
     for (let i = 0; i < 200; i++) {
-      const spin = generateSpin(ALL_OFF, [], null, CHILL_GRINDS);
+      const spin = generateSpin(ALL_OFF, [], null, SAMPLE_GRINDS);
       const byName = Object.fromEntries(spin.reels.map((r) => [r.name, r]));
 
       expect(spin.name).not.toBe("");
       expect(byName.Approach.hidden).toBe(true);
       expect(byName.GrindVariation.hidden).toBe(true);
       expect(
-        CHILL_EXCLUDED.some((part) => byName.Grind.winner.name.includes(part))
+        SAMPLE_EXCLUDED.some((part) => byName.Grind.winner.name.includes(part))
       ).toBe(false);
       // Only 180s (or nothing) without the bigger-spin settings.
       for (const reel of [byName.SpinTo, byName.SpinOff]) {

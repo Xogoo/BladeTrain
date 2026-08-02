@@ -446,6 +446,16 @@ function chooseMode(modeId) {
   }
   if (modeId === "vs" && settings.level === CUSTOM_LEVEL) {
     applyLevel(1);
+  } else if (
+    modeId === "vs" &&
+    settings.level === 1 &&
+    settings.tricks.fakieChance == null
+  ) {
+    // First time Classique is ever reached in BLADE VS — populate the
+    // tuning sliders' starting values (see LEVEL_PRESETS[1]) without
+    // touching them again on later visits, so any tuning done since
+    // sticks around instead of resetting every time.
+    applyLevel(1);
   }
   step.value = "setup";
   fadeOutMusic();
@@ -927,6 +937,66 @@ function removePlayer(index) {
       >
         <AppIcon name="list" :size="14" /> Historique des entraînements ciblés
       </button>
+    </div>
+
+    <div
+      v-if="settings.mode === 'vs' && settings.vsMode === 'level' && settings.level === 1"
+      class="setup__section classique-tuning"
+    >
+      <span class="setup__label">Réglages fins de Classique</span>
+
+      <div class="classique-slider">
+        <span class="classique-slider__label">
+          Fakie (approche) — {{ settings.tricks.fakieChance }}%
+        </span>
+        <input type="range" class="vs-chance-slider" min="0" max="100" step="5" v-model.number="settings.tricks.fakieChance" />
+      </div>
+
+      <div class="classique-slider">
+        <span class="classique-slider__label">
+          Switch (approche + switch-up) — {{ settings.tricks.switchChance }}%
+        </span>
+        <input type="range" class="vs-chance-slider" min="0" max="100" step="5" v-model.number="settings.tricks.switchChance" />
+      </div>
+
+      <div class="classique-slider">
+        <span class="classique-slider__label">
+          Switch up (2ème grind) — {{ settings.tricks.switchUpChance }}%
+        </span>
+        <input type="range" class="vs-chance-slider" min="0" max="100" step="5" v-model.number="settings.tricks.switchUpChance" />
+      </div>
+
+      <div class="classique-slider">
+        <span class="classique-slider__label">
+          Alley-oop (spin in) — {{ settings.tricks.alleyOopChance }}%
+        </span>
+        <input type="range" class="vs-chance-slider" min="0" max="100" step="5" v-model.number="settings.tricks.alleyOopChance" />
+      </div>
+
+      <div class="classique-slider">
+        <span class="classique-slider__label">
+          True (spin in) — {{ settings.tricks.trueChance }}%
+        </span>
+        <input type="range" class="vs-chance-slider" min="0" max="100" step="5" v-model.number="settings.tricks.trueChance" />
+      </div>
+
+      <p class="setup__hint">
+        Alley-oop + True + aucune rotation se partagent 100% à eux trois —
+        {{ Math.max(0, 100 - settings.tricks.alleyOopChance - settings.tricks.trueChance) }}%
+        de chances qu'il n'y ait pas de rotation du tout.
+      </p>
+
+      <div class="classique-slider">
+        <span class="classique-slider__label">
+          Topside (variation) — {{ settings.tricks.topsideChance }}%
+        </span>
+        <input type="range" class="vs-chance-slider" min="0" max="100" step="5" v-model.number="settings.tricks.topsideChance" />
+      </div>
+      <p class="setup__hint">
+        Sur les grinds groove (Royale, Unity, Torque, ...), seul "Channel"
+        existe comme variation — jamais Topside. Ce curseur ne peut donc
+        s'exprimer pleinement que sur les grinds soul.
+      </p>
     </div>
 
     <p v-if="settings.mode === 'solo'" class="setup__hint setup__hint--standalone">
@@ -1431,6 +1501,24 @@ body.theme-inverted .start__logo-mark {
   background: var(--knob-fill);
   box-shadow: 0 0 8px rgba(var(--fg-rgb), 0.5);
   cursor: pointer;
+}
+
+/* ---------- BLADE VS: Classique fine-tuning sliders ---------- */
+
+.classique-tuning {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.classique-slider {
+  margin-bottom: 6px;
+}
+
+.classique-slider__label {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text);
 }
 
 /* ---------- career screens ---------- */

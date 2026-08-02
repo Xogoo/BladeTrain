@@ -1,5 +1,5 @@
 import { reactive, watch } from "vue";
-import { GRINDS, RARE_GRIND_NAME_PARTS } from "../game/trickData.js";
+import { GRINDS } from "../game/trickData.js";
 import { DEFAULT_CUSTOM_FAMILIES } from "../game/defaultCustomFamilies.js";
 
 const STORAGE_KEY = "aight-settings-v3";
@@ -21,7 +21,7 @@ export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 6;
 
 export const LEVELS = [
-  { id: 1, name: "Chill", tagline: "Grinds de base, pas de rotations" },
+  { id: 1, name: "Classique", tagline: "Grinds soul & groove, rotations jusqu'à 360" },
   { id: 2, name: "Juicy", tagline: "Topsides, negatives et 360" },
   { id: 3, name: "Nuts", tagline: "Tout, jusqu'aux 540" },
   { id: 4, name: "Switch up", tagline: "Nuts, plus un second grind" },
@@ -29,7 +29,7 @@ export const LEVELS = [
 ];
 
 // Solo mostly means Custom (train exactly what you want) or Switch up
-// (Nuts + a second grind) — Chill/Juicy/Nuts as separate steps don't
+// (Nuts + a second grind) — Classique/Juicy/Nuts as separate steps don't
 // add much once you're picking your own grinds anyway. Group mode
 // keeps the full LEVELS list above unchanged.
 export const SOLO_LEVELS = LEVELS.filter((level) => level.id === CUSTOM_LEVEL);
@@ -73,11 +73,13 @@ const ALL_TRICKS_OFF = {
   // Training focus: locks every checked option below (Approach,
   // Grind variations, Spin in direction) so it's guaranteed instead of
   // merely possible — see the settings panel hint and trickGenerator.js
-  // for exactly what "locked" means per section. Defaults to on: it's
-  // independent of the level presets and immune to applyLevel() below
-  // (including "Tout remettre à zéro", which just re-applies the
-  // Custom preset) — only the checkbox itself, tapped manually, ever
-  // changes it.
+  // for exactly what "locked" means per section. Defaults to on, and
+  // is normally independent of the level presets — applying 2/3/4
+  // preserves whatever it already was, only the checkbox itself,
+  // tapped manually, changes it. Two exceptions in applyLevel() below:
+  // CUSTOM_LEVEL always turns it back on, and Classique (1) always
+  // turns it off — Classique's whole point is that its criteria stay
+  // merely possible, never guaranteed.
   trainingFocus: true,
   switchUp: false,
   // Independent 2nd-grind counterparts, so combos like "Top Soul to
@@ -125,16 +127,69 @@ const ALL_TRICKS_OFF = {
   spinBetween2540: false,
 };
 
+// Classique's five tunable %s (see StartScreen.vue's sliders) live in
+// settings.tricks like everything else, so applyLevel's Object.assign
+// only overwrites keys a given preset actually mentions — without this,
+// switching from Classique to any other level would silently leave its
+// %s sitting in settings.tricks, still read by resolveApproachWinner/
+// resolveDirectionWinner/resolveVariationWinner over there (e.g. Juicy
+// also has topside on, so a leftover topsideChance would quietly cap
+// it as if Classique's rules still applied).
+const CLEAR_CLASSIQUE_CHANCES = {
+  fakieChance: null,
+  switchChance: null,
+  alleyOopChance: null,
+  trueChance: null,
+  topsideChance: null,
+};
+
 const LEVEL_PRESETS = {
+  // Classique: fakie approach is POSSIBLE (not the only approach —
+  // trainingFocus is forced off for this level in applyLevel() below,
+  // so every criterion here is a candidate the spin can land on, never
+  // a guarantee); switch up (2nd grind) is possible too, but rare (10%
+  // of spins — see switchUpChance, read in trickGenerator.js's
+  // hasSwitchUpReel check, which IS a hard on/off per spin rather than
+  // a weighted pool, hence its own dedicated chance). Variation, on
+  // BOTH the 1st grind and the switch-up's 2nd grind, allows switch
+  // stance, topside, and either spin-in direction (Alley-oop/True) —
+  // nothing else. Rotations cap at 270 going in, 270 between the two
+  // grinds, 360 coming out. Grinds (see classiqueGrinds() below) are
+  // exactly the "Soul uniquement" + "Groove uniquement" selections
+  // combined — no hybrids (Tabernacle, Darkslide, Byn Soul), no
+  // oldschool/rare ones.
   1: {
     ...ALL_TRICKS_OFF,
+    fakie: true,
+    switchUp: true,
+    switchUpChance: 10,
+    // Starting points for the sliders in BLADE VS's Niveau → Classique
+    // screen — freely adjustable there afterwards (see StartScreen.vue).
+    fakieChance: 30,
+    switchChance: 30,
+    alleyOopChance: 25,
+    trueChance: 25,
+    topsideChance: 40,
+    switch: true,
+    topside: true,
+    spinInAlleyOop: true,
+    spinInTrue: true,
+    switchUpSwitch: true,
+    switchUpTopside: true,
+    spinBetweenAlleyOop: true,
+    spinBetweenTrue: true,
     spinIn180: true,
     spinIn270: true,
+    spinBetween180: true,
+    spinBetween270: true,
     spinOut180: true,
     spinOut270: true,
+    spinOut360: true,
   },
   2: {
     ...ALL_TRICKS_OFF,
+    ...CLEAR_CLASSIQUE_CHANCES,
+    switchUpChance: 100,
     negative: true,
     topside: true,
     grabs: true,
@@ -148,6 +203,8 @@ const LEVEL_PRESETS = {
   },
   3: {
     ...Object.fromEntries(Object.keys(ALL_TRICKS_OFF).map((k) => [k, true])),
+    ...CLEAR_CLASSIQUE_CHANCES,
+    switchUpChance: 100,
     switchUp: false,
     spinBetween180: false,
     spinBetween270: false,
@@ -167,6 +224,8 @@ const LEVEL_PRESETS = {
   },
   4: {
     ...Object.fromEntries(Object.keys(ALL_TRICKS_OFF).map((k) => [k, true])),
+    ...CLEAR_CLASSIQUE_CHANCES,
+    switchUpChance: 100,
     switchUp: true,
     switchUp2: false,
   },
@@ -176,6 +235,8 @@ const LEVEL_PRESETS = {
   // filters (Alley-oop/True), and every grind off too.
   [CUSTOM_LEVEL]: {
     ...ALL_TRICKS_OFF,
+    ...CLEAR_CLASSIQUE_CHANCES,
+    switchUpChance: 100,
     spinInAlleyOop: false,
     spinInTrue: false,
     spinBetweenAlleyOop: false,
@@ -186,10 +247,10 @@ const LEVEL_PRESETS = {
 };
 
 // Grinds each difficulty preset switches off, matched by substring so
-// FS/BS variants are covered. Nuts (3), Switch up (4) and Custom allow
-// everything.
+// FS/BS variants are covered. Classique (1) uses classiqueGrinds()
+// below instead (an inclusion list, not an exclusion one — see there
+// for why). Nuts (3), Switch up (4) and Custom allow everything.
 const LEVEL_EXCLUDED_GRINDS = {
-  1: [...RARE_GRIND_NAME_PARTS, "Pudslide", "Fastslide"],
   2: ["Darkslide"],
   3: [],
   4: [],
@@ -226,6 +287,23 @@ function presetGrinds(levelId) {
     if (parts.some((part) => grind.name.includes(part))) {
       grinds[grind.name] = false;
     }
+  }
+  return grinds;
+}
+
+// Classique's grind selection is an INCLUSION list, unlike every other
+// preset's exclusion-based presetGrinds() above: exactly the "Soul
+// uniquement" (8 grinds) + "Groove uniquement" (16 grinds) selections
+// combined, 24 total — no hybrids (Tabernacle, Darkslide, Byn Soul),
+// no oldschool/rare grinds. Reuses the exact same rule setGrindsByType
+// applies for each of those two buttons, just unioned into one map
+// instead of writing it twice.
+function classiqueGrinds() {
+  const grinds = {};
+  for (const grind of GRINDS) {
+    grinds[grind.name] =
+      SOUL_ONLY_NAMES.includes(grind.name) ||
+      (grind.isGroove && !GROOVE_ONLY_EXCLUDED_NAMES.includes(grind.name));
   }
   return grinds;
 }
@@ -427,21 +505,37 @@ export function useSettings() {
     settings.level = levelId;
     if (LEVEL_PRESETS[levelId]) {
       // Mode entraînement ciblé is independent of the level presets in
-      // general (applying 1-4 must never flip it either way, so it's
-      // preserved as-is) — but "Tout remettre à zéro" (CUSTOM_LEVEL)
-      // is the one exception: it always leaves it checked, since
-      // that's meant to be the default starting point every time this
-      // button is pressed, not whatever was left over from before.
+      // general (applying 2-4 must never flip it either way, so it's
+      // preserved as-is) — with two exceptions: "Tout remettre à zéro"
+      // (CUSTOM_LEVEL) always leaves it checked (the default starting
+      // point every time that button is pressed), and Classique (1)
+      // always leaves it UNCHECKED — every one of its criteria (fakie
+      // approach, switch up, switch/topside/alley-oop/true variation,
+      // spin degrees) is meant to be merely POSSIBLE per spin, not
+      // locked in as guaranteed on every single one — trainingFocus is
+      // exactly the toggle that decides which of those two a checked
+      // option means (see variationCandidates/approachCandidates/
+      // filterSpinDegrees in trickGenerator.js).
       const trainingFocus =
-        levelId === CUSTOM_LEVEL ? true : settings.tricks.trainingFocus;
+        levelId === CUSTOM_LEVEL
+          ? true
+          : levelId === 1
+          ? false
+          : settings.tricks.trainingFocus;
       Object.assign(settings.tricks, LEVEL_PRESETS[levelId]);
       settings.tricks.trainingFocus = trainingFocus;
-      settings.grinds =
-        levelId === CUSTOM_LEVEL ? allGrindsOff() : presetGrinds(levelId);
-      settings.switchUpGrinds =
-        levelId === CUSTOM_LEVEL ? allGrindsOff() : presetGrinds(levelId);
-      settings.switchUp2Grinds =
-        levelId === CUSTOM_LEVEL ? allGrindsOff() : presetGrinds(levelId);
+      const grindsForLevel = () => {
+        if (levelId === CUSTOM_LEVEL) {
+          return allGrindsOff();
+        }
+        if (levelId === 1) {
+          return classiqueGrinds();
+        }
+        return presetGrinds(levelId);
+      };
+      settings.grinds = grindsForLevel();
+      settings.switchUpGrinds = grindsForLevel();
+      settings.switchUp2Grinds = grindsForLevel();
     }
   };
 
