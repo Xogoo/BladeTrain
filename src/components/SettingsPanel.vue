@@ -292,7 +292,7 @@ const grindList = [
           class="select speech-voice-select"
           v-model="settings.speechVoiceURI"
         >
-          <option value="">Voix par défaut de l'appareil</option>
+          <option value="">Daniel (en-GB) par défaut, sinon la voix de l'appareil</option>
           <option v-for="voice in synthesisVoices" :key="voice.voiceURI" :value="voice.voiceURI">
             {{ voice.name }} ({{ voice.lang }})
           </option>

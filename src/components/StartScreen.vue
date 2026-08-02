@@ -78,6 +78,11 @@ function chooseFamilySection(section) {
   familySection.value = section;
 }
 
+// Which sub-view the Famille step shows: training one family at a
+// time, or Mix (several families drawn from together at once). Both
+// live under the same step ('family') and back button.
+const familyView = ref("family"); // 'family' | 'mix'
+
 // FAMILIES is defined in an arbitrary creation order — sorted here by
 // tier (career difficulty order) so this dropdown reads the same way
 // as the Carrière path, instead of whatever order they were added in.
@@ -228,6 +233,22 @@ function startMixModeSession() {
   startMixSession(selectedMixFamilyIds.value, settings);
 }
 
+// BLADE VS's "Familles" mode: same idea as Mix's family checkboxes,
+// but backed by settings.vsFamilyIds (persisted) instead of a local
+// ref — so the choice carries over to "Revanche" and the next time
+// BLADE VS is opened, the way settings.players does for Groupe.
+function isVsFamilySelected(id) {
+  return settings.vsFamilyIds.includes(id);
+}
+function toggleVsFamily(id) {
+  const i = settings.vsFamilyIds.indexOf(id);
+  if (i >= 0) {
+    settings.vsFamilyIds.splice(i, 1);
+  } else {
+    settings.vsFamilyIds.push(id);
+  }
+}
+
 // Career: two fully independent progressions (Normal / Switch), each
 // walking the same families.js order — see game/families.js `tier`,
 // which is now a strict 1..N progression rather than a grouping (each
@@ -352,12 +373,7 @@ const MODES = [
   {
     id: "family",
     name: "Famille",
-    tagline: "Entraîne une famille précise, intégrée ou perso",
-  },
-  {
-    id: "mix",
-    name: "Mix",
-    tagline: "Coche plusieurs familles — le tirage pioche dans tout ça",
+    tagline: "Entraîne une famille précise, ou mélange-en plusieurs",
   },
   {
     id: "career",
@@ -365,18 +381,18 @@ const MODES = [
     tagline: "Deux progressions indépendantes — Normal et Switch",
   },
   {
-    id: "group",
-    name: "Groupe",
-    tagline: "S.K.A.T.E entre potes — loupe et récolte B·L·A·D·E",
-  },
-  {
     id: "vs",
     name: "BLADE VS",
     tagline: "Toi contre le robot — 3 essais chacun, un B·L·A·D·E qui compte",
   },
+  {
+    id: "group",
+    name: "Groupe",
+    tagline: "S.K.A.T.E entre potes — loupe et récolte B·L·A·D·E",
+  },
 ];
 
-const step = ref(state.pendingCareerTrack ? "career-track" : "mode"); // 'mode' | 'family' | 'mix' | 'career' | 'career-track' | 'setup'
+const step = ref(state.pendingCareerTrack ? "career-track" : "mode"); // 'mode' | 'family' | 'career' | 'career-track' | 'setup'
 if (state.pendingCareerTrack) {
   state.pendingCareerTrack = null;
 }
@@ -400,11 +416,7 @@ function chooseMode(modeId) {
   }
   if (modeId === "family") {
     step.value = "family";
-    fadeOutMusic();
-    return;
-  }
-  if (modeId === "mix") {
-    step.value = "mix";
+    familyView.value = "family";
     fadeOutMusic();
     return;
   }
@@ -581,239 +593,255 @@ function removePlayer(index) {
         &lsaquo; Retour
       </button>
     </div>
-    <h2 class="setup__title sticker-text">Famille</h2>
-
-    <div class="setup__section">
-      <button
-        class="btn btn--go weak-points-btn"
-        :disabled="!hasWeakPoints"
-        @click="onStartWeakPoints"
-      >
-        <AppIcon name="zap" :size="16" />
-        Travailler mes points faibles
-      </button>
-      <p v-if="!hasWeakPoints" class="setup__hint">
-        Pas encore assez de données — reviens après avoir réussi et passé
-        quelques tricks plusieurs fois.
-      </p>
-    </div>
+    <h2 class="setup__title sticker-text">
+      {{ familyView === "mix" ? "Mix" : "Famille" }}
+    </h2>
 
     <div class="setup__section">
       <div class="pills">
         <button
           class="pill"
-          :class="{ 'pill--active': familySection === 'builtin' }"
-          @click="chooseFamilySection('builtin')"
+          :class="{ 'pill--active': familyView === 'family' }"
+          @click="familyView = 'family'"
         >
-          Familles de tricks
+          Famille
         </button>
         <button
           class="pill"
-          :class="{ 'pill--active': familySection === 'personal' }"
-          @click="chooseFamilySection('personal')"
+          :class="{ 'pill--active': familyView === 'mix' }"
+          @click="familyView = 'mix'"
         >
-          Familles perso
+          Mix
         </button>
       </div>
     </div>
 
-    <div v-if="familySection === 'builtin'" class="setup__section">
-      <span class="setup__label">Choisis une famille</span>
-      <div class="family-picker">
-        <select class="select" v-model="selectedBuiltinFamilyId">
-          <option
+    <template v-if="familyView === 'family'">
+      <div class="setup__section">
+        <button
+          class="btn btn--go weak-points-btn"
+          :disabled="!hasWeakPoints"
+          @click="onStartWeakPoints"
+        >
+          <AppIcon name="zap" :size="16" />
+          Travailler mes points faibles
+        </button>
+        <p v-if="!hasWeakPoints" class="setup__hint">
+          Pas encore assez de données — reviens après avoir réussi et passé
+          quelques tricks plusieurs fois.
+        </p>
+      </div>
+
+      <div class="setup__section">
+        <div class="pills">
+          <button
+            class="pill"
+            :class="{ 'pill--active': familySection === 'builtin' }"
+            @click="chooseFamilySection('builtin')"
+          >
+            Familles de tricks
+          </button>
+          <button
+            class="pill"
+            :class="{ 'pill--active': familySection === 'personal' }"
+            @click="chooseFamilySection('personal')"
+          >
+            Familles perso
+          </button>
+        </div>
+      </div>
+
+      <div v-if="familySection === 'builtin'" class="setup__section">
+        <span class="setup__label">Choisis une famille</span>
+        <div class="family-picker">
+          <select class="select" v-model="selectedBuiltinFamilyId">
+            <option
+              v-for="family in builtinFamilyOptions"
+              :key="family.id"
+              :value="family.id"
+              :style="{ color: familyOptionColor(family) }"
+            >
+              {{ familyOptionLabel(family) }}
+            </option>
+          </select>
+          <button
+            class="btn btn--ghost family-picker__delete"
+            :disabled="!selectedBuiltinFamilyId"
+            @click="showFamilyHistory = true"
+          >
+            Historique
+          </button>
+          <button
+            class="btn btn--ghost family-picker__delete"
+            :class="{ 'btn--confirm': confirmingFamilyReset }"
+            :disabled="!selectedBuiltinFamilyId"
+            @click="onFamilyReset"
+            @blur="confirmingFamilyReset = false"
+          >
+            {{ confirmingFamilyReset ? "Confirmer" : "Réinitialiser" }}
+          </button>
+        </div>
+        <p class="setup__hint">
+          Un trick précis à la fois, tiré au hasard parmi ceux pas encore
+          réussis — passer n'en tire juste un autre.
+        </p>
+      </div>
+
+      <div v-else class="setup__section">
+        <span class="setup__label">Choisis une famille perso</span>
+        <div v-if="visibleCustomFamilies.length" class="family-picker">
+          <select class="select" v-model="selectedCustomFamilyId">
+            <option
+              v-for="family in visibleCustomFamilies"
+              :key="family.id"
+              :value="family.id"
+              :style="{ color: familyOptionColor(family) }"
+            >
+              {{ familyOptionLabel(family) }}
+            </option>
+          </select>
+          <button
+            class="btn btn--ghost family-picker__delete"
+            :disabled="!selectedCustomFamilyId"
+            @click="showFamilyHistory = true"
+          >
+            Historique
+          </button>
+          <button
+            class="btn btn--ghost family-picker__delete"
+            :class="{ 'btn--confirm': confirmingFamilyReset }"
+            :disabled="!selectedCustomFamilyId"
+            @click="onFamilyReset"
+            @blur="confirmingFamilyReset = false"
+          >
+            {{ confirmingFamilyReset ? "Confirmer" : "Réinitialiser" }}
+          </button>
+          <button
+            class="btn btn--ghost family-picker__delete"
+            :class="{ 'btn--confirm': confirmingFamilyDelete }"
+            @click="onDeleteCustomFamily"
+            @blur="confirmingFamilyDelete = false"
+          >
+            {{ confirmingFamilyDelete ? "Confirmer" : "Supprimer" }}
+          </button>
+        </div>
+        <p v-else class="setup__hint">
+          Aucune famille perso pour l'instant — crée-en une depuis l'aperçu des
+          tricks possibles (Réglages &gt; Terminé).
+        </p>
+        <div class="family-import-actions">
+          <button
+            class="btn btn--ghost"
+            :disabled="!visibleCustomFamilies.length"
+            @click="onExportFamiliesClick"
+          >
+            Exporter
+          </button>
+          <button class="btn btn--ghost" @click="familyImportInput.click()">
+            Importer
+          </button>
+          <input
+            ref="familyImportInput"
+            type="file"
+            accept="application/json"
+            class="family-import-actions__file-input"
+            @change="onImportFamiliesFileChosen"
+          />
+        </div>
+        <p v-if="familyImportStatus" class="setup__hint">{{ familyImportStatus }}</p>
+      </div>
+
+      <FamilyHistoryPanel
+        v-if="showFamilyHistory"
+        :family-id="familySection === 'builtin' ? selectedBuiltinFamilyId : selectedCustomFamilyId"
+        @close="showFamilyHistory = false"
+      />
+
+      <button
+        class="btn btn--go setup__go"
+        :disabled="
+          (familySection === 'builtin' && !selectedBuiltinFamilyId) ||
+          (familySection === 'personal' && !selectedCustomFamilyId)
+        "
+        @click="startFamilyModeSession()"
+      >
+        <AppIcon name="play" :size="20" /> Démarrer la session
+      </button>
+    </template>
+
+    <template v-else>
+      <p class="setup__hint setup__hint--standalone">
+        Coche les familles à mélanger — le tirage pioche au hasard dans
+        tout ce qui est sélectionné, réussi ou pas. Chaque trick réussi
+        fait quand même avancer sa propre famille, comme si tu
+        l'entraînais seule.
+      </p>
+
+      <button
+        class="btn btn--go setup__go"
+        :disabled="!selectedMixFamilyIds.length"
+        @click="startMixModeSession()"
+      >
+        <AppIcon name="play" :size="20" /> Démarrer le mix
+        ({{ selectedMixFamilyIds.length }}
+        famille{{ selectedMixFamilyIds.length > 1 ? "s" : "" }},
+        {{ mixEntryCount }} trick{{ mixEntryCount > 1 ? "s" : "" }})
+      </button>
+
+      <div class="setup__section">
+        <span class="setup__label">Familles de tricks</span>
+        <div class="mix-family-list">
+          <label
             v-for="family in builtinFamilyOptions"
             :key="family.id"
-            :value="family.id"
-            :style="{ color: familyOptionColor(family) }"
+            class="mix-family-row"
           >
-            {{ familyOptionLabel(family) }}
-          </option>
-        </select>
-        <button
-          class="btn btn--ghost family-picker__delete"
-          :disabled="!selectedBuiltinFamilyId"
-          @click="showFamilyHistory = true"
-        >
-          Historique
-        </button>
-        <button
-          class="btn btn--ghost family-picker__delete"
-          :class="{ 'btn--confirm': confirmingFamilyReset }"
-          :disabled="!selectedBuiltinFamilyId"
-          @click="onFamilyReset"
-          @blur="confirmingFamilyReset = false"
-        >
-          {{ confirmingFamilyReset ? "Confirmer" : "Réinitialiser" }}
-        </button>
+            <input
+              type="checkbox"
+              :checked="isMixFamilySelected(family.id)"
+              @change="toggleMixFamily(family.id)"
+            />
+            <span class="mix-family-row__name">{{ familyBaseName(family.name) }}</span>
+            <span class="mix-family-row__pct" :style="{ color: familyOptionColor(family) }">
+              {{
+                isFamilyComplete(displayProgressId(family), family.entries)
+                  ? "Terminée ✓"
+                  : `${familyPercent(family)}%`
+              }}
+            </span>
+          </label>
+        </div>
       </div>
-      <p class="setup__hint">
-        Un trick précis à la fois, tiré au hasard parmi ceux pas encore
-        réussis — passer n'en tire juste un autre.
-      </p>
-    </div>
 
-    <div v-else class="setup__section">
-      <span class="setup__label">Choisis une famille perso</span>
-      <div v-if="visibleCustomFamilies.length" class="family-picker">
-        <select class="select" v-model="selectedCustomFamilyId">
-          <option
+      <div class="setup__section">
+        <span class="setup__label">Familles perso</span>
+        <div v-if="visibleCustomFamilies.length" class="mix-family-list">
+          <label
             v-for="family in visibleCustomFamilies"
             :key="family.id"
-            :value="family.id"
-            :style="{ color: familyOptionColor(family) }"
+            class="mix-family-row"
           >
-            {{ familyOptionLabel(family) }}
-          </option>
-        </select>
-        <button
-          class="btn btn--ghost family-picker__delete"
-          :disabled="!selectedCustomFamilyId"
-          @click="showFamilyHistory = true"
-        >
-          Historique
-        </button>
-        <button
-          class="btn btn--ghost family-picker__delete"
-          :class="{ 'btn--confirm': confirmingFamilyReset }"
-          :disabled="!selectedCustomFamilyId"
-          @click="onFamilyReset"
-          @blur="confirmingFamilyReset = false"
-        >
-          {{ confirmingFamilyReset ? "Confirmer" : "Réinitialiser" }}
-        </button>
-        <button
-          class="btn btn--ghost family-picker__delete"
-          :class="{ 'btn--confirm': confirmingFamilyDelete }"
-          @click="onDeleteCustomFamily"
-          @blur="confirmingFamilyDelete = false"
-        >
-          {{ confirmingFamilyDelete ? "Confirmer" : "Supprimer" }}
-        </button>
+            <input
+              type="checkbox"
+              :checked="isMixFamilySelected(family.id)"
+              @change="toggleMixFamily(family.id)"
+            />
+            <span class="mix-family-row__name">{{ familyBaseName(family.name) }}</span>
+            <span class="mix-family-row__pct" :style="{ color: familyOptionColor(family) }">
+              {{
+                isFamilyComplete(displayProgressId(family), family.entries)
+                  ? "Terminée ✓"
+                  : `${familyPercent(family)}%`
+              }}
+            </span>
+          </label>
+        </div>
+        <p v-else class="setup__hint">
+          Aucune famille perso pour l'instant — crée-en une depuis l'aperçu des
+          tricks possibles (Réglages &gt; Terminé).
+        </p>
       </div>
-      <p v-else class="setup__hint">
-        Aucune famille perso pour l'instant — crée-en une depuis l'aperçu des
-        tricks possibles (Réglages &gt; Terminé).
-      </p>
-      <div class="family-import-actions">
-        <button
-          class="btn btn--ghost"
-          :disabled="!visibleCustomFamilies.length"
-          @click="onExportFamiliesClick"
-        >
-          Exporter
-        </button>
-        <button class="btn btn--ghost" @click="familyImportInput.click()">
-          Importer
-        </button>
-        <input
-          ref="familyImportInput"
-          type="file"
-          accept="application/json"
-          class="family-import-actions__file-input"
-          @change="onImportFamiliesFileChosen"
-        />
-      </div>
-      <p v-if="familyImportStatus" class="setup__hint">{{ familyImportStatus }}</p>
-    </div>
-
-    <FamilyHistoryPanel
-      v-if="showFamilyHistory"
-      :family-id="familySection === 'builtin' ? selectedBuiltinFamilyId : selectedCustomFamilyId"
-      @close="showFamilyHistory = false"
-    />
-
-    <button
-      class="btn btn--go setup__go"
-      :disabled="
-        (familySection === 'builtin' && !selectedBuiltinFamilyId) ||
-        (familySection === 'personal' && !selectedCustomFamilyId)
-      "
-      @click="startFamilyModeSession()"
-    >
-      <AppIcon name="play" :size="20" /> Démarrer la session
-    </button>
-  </section>
-
-  <!-- step 1e: Mix — several families at once, built-in and/or perso -->
-  <section v-else-if="step === 'mix'" class="start setup rise-in">
-    <div class="setup__top">
-      <button class="btn btn--ghost setup__back" @click="step = 'mode'">
-        &lsaquo; Retour
-      </button>
-    </div>
-    <h2 class="setup__title sticker-text">Mix</h2>
-    <p class="setup__hint setup__hint--standalone">
-      Coche les familles à mélanger — le tirage pioche au hasard dans
-      tout ce qui est sélectionné, réussi ou pas. Chaque trick réussi
-      fait quand même avancer sa propre famille, comme si tu
-      l'entraînais seule.
-    </p>
-
-    <div class="setup__section">
-      <span class="setup__label">Familles de tricks</span>
-      <div class="mix-family-list">
-        <label
-          v-for="family in builtinFamilyOptions"
-          :key="family.id"
-          class="mix-family-row"
-        >
-          <input
-            type="checkbox"
-            :checked="isMixFamilySelected(family.id)"
-            @change="toggleMixFamily(family.id)"
-          />
-          <span class="mix-family-row__name">{{ familyBaseName(family.name) }}</span>
-          <span class="mix-family-row__pct" :style="{ color: familyOptionColor(family) }">
-            {{
-              isFamilyComplete(displayProgressId(family), family.entries)
-                ? "Terminée ✓"
-                : `${familyPercent(family)}%`
-            }}
-          </span>
-        </label>
-      </div>
-    </div>
-
-    <div class="setup__section">
-      <span class="setup__label">Familles perso</span>
-      <div v-if="visibleCustomFamilies.length" class="mix-family-list">
-        <label
-          v-for="family in visibleCustomFamilies"
-          :key="family.id"
-          class="mix-family-row"
-        >
-          <input
-            type="checkbox"
-            :checked="isMixFamilySelected(family.id)"
-            @change="toggleMixFamily(family.id)"
-          />
-          <span class="mix-family-row__name">{{ familyBaseName(family.name) }}</span>
-          <span class="mix-family-row__pct" :style="{ color: familyOptionColor(family) }">
-            {{
-              isFamilyComplete(displayProgressId(family), family.entries)
-                ? "Terminée ✓"
-                : `${familyPercent(family)}%`
-            }}
-          </span>
-        </label>
-      </div>
-      <p v-else class="setup__hint">
-        Aucune famille perso pour l'instant — crée-en une depuis l'aperçu des
-        tricks possibles (Réglages &gt; Terminé).
-      </p>
-    </div>
-
-    <button
-      class="btn btn--go setup__go"
-      :disabled="!selectedMixFamilyIds.length"
-      @click="startMixModeSession()"
-    >
-      <AppIcon name="play" :size="20" /> Démarrer le mix
-      ({{ selectedMixFamilyIds.length }}
-      famille{{ selectedMixFamilyIds.length > 1 ? "s" : "" }},
-      {{ mixEntryCount }} trick{{ mixEntryCount > 1 ? "s" : "" }})
-    </button>
+    </template>
   </section>
 
   <!-- step 2: difficulty + mode specifics + start -->
@@ -833,7 +861,26 @@ function removePlayer(index) {
       }}
     </h2>
 
-    <div class="setup__section">
+    <div v-if="settings.mode === 'vs'" class="setup__section">
+      <div class="pills">
+        <button
+          class="pill"
+          :class="{ 'pill--active': settings.vsMode === 'level' }"
+          @click="settings.vsMode = 'level'"
+        >
+          Niveau
+        </button>
+        <button
+          class="pill"
+          :class="{ 'pill--active': settings.vsMode === 'families' }"
+          @click="settings.vsMode = 'families'"
+        >
+          Familles
+        </button>
+      </div>
+    </div>
+
+    <div v-if="settings.mode !== 'vs' || settings.vsMode === 'level'" class="setup__section">
       <span class="setup__label">{{ presetTitle }}</span>
       <div class="pills">
         <button
@@ -880,6 +927,64 @@ function removePlayer(index) {
         <p class="setup__hint">
           Sa chance de réussir CHAQUE essai — sur 3 essais, ça monte vite. 50%
           par essai, c'est déjà presque 9 sur 10 de réussir au moins une fois.
+        </p>
+      </div>
+
+      <div v-if="settings.vsMode === 'families'" class="setup__section">
+        <span class="setup__label">Familles de tricks</span>
+        <div class="mix-family-list">
+          <label
+            v-for="family in builtinFamilyOptions"
+            :key="family.id"
+            class="mix-family-row"
+          >
+            <input
+              type="checkbox"
+              :checked="isVsFamilySelected(family.id)"
+              @change="toggleVsFamily(family.id)"
+            />
+            <span class="mix-family-row__name">{{ familyBaseName(family.name) }}</span>
+            <span class="mix-family-row__pct" :style="{ color: familyOptionColor(family) }">
+              {{
+                isFamilyComplete(displayProgressId(family), family.entries)
+                  ? "Terminée ✓"
+                  : `${familyPercent(family)}%`
+              }}
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div v-if="settings.vsMode === 'families'" class="setup__section">
+        <span class="setup__label">Familles perso</span>
+        <div v-if="visibleCustomFamilies.length" class="mix-family-list">
+          <label
+            v-for="family in visibleCustomFamilies"
+            :key="family.id"
+            class="mix-family-row"
+          >
+            <input
+              type="checkbox"
+              :checked="isVsFamilySelected(family.id)"
+              @change="toggleVsFamily(family.id)"
+            />
+            <span class="mix-family-row__name">{{ familyBaseName(family.name) }}</span>
+            <span class="mix-family-row__pct" :style="{ color: familyOptionColor(family) }">
+              {{
+                isFamilyComplete(displayProgressId(family), family.entries)
+                  ? "Terminée ✓"
+                  : `${familyPercent(family)}%`
+              }}
+            </span>
+          </label>
+        </div>
+        <p v-else class="setup__hint">
+          Aucune famille perso pour l'instant — crée-en une depuis l'aperçu des
+          tricks possibles (Réglages &gt; Terminé).
+        </p>
+        <p v-if="!settings.vsFamilyIds.length" class="setup__hint">
+          Coche au moins une famille — sinon le tirage reste sur le niveau
+          choisi.
         </p>
       </div>
 

@@ -47,13 +47,15 @@ const state = reactive({
   // — a random pick among entries not yet landed, redrawn on every spin
   // (skip included). null when no family is active.
   activeFamilyEntryIndex: null,
-  // Mix training: draws across several selected families at once
-  // (built-in "Familles de tricks" and/or personal families) instead
-  // of just one — see startMixSession/buildMixPool below. Empty array
-  // when no Mix session is active. Mix always writes to each family's
-  // plain "::practice" progress bucket (isCareer is never true here),
-  // so it shares progress with training a family on its own, and this
-  // can never touch Career progress.
+  // Restricts the draw to several selected families' entries at once
+  // instead of the usual random pool — used by two different modes:
+  // Mix (solo training across several families, built-in and/or
+  // personal — see startMixSession/buildMixPool below) and BLADE VS
+  // (settings.vsMode === "families" — see startGame). Empty array
+  // when neither is active. Only Mix (mode "solo") advances family
+  // progress on landing — see the "state.mode === 'solo'" guard in
+  // landTrick; VS reuses the same draw mechanism but never writes to
+  // family progress, win or lose.
   activeFamilyIds: [],
   // Which family the CURRENT spin's forced entry actually came from,
   // and its index within THAT family's own entries — { familyId,
@@ -271,6 +273,15 @@ export function useGame() {
         { name: "Robot", letters: 0 },
       ];
       state.round = 0;
+      // Same family-restricted draw Mix uses (see buildMixPool/nextSpin)
+      // — draws from every entry of the chosen families, landed or
+      // not. VS never advances family progress either way (see
+      // landTrick's "state.mode === 'solo'" guard on that), this only
+      // changes which tricks can come up.
+      state.activeFamilyIds =
+        settings.vsMode === "families"
+          ? [...new Set(settings.vsFamilyIds)].filter((id) => resolveFamilyById(id))
+          : [];
       beginVsRound(settings);
       return;
     }
@@ -669,7 +680,7 @@ export function useGame() {
           state.activeFamilyEntryIndex = null;
         }
       }
-    } else if (state.activeMixEntry) {
+    } else if (state.mode === "solo" && state.activeMixEntry) {
       const family = landFamily;
       if (family) {
         // Mix never trains Career — always the plain "::practice"
@@ -678,6 +689,10 @@ export function useGame() {
         // still awards its badge the first time it's fully landed);
         // it just no longer removes anything from the draw — a family
         // being complete doesn't pause or shrink the Mix pool anymore.
+        // (BLADE VS reuses this same activeMixEntry/activeFamilyIds
+        // mechanism to restrict its own draw to chosen families, but
+        // being mode "vs" and not "solo", it never lands here — VS
+        // never writes to family progress.)
         const progressId = progressFamilyId(family, false);
         const familyBadge = collection.advanceFamilyProgress(
           family,

@@ -292,15 +292,33 @@ if (isSynthesisSupported) {
   window.speechSynthesis.addEventListener("voiceschanged", refreshSynthesisVoices);
 }
 
+// Which voice actually reads things out loud: whatever the person
+// explicitly picked in Réglages (settings.speechVoiceURI) if they
+// picked one; otherwise "Daniel (en-GB)" by default when the device
+// has it (a clear, native English voice — good for skate vocabulary
+// like Alley-Oop or Fishbrain); otherwise undefined, which leaves it
+// to the browser's own default voice.
+function resolveSpeechVoice() {
+  if (settingsApi.settings.speechVoiceURI) {
+    const chosen = synthesisVoices.value.find(
+      (v) => v.voiceURI === settingsApi.settings.speechVoiceURI
+    );
+    if (chosen) {
+      return chosen;
+    }
+  }
+  return synthesisVoices.value.find(
+    (v) => v.name === "Daniel" && v.lang?.toLowerCase() === "en-gb"
+  );
+}
+
 function speakWithSynthesis(name) {
   if (!isSynthesisSupported) {
     return;
   }
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(buildSpokenText(name));
-  const voice = synthesisVoices.value.find(
-    (v) => v.voiceURI === settingsApi.settings.speechVoiceURI
-  );
+  const voice = resolveSpeechVoice();
   if (voice) {
     utterance.voice = voice;
     // Match the utterance's declared language to the chosen voice's
@@ -443,8 +461,7 @@ export function unlockAudio(withMusic) {
 /**
  * Short spoken phrases that aren't trick names — confirmations like
  * "Trick validé !" — always go through speech synthesis. Uses
- * whatever voice was picked for synthesis if one was, otherwise the
- * browser default.
+ * whatever voice was picked for synthesis (see resolveSpeechVoice).
  */
 export function speakPhrase(text, onEnd) {
   if (state.muted || !isSynthesisSupported) {
@@ -453,9 +470,7 @@ export function speakPhrase(text, onEnd) {
   }
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
-  const voice = synthesisVoices.value.find(
-    (v) => v.voiceURI === settingsApi.settings.speechVoiceURI
-  );
+  const voice = resolveSpeechVoice();
   if (voice) {
     utterance.voice = voice;
     utterance.lang = voice.lang;

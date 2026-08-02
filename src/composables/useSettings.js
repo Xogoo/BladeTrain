@@ -250,6 +250,13 @@ function defaultSettings() {
     // ONE of its 3 attempts, rolled independently per attempt — see
     // vsAttempt in useGame.js. Adjustable on the mode's setup screen.
     vsRobotChance: 50,
+    // BLADE VS: draws either from the usual level-based trick pool
+    // ("level", using settings.level/tricks/grinds like Group does) or
+    // from a hand-picked set of families ("families", same mechanism
+    // as Mix's family-restricted draw — see startGame/nextSpin in
+    // useGame.js). vsFamilyIds is that hand-picked set.
+    vsMode: "level",
+    vsFamilyIds: [],
     reelSpeed: "fast",
     introMusic: false,
     // Quick test toggle: swaps to a real light palette — see
@@ -343,6 +350,15 @@ function loadSettings() {
       merged.vsRobotChance = defaults.vsRobotChance;
     }
     merged.vsRobotChance = Math.min(100, Math.max(0, merged.vsRobotChance));
+    if (merged.vsMode !== "level" && merged.vsMode !== "families") {
+      merged.vsMode = "level";
+    }
+    if (
+      !Array.isArray(merged.vsFamilyIds) ||
+      merged.vsFamilyIds.some((id) => typeof id !== "string")
+    ) {
+      merged.vsFamilyIds = [];
+    }
     merged.introMusic = false;
     if (!merged.grinds || typeof merged.grinds !== "object") {
       merged.grinds = {};
