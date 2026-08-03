@@ -151,3 +151,67 @@ describe("generateSpin", () => {
     }
   });
 });
+
+// A family entry has no field of its own recording whether its
+// switch-up was done in switch stance (see familyEntryKey in
+// families.js) — so a forced trick used to fall back to whatever the
+// player's own LIVE switchUpSwitch/switchUp2Switch toggle happened to
+// be, unrelated to the fixed recipe being trained. That leftover
+// setting made a family's switch-up randomly show/hide "Switch" in
+// its name depending on something the player had toggled for a
+// completely different session. A forced trick must ignore both
+// toggles entirely, regardless of what they're set to live.
+describe("generateSpin — forced (family) tricks ignore live Switch toggles", () => {
+  // A real shipped family entry (Backslide to AO Top) — grind switching
+  // up into a pinned variation (Makio, Topside).
+  const forcedTrickWithSwitchUp = {
+    grindName: "FS Backslide",
+    variationName: "None",
+    approach: "Forwards",
+    spinToName: "None",
+    spinOffName: "Forwards",
+    switchUpGrindName: "Makio",
+    switchUpVariationName: "Topside",
+    switchSpinName: "Outspin 270",
+  };
+
+  it("never shows Switch on the switch-up, even with the live setting on", () => {
+    const settings = { ...ALL_ON, switchUpSwitch: true, switchChance: 100 };
+    for (let i = 0; i < 20; i++) {
+      const spin = generateSpin(settings, [], null, null, null, null, forcedTrickWithSwitchUp, null);
+      expect(spin.name).not.toContain("Switch");
+    }
+  });
+
+  it("never shows Switch on a second-level switch-up, even with the live setting on", () => {
+    const forcedTrickWithSwitchUp2 = {
+      ...forcedTrickWithSwitchUp,
+      switchUp2GrindName: "Torque Soul",
+      switchUp2VariationName: "None",
+      switchSpin2Name: "None",
+    };
+    const settings = { ...ALL_ON, switchUpSwitch: true, switchUp2Switch: true, switchChance: 100 };
+    for (let i = 0; i < 20; i++) {
+      const spin = generateSpin(settings, [], null, null, null, null, forcedTrickWithSwitchUp2, null);
+      expect(spin.name).not.toContain("Switch");
+    }
+  });
+
+  // The bug: forced tricks never populated switchUpVariationPool, so
+  // whenever a family entry pinned a real switch-up variation, the
+  // SwitchUpVariation reel became visible (winner !== null) with an
+  // empty pool. SlotReel's filler-building then read .name off a
+  // random pick from that empty array and threw, which is why the
+  // whole result screen (score, Blade!/Passer, even the bottom nav)
+  // never came back without the failsafe timeout kicking in.
+  it("never leaves a visible reel's pool empty for a pinned switch-up variation", () => {
+    for (let i = 0; i < 20; i++) {
+      const spin = generateSpin(ALL_ON, [], null, null, null, null, forcedTrickWithSwitchUp, null);
+      const reel = spin.reels.find((r) => r.name === "SwitchUpVariation");
+      expect(reel.hidden).toBe(false);
+      expect(reel.winner).not.toBeNull();
+      expect(reel.pool.length).toBeGreaterThan(0);
+      expect(reel.pool).toContainEqual(reel.winner);
+    }
+  });
+});
