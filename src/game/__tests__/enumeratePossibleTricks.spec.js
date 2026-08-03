@@ -45,18 +45,12 @@ const grindToggles = { Soul: true };
 const switchUpGrindToggles = { Frontside: true };
 
 describe("enumeratePossibleTricks — family building", () => {
-  // This is THE regression this file exists to prevent: a personal
-  // family (built in-app, or one of the 14 shipped defaults) is
-  // supposed to be a frozen, complete list of every distinct trick a
-  // given grind/switch-up selection allows. "Focus d'entraînement" is
-  // a LIVE random-draw pacing preference (avoid landing on "no extra
-  // spin" too often during an actual session) — it must never change
-  // which tricks get saved into a family, or every family built (or
-  // shipped) while it happened to be on ends up missing every
-  // straightforward, no-extra-spin switch-up entry, permanently.
-  it("always includes a plain (no extra spin) switch-up connector alongside rotated ones", () => {
+  // With "Entraînement ciblé" OFF, nothing is locked — the switch-up
+  // reel stays a genuine possibility space, so a plain "None" connector
+  // and rotated ones both coexist.
+  it("includes both a plain (no extra spin) switch-up connector and rotated ones when training focus is off", () => {
     const result = enumeratePossibleTricks(
-      permissiveSettings(true), // the actual live default
+      permissiveSettings(false),
       grindToggles,
       switchUpGrindToggles,
       {}
@@ -67,24 +61,37 @@ describe("enumeratePossibleTricks — family building", () => {
     expect(withRotation.length).toBeGreaterThan(0);
   });
 
-  // Building the exact same family with trainingFocus off must yield
-  // the exact same set of entries — enumeration answers "what tricks
-  // exist for this config", a question trainingFocus has no opinion
-  // on. If a future change makes this fail, something is once again
-  // leaking a live-session-only flag into what gets permanently saved.
-  it("produces identical output regardless of trainingFocus", () => {
-    const withFocus = enumeratePossibleTricks(
-      permissiveSettings(true),
+  // The actual lock: narrowing to just one direction (Alley-oop only)
+  // with trainingFocus on must exclude the "None"/plain connector
+  // entirely — a family built from this exact config is meant to come
+  // out with that rotation on every entry, not a mix. This is the
+  // precise behavior Pierre relies on to build a tight, single-recipe
+  // family (e.g. "Backslide to AO Top") instead of a broad "everything
+  // that's merely possible" list.
+  it("locks out the plain (no extra spin) connector once a direction is actually narrowed", () => {
+    const settings = permissiveSettings(true);
+    settings.spinBetweenTrue = false; // only Alley-oop left enabled
+    const result = enumeratePossibleTricks(
+      settings,
       grindToggles,
       switchUpGrindToggles,
       {}
     );
-    const withoutFocus = enumeratePossibleTricks(
-      permissiveSettings(false),
-      grindToggles,
-      switchUpGrindToggles,
-      {}
-    );
-    expect(withFocus.names).toEqual(withoutFocus.names);
+    const withNone = result.entries.filter((e) => e.switchSpinName === "None");
+    expect(withNone.length).toBe(0);
+    expect(result.entries.length).toBeGreaterThan(0);
+  });
+
+  // Once a family IS saved, its entries are a frozen snapshot (see
+  // saveCustomFamily in useSettings.js) — nothing re-derives them
+  // later, so trainingFocus (or anything else) toggling afterward can
+  // never change an already-created family. This just confirms
+  // enumeratePossibleTricks itself is a pure function of its inputs —
+  // same settings in, same entries out, every time.
+  it("is deterministic for the same settings", () => {
+    const settings = permissiveSettings(true);
+    const first = enumeratePossibleTricks(settings, grindToggles, switchUpGrindToggles, {});
+    const second = enumeratePossibleTricks(settings, grindToggles, switchUpGrindToggles, {});
+    expect(first.names).toEqual(second.names);
   });
 });

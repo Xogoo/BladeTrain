@@ -6,13 +6,14 @@
 // A player can still delete or edit any of these like any other personal
 // family — nothing here is protected.
 //
-// Ordered by first grind, grouped logically: Backslide, Torque, Full
-// Torque, Royale, Unity, Savannah (each FS/AO pair then BS/True pair),
-// then the two big Topside-soul-to-Topside-soul (all 8 grinds each side)
-// families last.
+// Rebuilt 2026-08-03 after the "Entraînement ciblé" lock was restored (see
+// enumeratePossibleTricks in trickGenerator.js) — the previous set was built
+// while that lock was bypassed for family creation, so several entries had
+// picked up a bare "270"/"450" (no AO/True direction) or an unintended
+// "Switch" from a live setting unrelated to the family itself.
 export const DEFAULT_CUSTOM_FAMILIES = [
   {
-    "id": "custom-1785439888129",
+    "id": "custom-1785792336213",
     "name": "Backslide to AO Top",
     "entries": [
       {
@@ -23,7 +24,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Backslide",
@@ -33,7 +37,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Backslide",
@@ -43,7 +50,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Backslide",
@@ -53,7 +63,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Backslide",
@@ -63,7 +76,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Backslide",
@@ -73,7 +89,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Backslide",
@@ -83,7 +102,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Backslide",
@@ -93,12 +115,15 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       }
     ]
   },
   {
-    "id": "suggest-1785443001692-2",
+    "id": "custom-1785792386060",
     "name": "BS Backslide to True",
     "entries": [
       {
@@ -107,19 +132,12 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "approach": "Forwards",
         "spinToName": "None",
         "spinOffName": "Forwards",
-        "switchUpGrindName": "Soul",
-        "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "BS Backslide",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Backslide",
@@ -129,27 +147,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "BS Backslide",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "PStar",
-        "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "BS Backslide",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "Torque Soul",
-        "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Backslide",
@@ -159,7 +160,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Backslide",
@@ -169,7 +173,49 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "BS Backslide",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "PStar",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "BS Backslide",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Soul",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "BS Backslide",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Torque Soul",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Backslide",
@@ -179,13 +225,16 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       }
     ]
   },
   {
-    "id": "custom-1785440419159",
-    "name": "Torque to AO",
+    "id": "custom-1785792431180",
+    "name": "FS Torque to AO",
     "entries": [
       {
         "grindName": "FS Torque",
@@ -195,7 +244,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Torque",
@@ -205,7 +257,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Torque",
@@ -215,7 +270,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Torque",
@@ -225,7 +283,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Torque",
@@ -235,7 +296,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Torque",
@@ -245,7 +309,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Torque",
@@ -255,7 +322,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Torque",
@@ -265,12 +335,15 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       }
     ]
   },
   {
-    "id": "custom-1785440488324",
+    "id": "custom-1785792454376",
     "name": "BS Torque to True Top",
     "entries": [
       {
@@ -281,7 +354,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Torque",
@@ -291,7 +367,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Torque",
@@ -301,7 +380,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Torque",
@@ -311,7 +393,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Torque",
@@ -321,7 +406,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Torque",
@@ -331,7 +419,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Torque",
@@ -341,7 +432,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Torque",
@@ -351,98 +445,15 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       }
     ]
   },
   {
-    "id": "custom-1785440397310",
-    "name": "Full Torque to AO",
-    "entries": [
-      {
-        "grindName": "FS Full Torque",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "Acid",
-        "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "FS Full Torque",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "Makio",
-        "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "FS Full Torque",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "Mistrial",
-        "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "FS Full Torque",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "Mizou",
-        "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "FS Full Torque",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "PStar",
-        "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "FS Full Torque",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "Soul",
-        "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "FS Full Torque",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "X-Grind",
-        "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "FS Full Torque",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "Torque Soul",
-        "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
-      }
-    ]
-  },
-  {
-    "id": "custom-1785440511079",
+    "id": "custom-1785792516856",
     "name": "BS Full Torque to True Top",
     "entries": [
       {
@@ -453,7 +464,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Full Torque",
@@ -463,7 +477,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Full Torque",
@@ -473,7 +490,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Full Torque",
@@ -483,7 +503,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Full Torque",
@@ -493,7 +516,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Full Torque",
@@ -503,7 +529,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Full Torque",
@@ -513,7 +542,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Full Torque",
@@ -523,13 +555,126 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       }
     ]
   },
   {
-    "id": "custom-1785441393889",
-    "name": "Royal to AO Top",
+    "id": "custom-1785792545818",
+    "name": "FS Full Torque to AO",
+    "entries": [
+      {
+        "grindName": "FS Full Torque",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Acid",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "FS Full Torque",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Makio",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "FS Full Torque",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Mistrial",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "FS Full Torque",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Mizou",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "FS Full Torque",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "PStar",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "FS Full Torque",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Soul",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "FS Full Torque",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "X-Grind",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "FS Full Torque",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Torque Soul",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      }
+    ]
+  },
+  {
+    "id": "custom-1785792576082",
+    "name": "FS Royal to AO Top",
     "entries": [
       {
         "grindName": "FS Royale",
@@ -539,7 +684,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Royale",
@@ -549,7 +697,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Royale",
@@ -559,7 +710,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Royale",
@@ -569,7 +723,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Royale",
@@ -579,7 +736,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Royale",
@@ -589,7 +749,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Royale",
@@ -599,7 +762,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Royale",
@@ -609,12 +775,15 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       }
     ]
   },
   {
-    "id": "custom-1785441425592",
+    "id": "custom-1785792598681",
     "name": "BS Royal to True",
     "entries": [
       {
@@ -625,7 +794,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Royale",
@@ -635,7 +807,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Royale",
@@ -645,7 +820,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Royale",
@@ -655,7 +833,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Royale",
@@ -665,7 +846,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Royale",
@@ -675,7 +859,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Royale",
@@ -685,7 +872,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Royale",
@@ -695,12 +885,15 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       }
     ]
   },
   {
-    "id": "suggest-1785443001692-4",
+    "id": "custom-1785792668081",
     "name": "FS Unity to AO",
     "entries": [
       {
@@ -709,19 +902,12 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "approach": "Forwards",
         "spinToName": "None",
         "spinOffName": "Forwards",
-        "switchUpGrindName": "Soul",
-        "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "FS Unity",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Unity",
@@ -731,27 +917,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "FS Unity",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "PStar",
-        "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "FS Unity",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "Torque Soul",
-        "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Unity",
@@ -761,7 +930,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Unity",
@@ -771,7 +943,36 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "FS Unity",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "PStar",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "FS Unity",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Soul",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "FS Unity",
@@ -781,13 +982,29 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "FS Unity",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Torque Soul",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       }
     ]
   },
   {
-    "id": "custom-1785442044438",
-    "name": "Back unity to True Top",
+    "id": "custom-1785792700772",
+    "name": "BS Unity to True Top",
     "entries": [
       {
         "grindName": "BS Unity",
@@ -797,7 +1014,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Unity",
@@ -807,7 +1027,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Unity",
@@ -817,7 +1040,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Unity",
@@ -827,7 +1053,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Unity",
@@ -837,7 +1066,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Unity",
@@ -847,7 +1079,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Unity",
@@ -857,7 +1092,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Unity",
@@ -867,98 +1105,15 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       }
     ]
   },
   {
-    "id": "suggest-1785443001692-17",
-    "name": "FS Savannah to AO Top",
-    "entries": [
-      {
-        "grindName": "FS Savannah",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "Soul",
-        "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "FS Savannah",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "Acid",
-        "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "FS Savannah",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "Makio",
-        "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "FS Savannah",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "PStar",
-        "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "FS Savannah",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "Torque Soul",
-        "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "FS Savannah",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "Mistrial",
-        "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "FS Savannah",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "Mizou",
-        "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "FS Savannah",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "X-Grind",
-        "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 270"
-      }
-    ]
-  },
-  {
-    "id": "suggest-1785443001692-20",
+    "id": "custom-1785792735167",
     "name": "BS Savannah to True",
     "entries": [
       {
@@ -967,19 +1122,12 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "approach": "Forwards",
         "spinToName": "None",
         "spinOffName": "Forwards",
-        "switchUpGrindName": "Soul",
-        "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "BS Savannah",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Savannah",
@@ -989,27 +1137,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "BS Savannah",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "PStar",
-        "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
-      },
-      {
-        "grindName": "BS Savannah",
-        "variationName": "None",
-        "approach": "Forwards",
-        "spinToName": "None",
-        "spinOffName": "Forwards",
-        "switchUpGrindName": "Torque Soul",
-        "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Savannah",
@@ -1019,7 +1150,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Savannah",
@@ -1029,7 +1163,49 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "BS Savannah",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "PStar",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "BS Savannah",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Soul",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "BS Savannah",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Torque Soul",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "BS Savannah",
@@ -1039,13 +1215,230 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "Forwards",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": null,
-        "switchSpinName": "Outspin 270"
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "BS Unity",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Acid",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "BS Unity",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Makio",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "BS Unity",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Mistrial",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "BS Unity",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Mizou",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "BS Unity",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "PStar",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "BS Unity",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Soul",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "BS Unity",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Torque Soul",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "BS Unity",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "X-Grind",
+        "switchUpVariationName": null,
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       }
     ]
   },
   {
-    "id": "custom-1785439137810-ccc5s1",
-    "name": "Top to Switch True Top",
+    "id": "custom-1785792772891",
+    "name": "FS Savannah To AO Top",
+    "entries": [
+      {
+        "grindName": "FS Savannah",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Makio",
+        "switchUpVariationName": "Topside",
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "FS Savannah",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Acid",
+        "switchUpVariationName": "Topside",
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "FS Savannah",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Mistrial",
+        "switchUpVariationName": "Topside",
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "FS Savannah",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "PStar",
+        "switchUpVariationName": "Topside",
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "FS Savannah",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Soul",
+        "switchUpVariationName": "Topside",
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "FS Savannah",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "X-Grind",
+        "switchUpVariationName": "Topside",
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "FS Savannah",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Mizou",
+        "switchUpVariationName": "Topside",
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      },
+      {
+        "grindName": "FS Savannah",
+        "variationName": "None",
+        "approach": "Forwards",
+        "spinToName": "None",
+        "spinOffName": "Forwards",
+        "switchUpGrindName": "Torque Soul",
+        "switchUpVariationName": "Topside",
+        "switchSpinName": "Outspin 270",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
+      }
+    ]
+  },
+  {
+    "id": "custom-1785792845544",
+    "name": "Top To Switch True Top",
     "entries": [
       {
         "grindName": "Makio",
@@ -1055,7 +1448,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Makio",
@@ -1065,7 +1461,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Makio",
@@ -1075,7 +1474,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Makio",
@@ -1085,7 +1487,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Makio",
@@ -1095,7 +1500,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Makio",
@@ -1105,7 +1513,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Makio",
@@ -1115,7 +1526,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Makio",
@@ -1125,7 +1539,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mizou",
@@ -1135,7 +1552,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mizou",
@@ -1145,7 +1565,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mizou",
@@ -1155,7 +1578,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mizou",
@@ -1165,7 +1591,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mizou",
@@ -1175,7 +1604,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mizou",
@@ -1185,7 +1617,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mizou",
@@ -1195,7 +1630,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mizou",
@@ -1205,7 +1643,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Acid",
@@ -1215,7 +1656,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Acid",
@@ -1225,7 +1669,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Acid",
@@ -1235,7 +1682,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Acid",
@@ -1245,7 +1695,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Acid",
@@ -1255,7 +1708,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Acid",
@@ -1265,7 +1721,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Acid",
@@ -1275,7 +1734,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Acid",
@@ -1285,7 +1747,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mistrial",
@@ -1295,7 +1760,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mistrial",
@@ -1305,7 +1773,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mistrial",
@@ -1315,7 +1786,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mistrial",
@@ -1325,7 +1799,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mistrial",
@@ -1335,7 +1812,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mistrial",
@@ -1345,7 +1825,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mistrial",
@@ -1355,7 +1838,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mistrial",
@@ -1365,7 +1851,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "PStar",
@@ -1375,7 +1864,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "PStar",
@@ -1385,7 +1877,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "PStar",
@@ -1395,7 +1890,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "PStar",
@@ -1405,7 +1903,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "PStar",
@@ -1415,7 +1916,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "PStar",
@@ -1425,7 +1929,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "PStar",
@@ -1435,7 +1942,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "PStar",
@@ -1445,7 +1955,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Soul",
@@ -1455,7 +1968,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Soul",
@@ -1465,7 +1981,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Soul",
@@ -1475,7 +1994,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Soul",
@@ -1485,7 +2007,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Soul",
@@ -1495,7 +2020,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Soul",
@@ -1505,7 +2033,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Soul",
@@ -1515,7 +2046,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Soul",
@@ -1525,7 +2059,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Torque Soul",
@@ -1535,7 +2072,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Torque Soul",
@@ -1545,7 +2085,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Torque Soul",
@@ -1555,7 +2098,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Torque Soul",
@@ -1565,7 +2111,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Torque Soul",
@@ -1575,7 +2124,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Torque Soul",
@@ -1585,7 +2137,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Torque Soul",
@@ -1595,7 +2150,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Torque Soul",
@@ -1605,7 +2163,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "X-Grind",
@@ -1615,7 +2176,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "X-Grind",
@@ -1625,7 +2189,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "X-Grind",
@@ -1635,7 +2202,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "X-Grind",
@@ -1645,7 +2215,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "X-Grind",
@@ -1655,7 +2228,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "X-Grind",
@@ -1665,7 +2241,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "X-Grind",
@@ -1675,7 +2254,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "X-Grind",
@@ -1685,12 +2267,15 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       }
     ]
   },
   {
-    "id": "custom-1785440554152",
+    "id": "custom-1785792885044",
     "name": "Switch Top to True Top",
     "entries": [
       {
@@ -1701,7 +2286,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Makio",
@@ -1711,7 +2299,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Makio",
@@ -1721,7 +2312,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Makio",
@@ -1731,7 +2325,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Makio",
@@ -1741,7 +2338,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Makio",
@@ -1751,7 +2351,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Makio",
@@ -1761,7 +2364,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Makio",
@@ -1771,7 +2377,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mizou",
@@ -1781,7 +2390,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mizou",
@@ -1791,7 +2403,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mizou",
@@ -1801,7 +2416,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mizou",
@@ -1811,7 +2429,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mizou",
@@ -1821,7 +2442,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mizou",
@@ -1831,7 +2455,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mizou",
@@ -1841,7 +2468,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mizou",
@@ -1851,7 +2481,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Acid",
@@ -1861,7 +2494,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Acid",
@@ -1871,7 +2507,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Acid",
@@ -1881,7 +2520,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Acid",
@@ -1891,7 +2533,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Acid",
@@ -1901,7 +2546,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Acid",
@@ -1911,7 +2559,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Acid",
@@ -1921,7 +2572,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Acid",
@@ -1931,7 +2585,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mistrial",
@@ -1941,7 +2598,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mistrial",
@@ -1951,7 +2611,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mistrial",
@@ -1961,7 +2624,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mistrial",
@@ -1971,7 +2637,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mistrial",
@@ -1981,7 +2650,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mistrial",
@@ -1991,7 +2663,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mistrial",
@@ -2001,7 +2676,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Mistrial",
@@ -2011,7 +2689,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "PStar",
@@ -2021,7 +2702,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "PStar",
@@ -2031,7 +2715,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "PStar",
@@ -2041,7 +2728,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "PStar",
@@ -2051,7 +2741,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "PStar",
@@ -2061,7 +2754,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "PStar",
@@ -2071,7 +2767,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "PStar",
@@ -2081,7 +2780,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "PStar",
@@ -2091,7 +2793,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Soul",
@@ -2101,7 +2806,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Soul",
@@ -2111,7 +2819,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Soul",
@@ -2121,7 +2832,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Soul",
@@ -2131,7 +2845,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Soul",
@@ -2141,7 +2858,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Soul",
@@ -2151,7 +2871,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Soul",
@@ -2161,7 +2884,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Soul",
@@ -2171,7 +2897,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Torque Soul",
@@ -2181,7 +2910,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Torque Soul",
@@ -2191,7 +2923,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Torque Soul",
@@ -2201,7 +2936,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Torque Soul",
@@ -2211,7 +2949,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Torque Soul",
@@ -2221,7 +2962,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Torque Soul",
@@ -2231,7 +2975,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Torque Soul",
@@ -2241,7 +2988,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "Torque Soul",
@@ -2251,7 +3001,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "X-Grind",
@@ -2261,7 +3014,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Makio",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "X-Grind",
@@ -2271,7 +3027,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mizou",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "X-Grind",
@@ -2281,7 +3040,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Acid",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "X-Grind",
@@ -2291,7 +3053,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Mistrial",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "X-Grind",
@@ -2301,7 +3066,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "PStar",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "X-Grind",
@@ -2311,7 +3079,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "X-Grind",
@@ -2321,7 +3092,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "Torque Soul",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       },
       {
         "grindName": "X-Grind",
@@ -2331,7 +3105,10 @@ export const DEFAULT_CUSTOM_FAMILIES = [
         "spinOffName": "None",
         "switchUpGrindName": "X-Grind",
         "switchUpVariationName": "Topside",
-        "switchSpinName": "Outspin 180"
+        "switchSpinName": "Outspin 180",
+        "switchUp2GrindName": null,
+        "switchUp2VariationName": null,
+        "switchSpin2Name": null
       }
     ]
   }

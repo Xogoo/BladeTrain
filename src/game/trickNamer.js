@@ -352,12 +352,23 @@ function nameSwitchSpin(switchSpin, crossTypeGrooveName) {
   const name = switchSpin.winner.name;
   const isInspin = name.includes("Inspin");
   // 270/450 only ever happen on a cross-type transition (soul<->groove)
-  // — and groove never reads as Alley-oop/True, on the way into the
-  // very first grind or here between the two switch-up grinds. Same
-  // plain-degree naming either way, crossTypeGrooveName no longer
-  // changes it (kept as a parameter since callers still need it for
-  // the actual direction FILTERING elsewhere, just not for naming).
+  // — same convention as a groove grind's own spin-in (see
+  // families.js's groove270Entries): entering a Frontside-type groove
+  // grind reads Outspin as the "forward"/Alley-oop-equivalent
+  // rotation, Inspin for Backside — the OPPOSITE of what Inspin/Outspin
+  // mean for a same-type (180/360/540) rotation. Without
+  // crossTypeGrooveName here, every cross-type transition falls back
+  // to a plain "270"/"450" with no direction at all, which is the
+  // exact bug this fixes: "AO Top Mistrial" (or any topside soul
+  // target) showing as a bare "270 Mistrial"/"270 Acid" instead of
+  // "AO Top Mistrial"/"AO Top Acid".
   if (name.includes("270") || name.includes("450")) {
+    if (crossTypeGrooveName) {
+      const isFrontside = isFrontsideGrindName(crossTypeGrooveName);
+      const isAlleyOop = isFrontside ? !isInspin : isInspin;
+      const label = isAlleyOop ? "Alley-oop" : "True";
+      return name.includes("450") ? `450 ${label}` : label;
+    }
     return name.includes("450") ? "450" : "270";
   }
   if (name.includes("180")) {

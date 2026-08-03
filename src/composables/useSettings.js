@@ -37,7 +37,22 @@ export const CUSTOM_LEVEL = 5;
 // entry already has its "None" sibling. Exported so useBackup.js's
 // restoreBackup can run an OLDER backup through the same migration
 // instead of dropping it straight into the live settings unmigrated.
+//
+// DISABLED (2026-08-03): the root bug is now fixed at the source
+// ("Entraînement ciblé" is a real lock again in enumeratePossibleTricks
+// — see trickGenerator.js), and every family (the 14 shipped defaults
+// included) has been rebuilt from scratch against that fix. Running
+// this migration now is actively harmful: it can't tell "genuinely
+// missing a None sibling because of the old bug" apart from
+// "deliberately has no None sibling because the family was built
+// precisely locked to one rotation" — so it was quietly DOUBLING every
+// entry count of the freshly-rebuilt families (8 -> 16, 64 -> 128).
+// Kept as a no-op (rather than deleted) so existing imports/call sites
+// don't break; the loop below is unreachable while this early return
+// stays in place.
 export function migrateSwitchUpNoneVariants(data) {
+  return data;
+  // eslint-disable-next-line no-unreachable
   if (!Array.isArray(data.customFamilies)) {
     return data;
   }

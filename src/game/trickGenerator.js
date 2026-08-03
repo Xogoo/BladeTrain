@@ -67,11 +67,16 @@ export function generateSpin(
   let switchSpin = null;
   let switchUpVariationPool = [];
   let switchUpVariation = null;
-  // Whether the switch-up (if any) is done in switch stance — defaults
-  // to the raw setting (forced/family tricks always just follow it
-  // as-is, same as before), overridden below by a per-spin roll only
-  // for genuinely random spins when settings.switchChance is set.
-  let resolvedSwitchUpSwitch = !!settings.switchUpSwitch;
+  // Whether the switch-up (if any) is done in switch stance — a family
+  // entry has no field of its own for this (see familyEntryKey in
+  // families.js), so a forced trick must NEVER let this follow the
+  // player's own current live switchUpSwitch toggle: that setting has
+  // nothing to do with the fixed recipe being trained, and doing so
+  // made a family's switch-up randomly show/hide "Switch" depending on
+  // an unrelated setting left on from something else entirely. Only a
+  // genuinely random (non-forced) spin resolves this for real, via a
+  // per-spin roll below when settings.switchChance is set.
+  let resolvedSwitchUpSwitch = forcedTrick ? false : !!settings.switchUpSwitch;
   if (forcedTrick && forcedTrick.switchUpGrindName) {
     // A personal family built from "Aperçu des tricks possibles" can
     // include a switch-up as part of the exact trick it's training —
@@ -257,7 +262,14 @@ export function generateSpin(
 
   const { parsed, orig } = nameTrick(
     reels.map(({ name, winner }) => ({ name, winner })),
-    { switchUpSwitch: resolvedSwitchUpSwitch, switchUp2Switch: !!settings.switchUp2Switch }
+    {
+      switchUpSwitch: resolvedSwitchUpSwitch,
+      // Same reasoning as resolvedSwitchUpSwitch above — a family
+      // entry has no field of its own for this either, so a forced
+      // trick must never let it follow the player's current live
+      // switchUp2Switch toggle.
+      switchUp2Switch: forcedTrick ? false : !!settings.switchUp2Switch,
+    }
   );
 
   return { reels, name: parsed, orig, score: scoreSpin(reels) };
@@ -484,13 +496,12 @@ function variationCandidates(grind, settings, level = 0) {
   // removes that plain option, so every spin lands on one of the
   // enabled variations — falling back to "None" only if the grind has
   // no matching variation at all, so the reel never comes up empty.
-  // ⚠️ This function is also called from enumeratePossibleTricks
-  // (family building) — trainingFocus is overridden to false there on
-  // purpose, so this branch never fires during enumeration. Don't
-  // remove that override; see enumeratePossibleTricks' own comment and
-  // __tests__/enumeratePossibleTricks.spec.js for the regression this
-  // guards against (a live-session pacing flag silently deleting every
-  // "plain" entry from a saved personal family).
+  // This is a genuine lock, shared as-is with enumeratePossibleTricks
+  // (family building) — a family built with an option locked on gets
+  // saved with that option on every entry, no stray plain alternative
+  // — see enumeratePossibleTricks' own comment for why that's exactly
+  // the point (a saved family is a frozen snapshot either way; this
+  // just decides what precisely goes into that snapshot).
   if (settings.trainingFocus && allowed.length > 0) {
     return allowed;
   }
@@ -508,10 +519,9 @@ function approachCandidates(grind, settings) {
   // instead of merely allowing it — Fakie checked alone means every
   // trick is fakie; Fakie + Switch both checked means every trick is
   // Fakie & Switch, rather than leaving Forwards / Fakie-only /
-  // Switch-only still possible alongside it.
-  // ⚠️ Shared with enumeratePossibleTricks — see variationCandidates'
-  // warning above; trainingFocus must never affect what a saved family
-  // ends up with.
+  // Switch-only still possible alongside it. Shared as-is with
+  // enumeratePossibleTricks (family building) — see variationCandidates'
+  // comment above.
   if (settings.trainingFocus) {
     const locked = allowed.filter(
       (approach) =>
@@ -611,10 +621,9 @@ function spinToCandidates(grind, approach, settings) {
   // Locking it removes that plain option, so every spin actually uses
   // what was narrowed. Only kicks in when something was actually
   // narrowed (direction and/or degree), not the unrestricted baseline,
-  // and only if something real is actually left afterwards.
-  // ⚠️ Shared with enumeratePossibleTricks — see that function's own
-  // comment and the warning on variationCandidates above; don't let
-  // trainingFocus leak into what gets permanently saved into a family.
+  // and only if something real is actually left afterwards. Shared
+  // as-is with enumeratePossibleTricks — see that function's own
+  // comment.
   if (
     settings.trainingFocus &&
     (!(settings.spinInAlleyOop && settings.spinInTrue) ||
@@ -790,16 +799,13 @@ function switchSpinCandidates(grind, switchUpGrind, settings, prefix = "spinBetw
   // Same idea again: with training focus on and the direction and/or a
   // degree narrowed, force an actual rotation between the two grinds
   // instead of sometimes landing on "no rotation between them" — only
-  // if something real is actually left afterwards.
-  // ⚠️ THIS is the exact spot the original bug lived: this function is
-  // also called from enumeratePossibleTricks (family building), and
-  // this branch used to fire there too — silently excluding every
-  // "no extra spin between the grinds" entry from every switch-up
-  // family ever built (or shipped — see defaultCustomFamilies.js)
-  // while trainingFocus happened to be on. enumeratePossibleTricks now
-  // overrides trainingFocus to false before calling this; don't remove
-  // that override, and see
-  // __tests__/enumeratePossibleTricks.spec.js for the regression test.
+  // if something real is actually left afterwards. Shared as-is with
+  // enumeratePossibleTricks (family building): checking e.g. only
+  // Alley-oop with training focus on means a family built from this
+  // config gets exactly that rotation on every entry, no bare
+  // "no rotation" alternative alongside it — see enumeratePossibleTricks'
+  // own comment for why that's the actual desired behavior for
+  // building a precise family.
   if (
     settings.trainingFocus &&
     (!(settings[`${prefix}AlleyOop`] && settings[`${prefix}True`]) ||
@@ -871,19 +877,21 @@ export function enumeratePossibleTricks(
   { cap = ENUMERATE_CAP } = {},
   switchUp2GrindToggles = null
 ) {
-  // trainingFocus biases LIVE random draws away from landing on "no
-  // variation/no extra spin" too often (see variationCandidates,
-  // spinToCandidates, spinOffCandidates, switchSpinCandidates above) —
-  // a pacing preference for a session in progress, not a statement
-  // about which tricks exist. Enumeration answers "what's the complete
-  // set of distinct tricks this config allows", so it must see every
-  // entry including the "None" ones regardless of that live setting —
-  // otherwise, with trainingFocus on (the default), a freshly built
-  // personal family with a switch-up silently loses every plain,
-  // no-extra-spin entry and comes out with a forced rotation (180/270/
-  // 360/450/540 depending which degrees are checked) on every single
-  // one instead.
-  settings = { ...settings, trainingFocus: false };
+  // trainingFocus is a genuine lock — checking an option (Topside,
+  // Alley-oop, a specific degree, …) with it on means that option is
+  // GUARANTEED, not just possible, everywhere: a real live spin AND
+  // this enumeration agree on the exact same set of tricks. That's
+  // deliberate and important for personal-family building
+  // specifically: "Aperçu des tricks possibles"/"Créer une famille
+  // perso" needs to show precisely what will get saved — no silent
+  // extra "None"/plain entries the player never asked for. Once a
+  // family IS saved, its `entries` are a frozen snapshot (see
+  // saveCustomFamily in useSettings.js) — nothing re-derives or
+  // re-filters them later, so whatever trainingFocus (or any other
+  // setting) happens to be at some later point can never change an
+  // already-created family's contents. This function is only ever
+  // "live" at the moment of building a NEW family or checking the
+  // live "Aperçu" — never re-run against a saved one.
   const grindPool = grindCandidates(settings, [], null, grindToggles);
   const byName = new Map(); // name -> full descriptor, for turning this into a personal family's entries later
   let truncated = false;
