@@ -461,7 +461,7 @@ function onReelStopped() {
               >
                 <AppIcon :name="state.vsRoundResult.playerLanded ? 'check' : 'flag'" :size="16" />
                 <span
-                  >Toi —
+                  >{{ state.players[0]?.name }} —
                   {{ state.vsRoundResult.playerLanded ? "réussi !" : "loupé, +1 lettre" }}</span
                 >
               </div>
@@ -470,7 +470,7 @@ function onReelStopped() {
                 :class="state.vsRoundResult.robotLanded ? 'vs-result__row--land' : 'vs-result__row--bail'"
               >
                 <AppIcon :name="state.vsRoundResult.robotLanded ? 'check' : 'flag'" :size="16" />
-                <span>Robot —
+                <span>{{ state.players[1]?.name }} —
                   {{
                     state.vsRoundResult.robotLanded
                       ? `réussi (essai ${state.vsRoundResult.robotTries}/3)`

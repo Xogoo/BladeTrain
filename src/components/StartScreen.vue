@@ -80,8 +80,10 @@ function chooseFamilySection(section) {
 
 // Which sub-view the Famille step shows: training one family at a
 // time, or Mix (several families drawn from together at once). Both
-// live under the same step ('family') and back button.
-const familyView = ref("family"); // 'family' | 'mix'
+// live under the same step ('family') and back button. Defaults to
+// "mix" when returning here via the session report's "Retour" button
+// after a Mix session specifically (see pendingReturnStep below).
+const familyView = ref(state.pendingReturnStep === "mix" ? "mix" : "family"); // 'family' | 'mix'
 
 // FAMILIES is defined in an arbitrary creation order — sorted here by
 // tier (career difficulty order) so this dropdown reads the same way
@@ -392,9 +394,25 @@ const MODES = [
   },
 ];
 
-const step = ref(state.pendingCareerTrack ? "career-track" : "mode"); // 'mode' | 'family' | 'career' | 'career-track' | 'setup'
+const step = ref(
+  state.pendingCareerTrack
+    ? "career-track"
+    : state.pendingVsSetup
+    ? "setup"
+    : state.pendingReturnStep === "mix" || state.pendingReturnStep === "family"
+    ? "family"
+    : state.pendingReturnStep === "setup"
+    ? "setup"
+    : "mode"
+); // 'mode' | 'family' | 'career' | 'career-track' | 'setup'
 if (state.pendingCareerTrack) {
   state.pendingCareerTrack = null;
+}
+if (state.pendingVsSetup) {
+  state.pendingVsSetup = false;
+}
+if (state.pendingReturnStep) {
+  state.pendingReturnStep = null;
 }
 
 const presetTitle = computed(() =>
@@ -943,7 +961,7 @@ function removePlayer(index) {
       v-if="settings.mode === 'vs' && settings.vsMode === 'level' && settings.level === 1"
       class="setup__section classique-tuning"
     >
-      <span class="setup__label">Réglages fins de Classique</span>
+      <span class="setup__label">Réglages fins de Classik</span>
 
       <div class="classique-slider">
         <span class="classique-slider__label">

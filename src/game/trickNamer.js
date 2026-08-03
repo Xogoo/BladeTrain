@@ -351,13 +351,13 @@ function nameSwitchSpin(switchSpin, crossTypeGrooveName) {
   }
   const name = switchSpin.winner.name;
   const isInspin = name.includes("Inspin");
+  // 270/450 only ever happen on a cross-type transition (soul<->groove)
+  // — and groove never reads as Alley-oop/True, on the way into the
+  // very first grind or here between the two switch-up grinds. Same
+  // plain-degree naming either way, crossTypeGrooveName no longer
+  // changes it (kept as a parameter since callers still need it for
+  // the actual direction FILTERING elsewhere, just not for naming).
   if (name.includes("270") || name.includes("450")) {
-    if (crossTypeGrooveName) {
-      const isFrontside = isFrontsideGrindName(crossTypeGrooveName);
-      const isAlleyOop = isFrontside ? !isInspin : isInspin;
-      const label = isAlleyOop ? "Alley-oop" : "True";
-      return name.includes("450") ? `450 ${label}` : label;
-    }
     return name.includes("450") ? "450" : "270";
   }
   if (name.includes("180")) {

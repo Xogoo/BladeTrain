@@ -47,4 +47,32 @@ describe("nameTrick switch up", () => {
     ];
     expect(nameTrick(data).parsed).toBe("Soul to 540 AO Top Soul");
   });
+
+  // Groove grinds never read as Alley-oop/True, on their own spin-in
+  // OR on a cross-type (soul<->groove) switch-up transition at
+  // 270/450 — just the plain degree either way (a real bug once: this
+  // used to say e.g. "Soul to Alley-oop FS Royale").
+  it("never labels a cross-type switch-up rotation into a groove grind as Alley-oop/True", () => {
+    const data = [
+      { name: "Grind", winner: { name: "Soul", isGrooveGrind: false } },
+      { name: "SwitchSpin", winner: { name: "Inspin 270" } },
+      { name: "SwitchUp", winner: { name: "FS Royale", isGroove: true } },
+    ];
+    const result = nameTrick(data).parsed;
+    expect(result).not.toContain("Alley-oop");
+    expect(result).not.toContain("True");
+    expect(result).toBe("Soul to 270 FS Royale");
+  });
+
+  it("never labels a cross-type switch-up rotation OUT of a groove grind as Alley-oop/True", () => {
+    const data = [
+      { name: "Grind", winner: { name: "BS Royale", isGroove: true } },
+      { name: "SwitchSpin", winner: { name: "Outspin 450" } },
+      { name: "SwitchUp", winner: { name: "Soul", isGroove: false } },
+    ];
+    const result = nameTrick(data).parsed;
+    expect(result).not.toContain("Alley-oop");
+    expect(result).not.toContain("True");
+    expect(result).toBe("BS Royale to 450 Soul");
+  });
 });

@@ -88,6 +88,19 @@ const state = reactive({
   // below and StartScreen's own `step`/`careerTrack` init). Consumed
   // and cleared by StartScreen as soon as it reads it.
   pendingCareerTrack: null,
+  // Same idea, for BLADE VS: set right before navigating back to the
+  // Start screen from either quitting mid-match (giveUp) or "Changer
+  // la config" on the game-over screen, so StartScreen reopens
+  // directly on VS's own setup screen (sliders and all) instead of the
+  // mode-picker. Consumed and cleared by StartScreen as soon as it
+  // reads it.
+  pendingVsSetup: false,
+  // Solo only: which setup screen the session report's "Retour" button
+  // should jump back to — "mix" | "family" | "setup" | null. Set by
+  // giveUp() right before leaving for the report, cleared by
+  // StartScreen once it's read. "Retour à l'accueil" clears this
+  // itself first so it always lands on the plain mode-picker instead.
+  pendingReturnStep: null,
   // Whether the CURRENT solo family session was entered through the
   // Career flow specifically (StartScreen's startCareerFamily / the
   // "next family" continuation below) rather than the plain "Familles
@@ -269,13 +282,18 @@ export function useGame() {
 
     if (mode === "vs") {
       state.players = [
-        { name: "Toi", letters: 0 },
-        { name: "Robot", letters: 0 },
+        { name: "Pierre", letters: 0 },
+        { name: "BladeBot", letters: 0 },
       ];
       state.round = 0;
+      // A VS match now feeds the same history as solo training: trick/
+      // grind counts, Collection, badges, and its own row in the
+      // session history — see landTrick's recordLand call and
+      // endGame/giveUp closing this back out.
+      state.sessionId = collection.startSession();
       // Same family-restricted draw Mix uses (see buildMixPool/nextSpin)
       // — draws from every entry of the chosen families, landed or
-      // not. VS never advances family progress either way (see
+      // not. VS never advances family PROGRESS either way (see
       // landTrick's "state.mode === 'solo'" guard on that), this only
       // changes which tricks can come up.
       state.activeFamilyIds =
@@ -459,6 +477,24 @@ export function useGame() {
    * to whichever side (or both) failed to land it, and ends the game
    * the instant either side hits 5 letters. */
   function resolveVsRound(playerLanded, settings) {
+    if (playerLanded) {
+      // BLADE VS feeds the same history as solo training — trick/
+      // grind counts, Collection, badges, and this match's own session
+      // row (see startGame's vs branch for where the session opened).
+      // VS never uses landTrick() at all (this is its own resolution
+      // path), so this has to happen here rather than there.
+      const landFamilyId = state.activeMixEntry?.familyId ?? null;
+      const landFamily = landFamilyId ? resolveFamilyById(landFamilyId) : null;
+      const activeEntryForLand =
+        landFamily && state.activeMixEntry ? landFamily.entries[state.activeMixEntry.index] : null;
+      state.newBadges = collection.recordLand(
+        state.spin,
+        state.vsTries,
+        state.sessionId,
+        landFamilyId,
+        activeEntryForLand
+      );
+    }
     const robot = rollRobot(settings);
     const [player, bot] = state.players;
     if (!playerLanded) {
@@ -797,6 +833,15 @@ export function useGame() {
   };
 
   const endGame = () => {
+    // A VS match closes out its session here too (win or lose) — same
+    // history bookkeeping solo sessions get, just triggered by the
+    // match actually finishing instead of "Terminer la session".
+    if (state.mode === "vs" && state.sessionId) {
+      collection.endSession(state.sessionId);
+      backupApi.autoBackupIfDue();
+      state.lastSessionId = state.sessionId;
+      state.sessionId = null;
+    }
     state.screen = "gameover";
     state.phase = "idle";
   };
@@ -806,6 +851,14 @@ export function useGame() {
   const giveUp = () => {
     clearUndoSnapshot();
     if (state.mode === "solo") {
+      // Remember which setup screen this session actually came from,
+      // for the report's own "Retour" button — a single family, Mix,
+      // or just the plain solo setup.
+      state.pendingReturnStep = state.activeFamilyIds.length
+        ? "mix"
+        : state.activeFamilyId
+        ? "family"
+        : "setup";
       if (state.sessionId) {
         collection.endSession(state.sessionId);
         backupApi.autoBackupIfDue();
@@ -814,6 +867,20 @@ export function useGame() {
       }
       state.screen = "sessionReport";
       state.phase = "idle";
+    } else if (state.mode === "vs") {
+      // Quitting mid-match isn't the same as the match actually
+      // finishing — skip the win/lose screen entirely and drop
+      // straight back on VS's own setup screen (sliders and all).
+      // Still closes out the session first so whatever was landed
+      // before quitting isn't lost from the history.
+      if (state.sessionId) {
+        collection.endSession(state.sessionId);
+        backupApi.autoBackupIfDue();
+        state.lastSessionId = state.sessionId;
+        state.sessionId = null;
+      }
+      state.pendingVsSetup = true;
+      goToStart();
     } else {
       endGame();
     }

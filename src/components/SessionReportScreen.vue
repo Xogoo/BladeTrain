@@ -29,6 +29,15 @@ async function sendMonthlyBackup() {
   backupStatus.value =
     result.method === "share" ? "Sauvegarde envoyée !" : "Sauvegarde téléchargée !";
 }
+
+// "Retour à l'accueil" always means the plain mode-picker — clears
+// pendingReturnStep first so StartScreen doesn't jump back to the
+// family/Mix/setup screen this session came from instead (that's what
+// the other button, just below, is for).
+function goHome() {
+  state.pendingReturnStep = null;
+  goToStart();
+}
 </script>
 
 <template>
@@ -52,9 +61,14 @@ async function sendMonthlyBackup() {
       </button>
     </div>
 
-    <button class="btn btn--go report__back" @click="goToStart()">
-      <AppIcon name="play" :size="18" /> Retour à l'accueil
-    </button>
+    <div class="report__actions">
+      <button class="btn btn--ghost report__back" @click="goToStart()">
+        &lsaquo; Retour au menu
+      </button>
+      <button class="btn btn--go report__back" @click="goHome()">
+        <AppIcon name="play" :size="18" /> Retour à l'accueil
+      </button>
+    </div>
   </section>
 </template>
 
@@ -124,8 +138,15 @@ async function sendMonthlyBackup() {
   padding: 10px 14px;
 }
 
-.report__back {
+.report__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
   margin-top: 6px;
+}
+
+.report__back {
   font-size: 16px;
   padding: 14px 30px;
 }

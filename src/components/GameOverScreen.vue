@@ -9,6 +9,15 @@ const { state, startGame, goToStart } = useGame();
 const { settings } = useSettings();
 const { announceWinner } = useSpeech();
 
+function changeConfig() {
+  if (state.mode === "vs") {
+    // Same idea as giveUp() mid-match: land back on VS's own setup
+    // screen (sliders and all) instead of the top-level mode-picker.
+    state.pendingVsSetup = true;
+  }
+  goToStart();
+}
+
 const standings = computed(() =>
   [...state.players].sort((a, b) => a.letters - b.letters)
 );
@@ -109,7 +118,7 @@ const rain = Array.from({ length: 22 }, () => ({
       <button class="btn btn--go" @click="startGame(settings, state.mode)">
         <AppIcon name="play" :size="18" /> Revanche
       </button>
-      <button class="btn" @click="goToStart()">Changer la config</button>
+      <button class="btn" @click="changeConfig()">Changer la config</button>
     </div>
   </section>
 </template>

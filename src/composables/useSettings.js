@@ -21,7 +21,7 @@ export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 6;
 
 export const LEVELS = [
-  { id: 1, name: "Classique", tagline: "Grinds soul & groove, rotations jusqu'à 360" },
+  { id: 1, name: "Classik", tagline: "Grinds soul & groove, rotations jusqu'à 360" },
   { id: 2, name: "Juicy", tagline: "Topsides, negatives et 360" },
   { id: 3, name: "Nuts", tagline: "Tout, jusqu'aux 540" },
   { id: 4, name: "Switch up", tagline: "Nuts, plus un second grind" },

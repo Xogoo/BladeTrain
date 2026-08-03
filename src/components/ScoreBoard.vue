@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { LETTERS, useGame } from "../composables/useGame.js";
 import { useSettings } from "../composables/useSettings.js";
 import { useCollection } from "../composables/useCollection.js";
+import { resolveFamily } from "../game/families.js";
 import FamilyChecklistPanel from "./FamilyChecklistPanel.vue";
 import TargetedTrainingChecklistPanel from "./TargetedTrainingChecklistPanel.vue";
 
@@ -12,6 +13,34 @@ const { familyIndex, sessionById, targetedTrainingItems } = useCollection();
 
 const showChecklist = ref(false);
 const showTargetedChecklist = ref(false);
+
+// Mix trains several families at once (state.activeFamilyIds) instead
+// of state.activeFamilyId — activeFamily is always null for it, so
+// without this it fell through to the Custom/targeted-training
+// readout below, showing whatever settings.tricks happened to be left
+// over from a completely different session instead of the Mix's own
+// combined progress.
+const mixFamilies = computed(() =>
+  state.activeFamilyIds
+    .map((id) => resolveFamily(id, settings.customFamilies))
+    .filter(Boolean)
+);
+const isMix = computed(() => mixFamilies.value.length > 0);
+// Mix never trains Career — always the plain "::practice" bucket,
+// same one the single-family picker itself writes to (see
+// progressFamilyId in useGame.js, which this mirrors).
+function practiceProgressId(family) {
+  return family.track !== null ? `${family.id}::practice` : family.id;
+}
+const mixProgress = computed(() => {
+  let landed = 0;
+  let total = 0;
+  for (const family of mixFamilies.value) {
+    landed += familyIndex(practiceProgressId(family), family.entries);
+    total += family.entries.length;
+  }
+  return `${landed}/${total}`;
+});
 
 // "X/Y" for the Grinds block when there's no active family — same
 // item list (standalone grinds + switch-up combos, each counted as
@@ -111,6 +140,10 @@ const sessionDuration = computed(() => {
           {{ familyIndex(activeFamily.id) }}/{{ activeFamily.entries.length }}
         </span>
       </button>
+      <div v-else-if="isMix" class="scoreboard__block">
+        <span class="scoreboard__caption">Mix ({{ mixFamilies.length }})</span>
+        <span class="scoreboard__level">{{ mixProgress }}</span>
+      </div>
       <button
         v-else
         class="scoreboard__block scoreboard__block--tap"
