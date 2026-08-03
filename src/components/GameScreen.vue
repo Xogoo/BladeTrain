@@ -28,6 +28,7 @@ const {
   state,
   isSolo,
   isVs,
+  isCombo,
   currentPlayer,
   onLastLetter,
   attempt,
@@ -42,6 +43,7 @@ const {
   addTry,
   vsAttempt,
   nextVsRound,
+  comboAttempt,
   giveUp,
   backToCareer,
   onReelsSettled,
@@ -178,26 +180,64 @@ const visibleReels = computed(() =>
 const isResult = computed(() => state.phase === "result");
 
 // Hands-free "réussi"/"raté, on rejoue"/"passer" during a solo session
-// (see useVoiceControl.js) — "solo" here covers all of Carrière,
-// Famille, and plain Solo (they're all state.mode === "solo", just
-// with different training around them), so this listens continuously
-// for the whole session, from the moment it starts to whenever it
-// ends — not gated to the result screen, so it's already listening by
-// the time a trick lands. Only actually paused for group mode (no
-// voice flow designed for it — multiple players, turn order) and
-// while a panel is open on top (so a stray "passe" while reading the
-// trick explainer doesn't skip anything).
+// or a BLADE VS match (see useVoiceControl.js) — "solo" here covers
+// all of Carrière, Famille, and plain Solo (they're all
+// state.mode === "solo", just with different training around them),
+// so this listens continuously for the whole session, from the moment
+// it starts to whenever it ends — not gated to the result screen, so
+// it's already listening by the time a trick lands. VS uses the same
+// three voice commands but routes them to vsAttempt() instead of
+// landTrick()/addTry() (VS has no skip concept mid-round — "passe"/
+// "suivant" only does something once the round has resolved, where it
+// behaves like the "Trick suivant" button). Still paused for group
+// mode (no voice flow designed for it — multiple players, turn order,
+// no way to tell whose "réussi" it was) and while a panel is open on
+// top (so a stray "passe" while reading the trick explainer doesn't
+// skip anything).
 const { isSupported: voiceSupported, isListening: voiceListening, lastHeard: voiceLastHeard, start: startVoice, stop: stopVoice } =
   useVoiceControl();
 
 watch(
-  () => settings.voiceControl && isSolo.value && !openPanel.value,
+  () => settings.voiceControl && (isSolo.value || isVs.value || isCombo.value) && !openPanel.value,
   (shouldListen) => {
     if (shouldListen) {
       startVoice({
-        onLand: () => landTrick(settings),
-        onSkip: () => skipTrick(settings),
-        onFail: () => addTry(),
+        onLand: () => {
+          if (isVs.value) {
+            state.vsRoundResult ? nextVsRound(settings) : vsAttempt(true, settings);
+            return;
+          }
+          if (isCombo.value) {
+            comboAttempt(true, settings);
+            return;
+          }
+          landTrick(settings);
+        },
+        onSkip: () => {
+          if (isVs.value) {
+            if (state.vsRoundResult) {
+              nextVsRound(settings);
+            }
+            return;
+          }
+          // Combo has no skip concept — a stray "passe" is a no-op,
+          // same as VS mid-round.
+          if (isCombo.value) {
+            return;
+          }
+          skipTrick(settings);
+        },
+        onFail: () => {
+          if (isVs.value) {
+            state.vsRoundResult ? nextVsRound(settings) : vsAttempt(false, settings);
+            return;
+          }
+          if (isCombo.value) {
+            comboAttempt(false, settings);
+            return;
+          }
+          addTry();
+        },
       });
     } else {
       stopVoice();
@@ -313,7 +353,7 @@ function onReelStopped() {
       {{ familyIndex(activeFamilyProgressId, activeFamily.entries) }}/{{ activeFamily.entries.length }} tricks réussis
     </button>
 
-    <div v-if="!isSolo && !isVs" class="roster">
+    <div v-if="!isSolo && !isVs && !isCombo" class="roster">
       <div
         v-for="(player, i) in state.players"
         :key="i"
@@ -340,6 +380,13 @@ function onReelStopped() {
       <div class="vs-scoreboard__side">
         <span class="vs-scoreboard__name">{{ state.players[1]?.name }}</span>
         <span class="vs-scoreboard__letters">{{ lettersOf(state.players[1]) || "—" }}</span>
+      </div>
+    </div>
+
+    <div v-if="isCombo" class="vs-scoreboard panel">
+      <div class="vs-scoreboard__side">
+        <span class="vs-scoreboard__name">Combo</span>
+        <span class="vs-scoreboard__letters">{{ state.comboChain }}</span>
       </div>
     </div>
 
@@ -493,6 +540,12 @@ function onReelStopped() {
               </span>
             </div>
 
+            <div v-if="settings.voiceControl && voiceSupported" class="voice-indicator">
+              <span class="voice-indicator__dot" :class="{ 'voice-indicator__dot--live': voiceListening }" />
+              {{ voiceListening ? "À l'écoute…" : "Micro en pause" }}
+              <span v-if="voiceLastHeard" class="voice-indicator__heard">« {{ voiceLastHeard }} »</span>
+            </div>
+
             <div class="result__actions">
               <button class="btn" @click="openPanel = 'explain'">
                 <AppIcon name="question" :size="18" /> Explication
@@ -516,6 +569,47 @@ function onReelStopped() {
             >
               <AppIcon name="flag" :size="16" />
               {{ confirmingEndSession ? "Confirmer" : "Terminer la partie" }}
+            </button>
+          </div>
+        </template>
+
+        <!-- combo: chain tricks with 2 tries max each — one 2nd fail
+             (or abandoning) ends the whole run and logs the chain -->
+        <template v-else-if="isCombo">
+          <div class="result__tries">
+            <span class="result__tries-label">
+              Essai {{ state.comboTries }}/2
+            </span>
+          </div>
+
+          <div v-if="settings.voiceControl && voiceSupported" class="voice-indicator">
+            <span class="voice-indicator__dot" :class="{ 'voice-indicator__dot--live': voiceListening }" />
+            {{ voiceListening ? "À l'écoute…" : "Micro en pause" }}
+            <span v-if="voiceLastHeard" class="voice-indicator__heard">« {{ voiceLastHeard }} »</span>
+          </div>
+
+          <div class="result__actions">
+            <button class="btn" @click="openPanel = 'explain'">
+              <AppIcon name="question" :size="18" /> Explication
+            </button>
+            <button class="btn" @click="comboAttempt(false, settings)">
+              <AppIcon name="flag" :size="18" />
+              {{ state.comboTries < 2 ? "Raté, on retente" : "Loupé — fin du combo" }}
+            </button>
+            <button class="btn btn--go" @click="comboAttempt(true, settings)">
+              <AppIcon name="check" :size="18" /> Réussi
+            </button>
+          </div>
+
+          <div class="result__actions result__actions--secondary">
+            <button
+              class="btn btn--ghost"
+              :class="{ 'btn--confirm': confirmingEndSession }"
+              @click="onEndSessionClick()"
+              @blur="confirmingEndSession = false"
+            >
+              <AppIcon name="flag" :size="16" />
+              {{ confirmingEndSession ? "Confirmer" : "Abandonner le combo" }}
             </button>
           </div>
         </template>

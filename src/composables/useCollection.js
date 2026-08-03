@@ -94,6 +94,7 @@ const RARE_GRINDS = GRINDS.filter((g) =>
 // How many past sessions to keep in the history list, so the storage
 // doesn't grow forever on a device used every day for years.
 const MAX_SESSIONS = 200;
+const MAX_COMBO_RUNS = 100;
 
 function defaultCollection() {
   return {
@@ -133,6 +134,13 @@ function defaultCollection() {
     // whatever's left, not in a fixed order (see useGame.js). completedAt
     // = ISO date once every entry has been landed.
     familyProgress: {}, // { [familyId]: { landedIndices: number[], completedAt } }
+    // Combo mode run history — one entry per finished run (see
+    // useGame.js's startComboCareer/startComboMix/comboAttempt). A
+    // combo run isn't an open-ended training session like `sessions`
+    // above — it's a single self-contained attempt that always ends
+    // (chain broken, or the whole track cleared), so it gets its own
+    // short log rather than being folded into Session history.
+    comboRuns: [], // { id, source: "career"|"mix", label, chain, endedAt }
   };
 }
 
@@ -534,8 +542,13 @@ function badgeEarned(id, spin, winners) {
 }
 
 export function useCollection() {
-  /** Starts a new solo session and returns its id. */
-  const startSession = () => {
+  /** Starts a new solo session and returns its id. `label` is a short
+   * human-readable tag for which mode/context started it (e.g.
+   * "Carrière — Groove", "Mix (Soul, Alley-oop)", "BLADE VS vs Robot
+   * 65%") — shown in Sessions history so a session card isn't just an
+   * anonymous date + counts. null for plain Solo (nothing more
+   * specific to say). */
+  const startSession = (label = null) => {
     const session = {
       id: Date.now(),
       startedAt: new Date().toISOString(),
@@ -543,6 +556,7 @@ export function useCollection() {
       landed: 0,
       skipped: 0,
       totalTries: 0,
+      label,
     };
     collection.sessions.push(session);
     if (collection.sessions.length > MAX_SESSIONS) {
@@ -561,6 +575,39 @@ export function useCollection() {
 
   const sessionById = (sessionId) =>
     collection.sessions.find((s) => s.id === sessionId) || null;
+
+  /** Records a finished Combo run (Carrière or Mix) — see useGame.js's
+   * startComboCareer/startComboMix/comboAttempt. `chain` is how many
+   * tricks were landed in a row before the run ended. */
+  const recordComboRun = ({ source, label, chain }) => {
+    const run = {
+      id: Date.now(),
+      source, // "career" | "mix"
+      label, // e.g. "Carrière — Normal" or "Mix (Soul, Groove)"
+      chain,
+      endedAt: new Date().toISOString(),
+    };
+    collection.comboRuns.push(run);
+    if (collection.comboRuns.length > MAX_COMBO_RUNS) {
+      collection.comboRuns.splice(0, collection.comboRuns.length - MAX_COMBO_RUNS);
+    }
+    return run;
+  };
+
+  // Most recent Combo run first.
+  const comboRunHistory = computed(() =>
+    [...collection.comboRuns].sort(
+      (a, b) => new Date(b.endedAt) - new Date(a.endedAt)
+    )
+  );
+
+  // Longest chain ever reached across every Combo run — the headline
+  // stat shown above the Combo history list. null if none finished yet.
+  const bestComboChain = computed(() =>
+    collection.comboRuns.length
+      ? Math.max(...collection.comboRuns.map((r) => r.chain))
+      : null
+  );
 
   // Most recent session first.
   const sessionHistory = computed(() =>
@@ -1252,6 +1299,9 @@ export function useCollection() {
     endSession,
     sessionById,
     sessionHistory,
+    recordComboRun,
+    comboRunHistory,
+    bestComboChain,
     monthlyReport,
     monthsWithActivity,
     weakPointsEntries,

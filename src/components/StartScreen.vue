@@ -20,7 +20,7 @@ import { useBackup } from "../composables/useBackup.js";
 const emit = defineEmits(["open-settings"]);
 
 const { settings, applyLevel, saveCustomFamily, deleteCustomFamily } = useSettings();
-const { startGame, startFamilySession, startMixSession, startWeakPointsSession, WEAK_POINTS_FAMILY_ID, hasOpenSessionToday, endOpenSession, state } =
+const { startGame, startFamilySession, startMixSession, startWeakPointsSession, WEAK_POINTS_FAMILY_ID, startComboCareer, startComboMix, hasOpenSessionToday, endOpenSession, state } =
   useGame();
 const {
   familyIndex,
@@ -235,6 +235,16 @@ function startMixModeSession() {
   startMixSession(selectedMixFamilyIds.value, settings);
 }
 
+// Combo via Mix: same selection, but drawn with the 2-tries/lose-it-
+// all rule instead of Mix's usual per-family progress tracking — see
+// startComboMix in useGame.js.
+function startComboFromMix() {
+  if (!selectedMixFamilyIds.value.length) {
+    return;
+  }
+  startComboMix(selectedMixFamilyIds.value, settings);
+}
+
 // BLADE VS's "Familles" mode: same idea as Mix's family checkboxes,
 // but backed by settings.vsFamilyIds (persisted) instead of a local
 // ref — so the choice carries over to "Revanche" and the next time
@@ -327,6 +337,16 @@ function startCareerFamily(careerStep) {
     restart: isFamilyComplete(careerStep.family.id),
     isCareer: true,
   });
+}
+
+// Combo via Carrière: walks the ENTIRE track end to end (every family
+// back to back, no pause) instead of training one family at a time —
+// see startComboCareer in useGame.js.
+function startComboFromCareerTrack() {
+  if (!careerTrack.value) {
+    return;
+  }
+  startComboCareer(careerTrack.value, settings);
 }
 
 // Career gets its own reset, deliberately separate from the general
@@ -592,6 +612,10 @@ function removePlayer(index) {
       Carrière — {{ careerTrack === "normal" ? "Normal" : "Switch" }}
     </h2>
 
+    <button class="btn btn--go combo-launch-btn" @click="startComboFromCareerTrack()">
+      <AppIcon name="zap" :size="18" /> Lancer un Combo sur toute la track
+    </button>
+
     <div class="career-path" :style="{ height: zigzagPathHeight + 'px' }">
       <svg
         class="career-path__line"
@@ -837,6 +861,14 @@ function removePlayer(index) {
         ({{ selectedMixFamilyIds.length }}
         famille{{ selectedMixFamilyIds.length > 1 ? "s" : "" }},
         {{ mixEntryCount }} trick{{ mixEntryCount > 1 ? "s" : "" }})
+      </button>
+
+      <button
+        class="btn combo-launch-btn"
+        :disabled="!selectedMixFamilyIds.length"
+        @click="startComboFromMix()"
+      >
+        <AppIcon name="zap" :size="18" /> Lancer en Combo
       </button>
 
       <div class="setup__section">

@@ -1,6 +1,6 @@
 import { computed, reactive, ref } from "vue";
 import { generateSpin } from "../game/trickGenerator.js";
-import { FAMILIES, resolveFamily } from "../game/families.js";
+import { FAMILIES, resolveFamily, familiesInTrackOrder } from "../game/families.js";
 import { useCollection } from "./useCollection.js";
 import { useSettings, CUSTOM_LEVEL } from "./useSettings.js";
 import { useBackup } from "./useBackup.js";
@@ -129,6 +129,43 @@ const state = reactive({
   // set, the game screen shows the round's outcome instead of the
   // Raté/Réussi buttons, until "Trick suivant" is tapped.
   vsRoundResult: null,
+
+  // Combo mode state — go as far as possible chaining tricks with at
+  // most 2 tries each; failing both on any one trick ends the whole
+  // run, and the chain built so far is gone (see comboAttempt below).
+  // Two independent ways to build the sequence of tricks (see
+  // startComboCareer/startComboMix):
+  // - "career": the ENTIRE track (Normal or Switch) end to end, every
+  //   family back to back in tier order (families.js's
+  //   familiesInTrackOrder), switching family automatically the
+  //   instant the current one's last entry lands — no pause, unlike
+  //   normal Career.
+  // - "mix": a random draw from the pooled entries of the selected
+  //   families, exactly like Mix training's own buildMixPool, just
+  //   with the 2-tries/lose-it-all rule on top instead of Mix's usual
+  //   per-family progress tracking.
+  // Never advances family/Career progress either way — same
+  // philosophy as BLADE VS (its own separate challenge, not a side
+  // door to grind out Career or a personal family).
+  comboActive: false,
+  comboSource: null, // "career" | "mix" | null
+  comboTrack: null, // "normal" | "switch" — set for career combos only
+  comboPath: [], // career only: flattened [{ familyId, familyName, entry }] for the whole track
+  comboPathIndex: 0, // career only: position along comboPath
+  comboFamilyIds: [], // mix only: the selected family ids
+  // Which family (and, for mix, which of its entries) the CURRENT spin
+  // was forced from — career derives the entry itself from
+  // comboPath[comboPathIndex], mix needs the index remembered since
+  // it's a fresh random pick every spin.
+  comboCurrentFamilyId: null,
+  comboCurrentEntryIndex: null, // mix only
+  comboChain: 0, // tricks landed so far this run
+  comboTries: 1, // attempts used on the trick currently on screen (1 or 2)
+  // Set once a run ends (2nd failed try, the whole career track
+  // cleared, or the player abandons) — read by ComboRecapScreen,
+  // cleared on the next combo start. { source, label, chain, cleared,
+  // endedAt } | null.
+  comboRecap: null,
 });
 
 const collection = useCollection();
@@ -208,6 +245,7 @@ export function useGame() {
   const spinsLeft = computed(() => state.spinsTotal - state.spinsUsed);
   const isSolo = computed(() => state.mode === "solo");
   const isVs = computed(() => state.mode === "vs");
+  const isCombo = computed(() => state.mode === "combo");
   const currentPlayer = computed(() =>
     state.mode === "group" && state.turnOrder.length > state.turnPos
       ? state.players[state.turnOrder[state.turnPos]]
@@ -228,7 +266,7 @@ export function useGame() {
   // there's no session already open — otherwise everything you do
   // before actually tapping "Terminer la session" keeps accumulating
   // into that same one. Returns true if this call started a fresh one.
-  function beginOrContinueSoloSession() {
+  function beginOrContinueSoloSession(label = null) {
     const isFresh = !state.sessionId;
     if (isFresh) {
       state.points = 0;
@@ -237,7 +275,7 @@ export function useGame() {
       state.skipped = [];
       state.usedGrinds = [];
       state.newBadges = [];
-      state.sessionId = collection.startSession();
+      state.sessionId = collection.startSession(label);
       clearUndoSnapshot();
     }
     return isFresh;
@@ -257,7 +295,7 @@ export function useGame() {
 
     if (mode === "solo") {
       state.spinsTotal = Infinity;
-      beginOrContinueSoloSession();
+      beginOrContinueSoloSession("Solo");
       if (settings.level === CUSTOM_LEVEL) {
         settingsApi.recordTargetedTraining(state.sessionId);
       }
@@ -290,7 +328,7 @@ export function useGame() {
       // grind counts, Collection, badges, and its own row in the
       // session history — see landTrick's recordLand call and
       // endGame/giveUp closing this back out.
-      state.sessionId = collection.startSession();
+      state.sessionId = collection.startSession("BLADE VS");
       // Same family-restricted draw Mix uses (see buildMixPool/nextSpin)
       // — draws from every entry of the chosen families, landed or
       // not. VS never advances family PROGRESS either way (see
@@ -330,7 +368,7 @@ export function useGame() {
     state.freeLoopFamilyId = null;
     state.screen = "game";
     state.spinsTotal = Infinity;
-    beginOrContinueSoloSession();
+    beginOrContinueSoloSession("Grinds à réviser");
     nextSpin(settings);
   };
 
@@ -363,7 +401,13 @@ export function useGame() {
     }
     state.screen = "game";
     state.spinsTotal = Infinity;
-    beginOrContinueSoloSession();
+    const familyLabel =
+      familyId === WEAK_POINTS_FAMILY_ID
+        ? "Points faibles"
+        : isCareer
+          ? `Carrière — ${resolvedFamily?.name ?? "?"}`
+          : `Famille — ${resolvedFamily?.name ?? "?"}`;
+    beginOrContinueSoloSession(familyLabel);
     nextSpin(settings);
   };
 
@@ -394,7 +438,8 @@ export function useGame() {
     state.isCareerSession = false;
     state.screen = "game";
     state.spinsTotal = Infinity;
-    beginOrContinueSoloSession();
+    const mixLabel = `Mix (${ids.map((id) => resolveFamilyById(id)?.name || "?").join(", ")})`;
+    beginOrContinueSoloSession(mixLabel);
     nextSpin(settings);
     return true;
   };
@@ -429,6 +474,222 @@ export function useGame() {
     startFamilySession(WEAK_POINTS_FAMILY_ID, settings, { restart: true });
     return true;
   };
+
+  // Resets every cross-mode "what's currently active" field before a
+  // Combo run starts — same defensive clearing startFamilySession/
+  // startMixSession already do, so nothing from whatever mode was
+  // running before (a Career family, a personal family, Mix, VS...)
+  // bleeds into Combo's own display or logic.
+  function resetForCombo() {
+    state.activeFamilyId = null;
+    state.activeFamilyEntryIndex = null;
+    state.activeFamilyIds = [];
+    state.activeMixEntry = null;
+    state.familyJustCompleted = null;
+    state.careerJustCompleted = null;
+    state.freeLoopFamilyId = null;
+    state.lockedPairs = null;
+    state.isCareerSession = false;
+    if (state.sessionId) {
+      collection.endSession(state.sessionId);
+      backupApi.autoBackupIfDue();
+      state.sessionId = null;
+    }
+  }
+
+  /**
+   * Combo via Carrière: walks the ENTIRE track (Normal or Switch) end
+   * to end, every family back to back in tier order, no pause between
+   * them. Returns false without starting anything if the track somehow
+   * resolves to zero entries.
+   */
+  const startComboCareer = (track, settings) => {
+    const path = familiesInTrackOrder(track).flatMap((family) =>
+      family.entries.map((entry) => ({ familyId: family.id, familyName: family.name, entry }))
+    );
+    if (!path.length) {
+      return false;
+    }
+    resetForCombo();
+    state.mode = "combo";
+    state.comboActive = true;
+    state.comboSource = "career";
+    state.comboTrack = track;
+    state.comboPath = path;
+    state.comboPathIndex = 0;
+    state.comboFamilyIds = [];
+    state.comboCurrentFamilyId = null;
+    state.comboCurrentEntryIndex = null;
+    state.comboChain = 0;
+    state.comboTries = 1;
+    state.comboRecap = null;
+    state.screen = "game";
+    state.spinsUsed = 0;
+    state.spinsTotal = Infinity;
+    state.sessionId = collection.startSession(
+      `Combo — Carrière (${track === "normal" ? "Normal" : "Switch"})`
+    );
+    clearUndoSnapshot();
+    nextComboSpin(settings);
+    return true;
+  };
+
+  /**
+   * Combo via Mix: draws randomly from the pooled entries of the
+   * selected families (same buildMixPool Mix training itself uses),
+   * with the 2-tries/lose-it-all rule layered on top. Returns false
+   * without starting anything if the selection is empty or resolves to
+   * no real families.
+   */
+  const startComboMix = (familyIds, settings) => {
+    const ids = [...new Set(familyIds)].filter((id) => resolveFamilyById(id));
+    if (!ids.length || !buildMixPool(ids).length) {
+      return false;
+    }
+    resetForCombo();
+    state.mode = "combo";
+    state.comboActive = true;
+    state.comboSource = "mix";
+    state.comboTrack = null;
+    state.comboPath = [];
+    state.comboPathIndex = 0;
+    state.comboFamilyIds = ids;
+    state.comboCurrentFamilyId = null;
+    state.comboCurrentEntryIndex = null;
+    state.comboChain = 0;
+    state.comboTries = 1;
+    state.comboRecap = null;
+    state.screen = "game";
+    state.spinsUsed = 0;
+    state.spinsTotal = Infinity;
+    state.sessionId = collection.startSession(
+      `Combo — Mix (${ids.map((id) => resolveFamilyById(id)?.name || "?").join(", ")})`
+    );
+    clearUndoSnapshot();
+    nextComboSpin(settings);
+    return true;
+  };
+
+  // The exact family entry the CURRENT combo spin was forced from —
+  // career reads it straight off comboPath, mix reconstructs it from
+  // the family + index remembered when that spin was drawn (see
+  // nextComboSpin).
+  function comboCurrentEntry() {
+    if (state.comboSource === "career") {
+      return state.comboPath[state.comboPathIndex]?.entry ?? null;
+    }
+    if (state.comboCurrentFamilyId && state.comboCurrentEntryIndex !== null) {
+      const family = resolveFamilyById(state.comboCurrentFamilyId);
+      return family ? family.entries[state.comboCurrentEntryIndex] : null;
+    }
+    return null;
+  }
+
+  /** Draws the next trick along the combo path/pool. Ends the run (as
+   * a full clear, not a failure) in the vanishingly rare case a
+   * Carrière combo actually reaches the end of the whole track, or a
+   * Mix combo's pool somehow empties out. */
+  function nextComboSpin(settings) {
+    state.tries = 1;
+    state.comboTries = 1;
+    let forcedTrick = null;
+    if (state.comboSource === "career") {
+      const step = state.comboPath[state.comboPathIndex];
+      if (!step) {
+        finishComboRun({ cleared: true });
+        return;
+      }
+      forcedTrick = step.entry;
+      state.comboCurrentFamilyId = step.familyId;
+      state.comboCurrentEntryIndex = null;
+    } else {
+      const pool = buildMixPool(state.comboFamilyIds);
+      if (!pool.length) {
+        finishComboRun({ cleared: true });
+        return;
+      }
+      const picked = pool[Math.floor(Math.random() * pool.length)];
+      const family = resolveFamilyById(picked.familyId);
+      forcedTrick = family.entries[picked.index];
+      state.comboCurrentFamilyId = picked.familyId;
+      state.comboCurrentEntryIndex = picked.index;
+    }
+    state.spinsUsed += 1;
+    state.spin = generateSpin(
+      settings.tricks,
+      [],
+      null,
+      settings.grinds,
+      settings.switchUpGrinds,
+      null,
+      forcedTrick,
+      settings.switchUp2Grinds
+    );
+    state.spinId += 1;
+    state.phase = "spinning";
+  }
+
+  /** Combo: the player's attempt at the trick on screen — landed
+   * extends the chain and draws the next one; a 2nd failed try in a
+   * row ends the whole run right there. */
+  const comboAttempt = (landed, settings) => {
+    if (landed) {
+      state.newBadges = collection.recordLand(
+        state.spin,
+        state.comboTries,
+        state.sessionId,
+        state.comboCurrentFamilyId,
+        comboCurrentEntry()
+      );
+      state.comboChain += 1;
+      if (state.comboSource === "career") {
+        state.comboPathIndex += 1;
+      }
+      nextComboSpin(settings);
+      return;
+    }
+    if (state.comboTries < 2) {
+      state.comboTries += 1;
+      return;
+    }
+    finishComboRun({ cleared: false });
+  };
+
+  /** Ends the current combo run (2nd failed try, whole track cleared,
+   * or the player abandoning early via giveUp) — logs it to the Combo
+   * history and shows the recap screen. */
+  function finishComboRun({ cleared }) {
+    const label =
+      state.comboSource === "career"
+        ? `Carrière — ${state.comboTrack === "normal" ? "Normal" : "Switch"}`
+        : `Mix (${state.comboFamilyIds
+            .map((id) => resolveFamilyById(id)?.name || "?")
+            .join(", ")})`;
+    const run = collection.recordComboRun({
+      source: state.comboSource,
+      label,
+      chain: state.comboChain,
+    });
+    if (state.sessionId) {
+      collection.endSession(state.sessionId);
+      backupApi.autoBackupIfDue();
+      state.lastSessionId = state.sessionId;
+      state.sessionId = null;
+    }
+    state.comboActive = false;
+    // track/familyIds aren't part of the persisted history record (see
+    // recordComboRun) — kept here only so ComboRecapScreen's "Relancer"
+    // can restart the exact same combo without the player having to
+    // re-pick anything.
+    state.comboRecap = {
+      ...run,
+      cleared,
+      track: state.comboTrack,
+      familyIds: state.comboFamilyIds,
+    };
+    state.screen = "comboRecap";
+    state.phase = "idle";
+  }
 
   // One round = one trick that every player still in the game attempts.
   // The starting player rotates each round and gets fresh rerolls.
@@ -850,6 +1111,13 @@ export function useGame() {
   // report instead of just bouncing back to the start screen.
   const giveUp = () => {
     clearUndoSnapshot();
+    if (state.mode === "combo") {
+      // Abandoning early is treated the same as a 2nd failed try —
+      // whatever chain was built still gets logged to Combo history,
+      // it just wasn't broken by a miss this time.
+      finishComboRun({ cleared: false });
+      return;
+    }
     if (state.mode === "solo") {
       // Remember which setup screen this session actually came from,
       // for the report's own "Retour" button — a single family, Mix,
@@ -962,6 +1230,7 @@ export function useGame() {
     spinsLeft,
     isSolo,
     isVs,
+    isCombo,
     currentPlayer,
     onLastLetter,
     startGame,
@@ -969,6 +1238,9 @@ export function useGame() {
     startFamilySession,
     startMixSession,
     startWeakPointsSession,
+    startComboCareer,
+    startComboMix,
+    comboAttempt,
     WEAK_POINTS_FAMILY_ID,
     activeFamily,
     onReelsSettled,

@@ -209,13 +209,22 @@ export function generateSpin(
     : null;
 
   const spinToPool = spinToCandidates(grind, approach, settings);
-  const spinTo =
-    forcedTrick && forcedTrick.spinToName
-      ? baseSpinToPool(grind, approach ? approach.isFakie : false).find(
-          (s) => s.name === forcedTrick.spinToName
-        ) || pickWeighted(spinToPool)
-      : resolveDirectionWinner(spinToPool, settings.alleyOopChance, settings.trueChance) ??
-        pickWeighted(spinToPool);
+  // Same philosophy as spinOff below: family training only ever pins
+  // grind/variation/approach/spin-in/spin-out — an entry that doesn't
+  // explicitly specify a spin-in (plainEntries(), the common case) must
+  // default to its neutral "None" (Zerospin), NOT fall through to a
+  // random roll driven by the player's own alleyOopChance/trueChance
+  // settings. That fallthrough was the actual bug: a forced "plain"
+  // entry could still come out as an Alley-oop/True spin-in depending
+  // on whatever difficulty level (Classik or otherwise) happened to be
+  // active, which both added unwanted variants in Famille training and
+  // could change the resulting trick's name entirely in Carrière.
+  const spinTo = forcedTrick
+    ? baseSpinToPool(grind, approach ? approach.isFakie : false).find(
+        (s) => s.name === (forcedTrick.spinToName || "None")
+      ) || pickWeighted(spinToPool)
+    : resolveDirectionWinner(spinToPool, settings.alleyOopChance, settings.trueChance) ??
+      pickWeighted(spinToPool);
 
   const spinOffPool = spinOffCandidates(grind, settings);
   // Family training only ever pins grind/variation/approach/spin-IN —

@@ -311,6 +311,19 @@ export const FAMILIES = [
   }),
 ];
 
+// Every built-in family of the given track ("normal" | "switch"),
+// sorted by tier — the full "chemin" a Combo-Carrière run walks end to
+// end, switching families automatically the instant the current one's
+// last entry is landed instead of pausing at each one's completion the
+// way normal Career does (see nextFamilyInOrder in useGame.js, which
+// this mirrors one step at a time already — this just returns the
+// whole ordered list at once for Combo to flatten into entries).
+export function familiesInTrackOrder(track) {
+  return FAMILIES.filter((family) => family.track === track).sort(
+    (a, b) => a.tier - b.tier
+  );
+}
+
 export function familyById(id) {
   return FAMILIES.find((family) => family.id === id) || null;
 }
