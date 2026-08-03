@@ -44,6 +44,15 @@ function goHome() {
   <section class="report rise-in">
     <h2 class="report__title sticker-text">Rapport de session</h2>
 
+    <div class="report__actions">
+      <button class="btn btn--ghost report__back" @click="goToStart()">
+        &lsaquo; Retour au menu
+      </button>
+      <button class="btn btn--go report__back" @click="goHome()">
+        <AppIcon name="play" :size="18" /> Retour à l'accueil
+      </button>
+    </div>
+
     <div class="report__body panel">
       <SessionSummary v-if="state.lastSessionId" :session-id="state.lastSessionId" />
     </div>
@@ -58,15 +67,6 @@ function goHome() {
       </div>
       <button class="btn btn--ghost backup-prompt__btn" @click="sendMonthlyBackup">
         {{ backupStatus || "Envoyer la sauvegarde" }}
-      </button>
-    </div>
-
-    <div class="report__actions">
-      <button class="btn btn--ghost report__back" @click="goToStart()">
-        &lsaquo; Retour au menu
-      </button>
-      <button class="btn btn--go report__back" @click="goHome()">
-        <AppIcon name="play" :size="18" /> Retour à l'accueil
       </button>
     </div>
   </section>

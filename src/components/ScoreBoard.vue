@@ -42,6 +42,24 @@ const mixProgress = computed(() => {
   return `${landed}/${total}`;
 });
 
+// Same distinction as useGame.js's progressFamilyId — a built-in
+// family trained OUTSIDE Carrière writes its progress under
+// `${id}::practice`, not the family's own raw id (that Career/
+// Solo split is the whole point: training a family standalone must
+// never touch Career progress, and vice versa). Every real read/write
+// of family progress goes through that function; this display badge
+// was the one place still reading the raw id directly, so it stayed
+// stuck at 0/N for anything but a Career session even though tricks
+// were landing and being recorded correctly under the practice key.
+const activeFamilyProgressId = computed(() => {
+  if (!activeFamily.value) {
+    return null;
+  }
+  return activeFamily.value.track !== null && !state.isCareerSession
+    ? `${activeFamily.value.id}::practice`
+    : activeFamily.value.id;
+});
+
 // "X/Y" for the Grinds block when there's no active family — same
 // item list (standalone grinds + switch-up combos, each counted as
 // ONE trick) as TargetedTrainingChecklistPanel, so the two never
@@ -137,7 +155,7 @@ const sessionDuration = computed(() => {
       >
         <span class="scoreboard__caption">{{ familyBaseName(activeFamily.name) }}</span>
         <span class="scoreboard__level">
-          {{ familyIndex(activeFamily.id) }}/{{ activeFamily.entries.length }}
+          {{ familyIndex(activeFamilyProgressId, activeFamily.entries) }}/{{ activeFamily.entries.length }}
         </span>
       </button>
       <div v-else-if="isMix" class="scoreboard__block">

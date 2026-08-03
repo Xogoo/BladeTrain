@@ -1,6 +1,6 @@
 import { computed } from "vue";
 import { useCollection, migrateZerospinSplit, migrateFamilyEntryKeyFormat } from "./useCollection.js";
-import { useSettings } from "./useSettings.js";
+import { useSettings, migrateSwitchUpNoneVariants } from "./useSettings.js";
 
 // There is no server here, and this app is sideloaded (not from the
 // App Store) — there is no way to run code in the background on a
@@ -263,7 +263,7 @@ export function useBackup() {
       migrateFamilyEntryKeyFormat(migrateZerospinSplit(payload.collection))
     );
     if (payload.settings) {
-      Object.assign(settings, payload.settings);
+      Object.assign(settings, migrateSwitchUpNoneVariants(payload.settings));
     }
   }
 

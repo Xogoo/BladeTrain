@@ -484,6 +484,13 @@ function variationCandidates(grind, settings, level = 0) {
   // removes that plain option, so every spin lands on one of the
   // enabled variations — falling back to "None" only if the grind has
   // no matching variation at all, so the reel never comes up empty.
+  // ⚠️ This function is also called from enumeratePossibleTricks
+  // (family building) — trainingFocus is overridden to false there on
+  // purpose, so this branch never fires during enumeration. Don't
+  // remove that override; see enumeratePossibleTricks' own comment and
+  // __tests__/enumeratePossibleTricks.spec.js for the regression this
+  // guards against (a live-session pacing flag silently deleting every
+  // "plain" entry from a saved personal family).
   if (settings.trainingFocus && allowed.length > 0) {
     return allowed;
   }
@@ -502,6 +509,9 @@ function approachCandidates(grind, settings) {
   // trick is fakie; Fakie + Switch both checked means every trick is
   // Fakie & Switch, rather than leaving Forwards / Fakie-only /
   // Switch-only still possible alongside it.
+  // ⚠️ Shared with enumeratePossibleTricks — see variationCandidates'
+  // warning above; trainingFocus must never affect what a saved family
+  // ends up with.
   if (settings.trainingFocus) {
     const locked = allowed.filter(
       (approach) =>
@@ -602,6 +612,9 @@ function spinToCandidates(grind, approach, settings) {
   // what was narrowed. Only kicks in when something was actually
   // narrowed (direction and/or degree), not the unrestricted baseline,
   // and only if something real is actually left afterwards.
+  // ⚠️ Shared with enumeratePossibleTricks — see that function's own
+  // comment and the warning on variationCandidates above; don't let
+  // trainingFocus leak into what gets permanently saved into a family.
   if (
     settings.trainingFocus &&
     (!(settings.spinInAlleyOop && settings.spinInTrue) ||
@@ -647,6 +660,8 @@ function spinOffCandidates(grind, settings) {
   // real is actually left; a grind whose only matching degree got
   // excluded by the checkboxes should fall back to the plain default,
   // not an emptied-out or wrong pool.
+  // ⚠️ Shared with enumeratePossibleTricks — see variationCandidates'
+  // warning above.
   if (settings.trainingFocus && hasAnyDegreeChecked(settings, "spinOut")) {
     const withoutDefault = pool.filter(
       (entry) => entry.name !== "None" && entry.name !== "Forwards" && entry.name !== "Fakie"
@@ -776,6 +791,15 @@ function switchSpinCandidates(grind, switchUpGrind, settings, prefix = "spinBetw
   // degree narrowed, force an actual rotation between the two grinds
   // instead of sometimes landing on "no rotation between them" — only
   // if something real is actually left afterwards.
+  // ⚠️ THIS is the exact spot the original bug lived: this function is
+  // also called from enumeratePossibleTricks (family building), and
+  // this branch used to fire there too — silently excluding every
+  // "no extra spin between the grinds" entry from every switch-up
+  // family ever built (or shipped — see defaultCustomFamilies.js)
+  // while trainingFocus happened to be on. enumeratePossibleTricks now
+  // overrides trainingFocus to false before calling this; don't remove
+  // that override, and see
+  // __tests__/enumeratePossibleTricks.spec.js for the regression test.
   if (
     settings.trainingFocus &&
     (!(settings[`${prefix}AlleyOop`] && settings[`${prefix}True`]) ||
@@ -847,6 +871,19 @@ export function enumeratePossibleTricks(
   { cap = ENUMERATE_CAP } = {},
   switchUp2GrindToggles = null
 ) {
+  // trainingFocus biases LIVE random draws away from landing on "no
+  // variation/no extra spin" too often (see variationCandidates,
+  // spinToCandidates, spinOffCandidates, switchSpinCandidates above) —
+  // a pacing preference for a session in progress, not a statement
+  // about which tricks exist. Enumeration answers "what's the complete
+  // set of distinct tricks this config allows", so it must see every
+  // entry including the "None" ones regardless of that live setting —
+  // otherwise, with trainingFocus on (the default), a freshly built
+  // personal family with a switch-up silently loses every plain,
+  // no-extra-spin entry and comes out with a forced rotation (180/270/
+  // 360/450/540 depending which degrees are checked) on every single
+  // one instead.
+  settings = { ...settings, trainingFocus: false };
   const grindPool = grindCandidates(settings, [], null, grindToggles);
   const byName = new Map(); // name -> full descriptor, for turning this into a personal family's entries later
   let truncated = false;

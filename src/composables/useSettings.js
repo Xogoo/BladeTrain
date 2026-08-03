@@ -17,6 +17,71 @@ function defaultCustomFamilies() {
 
 export const CUSTOM_LEVEL = 5;
 
+// One-time migration: a bug in enumeratePossibleTricks (see
+// trickGenerator.js) let "Focus d'entraînement" leak into building a
+// personal family, silently excluding every "no extra spin between the
+// two grinds" variant of a switch-up entry — so any family with a
+// switch-up, built (or shipped as a default) while that bug was live,
+// ended up with a forced rotation (180/270/360/450/540) on literally
+// every entry, never a plain one. That bug is now fixed at the source,
+// but families already saved — including the 14 shipped defaults,
+// which is why a brand new install could still show this — are stuck
+// with whatever got generated at the time. This adds the missing
+// "None" sibling for every affected entry, in place, on the SAME
+// family object (same id) — nothing existing is removed or changed,
+// so any progress already landed on those entries is untouched; only
+// entries that were missing are added, unlanded, going forward.
+// Handles both the main switch-up connector (switchSpinName) and the
+// second one (switchSpin2Name, for a switch-up of the switch-up)
+// independently. Safe to run every load: a no-op once every affected
+// entry already has its "None" sibling. Exported so useBackup.js's
+// restoreBackup can run an OLDER backup through the same migration
+// instead of dropping it straight into the live settings unmigrated.
+export function migrateSwitchUpNoneVariants(data) {
+  if (!Array.isArray(data.customFamilies)) {
+    return data;
+  }
+  for (const family of data.customFamilies) {
+    if (!Array.isArray(family.entries) || !family.entries.length) {
+      continue;
+    }
+    const additions = [];
+    const alreadyHas = (candidate) => {
+      const key = JSON.stringify(candidate);
+      return (
+        family.entries.some((e) => JSON.stringify(e) === key) ||
+        additions.some((e) => JSON.stringify(e) === key)
+      );
+    };
+    for (const entry of family.entries) {
+      if (
+        entry.switchUpGrindName &&
+        entry.switchSpinName &&
+        entry.switchSpinName !== "None"
+      ) {
+        const sibling = { ...entry, switchSpinName: "None" };
+        if (!alreadyHas(sibling)) {
+          additions.push(sibling);
+        }
+      }
+      if (
+        entry.switchUp2GrindName &&
+        entry.switchSpin2Name &&
+        entry.switchSpin2Name !== "None"
+      ) {
+        const sibling = { ...entry, switchSpin2Name: "None" };
+        if (!alreadyHas(sibling)) {
+          additions.push(sibling);
+        }
+      }
+    }
+    if (additions.length) {
+      family.entries.push(...additions);
+    }
+  }
+  return data;
+}
+
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 6;
 
@@ -457,9 +522,9 @@ function loadSettings() {
     if (!Array.isArray(merged.targetedTrainingHistory)) {
       merged.targetedTrainingHistory = [];
     }
-    return merged;
+    return migrateSwitchUpNoneVariants(merged);
   } catch {
-    return defaultSettings();
+    return migrateSwitchUpNoneVariants(defaultSettings());
   }
 }
 
@@ -817,6 +882,7 @@ export function useSettings() {
       });
       imported += 1;
     }
+    migrateSwitchUpNoneVariants(settings);
     return { imported, skipped };
   }
 
