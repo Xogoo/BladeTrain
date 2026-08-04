@@ -475,6 +475,59 @@ export function useGame() {
     return true;
   };
 
+  // Same "hidden synthetic family" trick as Points faibles above, but
+  // for the player's own Drill list (collection.drillEntries) instead
+  // of an auto-computed one. Uses freeLoopFamilyId rather than
+  // activeFamilyId — a Drill entry needs to keep coming up over and
+  // over (that's the whole point: a total count AND a best streak),
+  // not disappear from the draw the first time it's landed the way
+  // normal family "remaining" progress would.
+  const DRILL_FAMILY_ID = "drill";
+  const startDrillSession = (settings) => {
+    const entries = collection.drillList.value.map((d) => d.entry);
+    if (!entries.length) {
+      return false;
+    }
+    const family = { id: DRILL_FAMILY_ID, name: "Drill", entries };
+    const existingIndex = settings.customFamilies.findIndex((f) => f.id === DRILL_FAMILY_ID);
+    if (existingIndex >= 0) {
+      settings.customFamilies.splice(existingIndex, 1, family);
+    } else {
+      settings.customFamilies.push(family);
+    }
+    state.mode = "solo";
+    state.lockedPairs = null;
+    state.activeFamilyId = null;
+    state.activeFamilyEntryIndex = null;
+    state.activeFamilyIds = [];
+    state.activeMixEntry = null;
+    state.familyJustCompleted = null;
+    state.careerJustCompleted = null;
+    state.isCareerSession = false;
+    state.freeLoopFamilyId = DRILL_FAMILY_ID;
+    state.screen = "game";
+    state.spinsTotal = Infinity;
+    beginOrContinueSoloSession("Drill");
+    nextSpin(settings);
+    return true;
+  };
+
+  /** The "+ Drill" button on the draw screen — adds whatever trick is
+   * currently showing, exactly as rolled, to the Drill list. Works in
+   * every mode (a fixed Carrière/Famille entry included): the point is
+   * "I want to grind specifically on this exact trick", regardless of
+   * where it happened to come up. Returns null if it's already being
+   * drilled or already mastered (see addDrillEntry). */
+  const addCurrentTrickToDrill = () => {
+    if (!state.spin) {
+      return null;
+    }
+    return collection.addDrillEntry({
+      trickName: state.spin.name,
+      entry: collection.entryFromSpin(state.spin),
+    });
+  };
+
   // Resets every cross-mode "what's currently active" field before a
   // Combo run starts — same defensive clearing startFamilySession/
   // startMixSession already do, so nothing from whatever mode was
@@ -1262,6 +1315,9 @@ export function useGame() {
     startFamilySession,
     startMixSession,
     startWeakPointsSession,
+    startDrillSession,
+    addCurrentTrickToDrill,
+    DRILL_FAMILY_ID,
     startComboCareer,
     startComboMix,
     comboAttempt,

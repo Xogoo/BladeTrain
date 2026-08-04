@@ -48,10 +48,11 @@ const {
   backToCareer,
   onReelsSettled,
   activeFamily,
+  addCurrentTrickToDrill,
 } = useGame();
 const { settings, reelSpeedMs } = useSettings();
 const { speakTrick, playKeys } = useSpeech();
-const { familyIndex } = useCollection();
+const { familyIndex, drillList } = useCollection();
 
 // Switch families carry their own leading "Switch " prefix (see
 // families.js) — nothing to strip here anymore, kept as a pass-through
@@ -205,6 +206,22 @@ const visibleReels = computed(() =>
   state.spin ? state.spin.reels.filter((reel) => !reel.hidden) : []
 );
 const isResult = computed(() => state.phase === "result");
+
+// Whether — and how — the trick currently on screen is already being
+// drilled, so the button/progress line stays in sync no matter which
+// mode drew it.
+const currentDrillEntry = computed(() =>
+  state.spin ? drillList.value.find((d) => d.trickName === state.spin.name) || null : null
+);
+
+const justAddedToDrill = ref(false);
+function onAddToDrill() {
+  addCurrentTrickToDrill();
+  justAddedToDrill.value = true;
+  window.setTimeout(() => {
+    justAddedToDrill.value = false;
+  }, 1500);
+}
 
 // Hands-free "réussi"/"raté, on rejoue"/"passer" during a solo session
 // or a BLADE VS match (see useVoiceControl.js) — "solo" here covers
@@ -429,6 +446,16 @@ function onReelStopped() {
             <AppIcon name="sound" :size="20" />
           </button>
         </div>
+
+        <div v-if="currentDrillEntry" class="drill-progress">
+          <AppIcon name="target" :size="14" />
+          Drill : {{ currentDrillEntry.totalLanded }}/{{ currentDrillEntry.targetTotal }}
+          &middot; série {{ currentDrillEntry.currentStreak }}/{{ currentDrillEntry.targetStreak }}
+        </div>
+        <button v-else class="drill-add-btn" @click="onAddToDrill()">
+          <AppIcon :name="justAddedToDrill ? 'check' : 'target'" :size="14" />
+          {{ justAddedToDrill ? "Ajouté au Drill" : "+ Drill" }}
+        </button>
 
         <button v-if="canUndo" class="undo-btn" @click="undoLastAction()">
           <AppIcon name="forward" :size="14" style="transform: scaleX(-1)" /> Annuler
@@ -995,6 +1022,35 @@ function onReelStopped() {
 
 .result__speak:hover {
   transform: scale(1.15);
+}
+
+.drill-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--red-hi);
+  margin-top: 4px;
+}
+
+.drill-add-btn {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+}
+.drill-add-btn:active {
+  color: var(--red-hi);
+  border-color: rgba(var(--fg-rgb), 0.6);
 }
 
 .btn--confirm {

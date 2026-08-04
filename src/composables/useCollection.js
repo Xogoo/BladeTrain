@@ -145,6 +145,17 @@ function defaultCollection() {
     // or draw). See useGame.js's endGame(), which is the only place a
     // VS match actually concludes.
     vsMatches: [], // { id, playerLetters, robotLetters, result, robotChance, endedAt }
+    // Drill mode — a personal, targeted list of specific tricks (exact
+    // recipes) to grind out, fed either manually (the "+ Drill" button
+    // on the draw screen, any mode) or from drillSuggestions() (tricks
+    // that keep coming up short). Progress updates from ANY land/skip
+    // across the whole app that happens to match one of these tricks
+    // by name — not just from a dedicated Drill session — see
+    // recordLand/recordSkip below. Moves to drillMastered once BOTH
+    // targets are met (a total count AND a best streak), and stays out
+    // of `tricks`'s dedupe once mastered (see addDrillEntry).
+    drillEntries: [], // { id, trickName, entry, source: "manual"|"auto", addedAt, targetTotal, targetStreak, totalLanded, currentStreak, bestStreak }
+    drillMastered: [], // { id, trickName, entry, source, addedAt, completedAt, targetTotal, targetStreak }
   };
 }
 
@@ -234,7 +245,12 @@ watch(
 
 function statsIn(map, name) {
   if (!map[name]) {
-    map[name] = { landed: 0, skipped: 0 };
+    map[name] = { landed: 0, skipped: 0, failed: 0 };
+  } else if (map[name].failed === undefined) {
+    // Backfill for entries created before `failed` existed — lazy,
+    // no separate migration needed; only touched once this trick/grind
+    // is landed or skipped again.
+    map[name].failed = 0;
   }
   return map[name];
 }
@@ -248,7 +264,16 @@ function landedGrindNames() {
 function spinWinners(spin) {
   const winners = {};
   for (const reel of spin.reels) {
-    winners[reel.name] = reel.winner ? reel.winner.name : "None";
+    if (reel.name === "Approach") {
+      // Hidden (no Fakie/Switch toggle on) means Forwards specifically
+      // — the one approach with no reel needed to show it — not the
+      // generic "None" every other hidden reel collapses to. "None"
+      // isn't a real entry in APPROACHES, so storing it here silently
+      // breaks anything that later re-forces this exact trick.
+      winners.Approach = reel.winner ? reel.winner.name : "Forwards";
+    } else {
+      winners[reel.name] = reel.winner ? reel.winner.name : "None";
+    }
   }
   return winners;
 }
@@ -1107,11 +1132,212 @@ export function useCollection() {
   }
 
   /** Records a landed spin and returns any newly earned badges. */
+  const DEFAULT_DRILL_TARGET_TOTAL = 20;
+  const DEFAULT_DRILL_TARGET_STREAK = 5;
+  const DRILL_SUGGESTION_MIN_ATTEMPTS = 3;
+
+  // Turns a live spin's reels into the same forced-trick "recipe" shape
+  // family entries use (grindName, variationName, approach,
+  // spinToName, spinOffName, switchUp*) — for the manual "+ Drill"
+  // button, which hands over whatever's currently on screen.
+  function entryFromSpin(spin) {
+    const w = spinWinners(spin);
+    const hasSwitchUp = w.SwitchUp !== "None";
+    const hasSwitchUp2 = hasSwitchUp && w.SwitchUp2 !== "None";
+    return {
+      grindName: w.Grind,
+      variationName: w.GrindVariation,
+      approach: w.Approach,
+      spinToName: w.SpinTo,
+      spinOffName: w.SpinOff,
+      switchUpGrindName: hasSwitchUp ? w.SwitchUp : null,
+      switchUpVariationName: hasSwitchUp ? w.SwitchUpVariation : null,
+      switchSpinName: hasSwitchUp ? w.SwitchSpin : null,
+      switchUp2GrindName: hasSwitchUp2 ? w.SwitchUp2 : null,
+      switchUp2VariationName: hasSwitchUp2 ? w.SwitchUp2Variation : null,
+      switchSpin2Name: hasSwitchUp2 ? w.SwitchSpin2 : null,
+    };
+  }
+
+  // Same recipe shape, but reconstructed from a stored land/skip record
+  // instead of a live spin — both now carry the exact same fields (see
+  // the recordSkip fix above), so a trick that's only ever been
+  // skipped can still be turned back into an exact forced-trick entry.
+  function entryFromRecord(record) {
+    return {
+      grindName: record.grindName,
+      variationName: record.variationName,
+      // Old records saved before the spinWinners fix above may still
+      // have "None" stored here from the same bug — normalize on the
+      // way back out too, not just at the source going forward.
+      approach: record.approach === "None" ? "Forwards" : record.approach,
+      spinToName: record.spinToName,
+      spinOffName: record.spinOffName,
+      switchUpGrindName: record.switchUpGrindName,
+      switchUpVariationName: record.switchUpVariationName,
+      switchSpinName: record.switchSpinName,
+      switchUp2GrindName: record.switchUp2GrindName,
+      switchUp2VariationName: record.switchUp2VariationName,
+      switchSpin2Name: record.switchSpin2Name,
+    };
+  }
+
+  /** Adds a trick to the Drill list — from a live spin (manual button)
+   * or an already-built recipe (an accepted auto-suggestion). Dedupes
+   * by trick name: already drilling or already mastered it, this is a
+   * no-op that just returns the existing/null. */
+  const addDrillEntry = ({
+    trickName,
+    entry,
+    source = "manual",
+    targetTotal = DEFAULT_DRILL_TARGET_TOTAL,
+    targetStreak = DEFAULT_DRILL_TARGET_STREAK,
+  }) => {
+    const existing = collection.drillEntries.find((d) => d.trickName === trickName);
+    if (existing) {
+      return existing;
+    }
+    if (collection.drillMastered.some((d) => d.trickName === trickName)) {
+      return null;
+    }
+    const drill = {
+      id: Date.now() + Math.floor(Math.random() * 1000),
+      trickName,
+      entry,
+      source, // "manual" | "auto"
+      addedAt: new Date().toISOString(),
+      targetTotal,
+      targetStreak,
+      totalLanded: 0,
+      currentStreak: 0,
+      bestStreak: 0,
+    };
+    collection.drillEntries.push(drill);
+    return drill;
+  };
+
+  const removeDrillEntry = (id) => {
+    const index = collection.drillEntries.findIndex((d) => d.id === id);
+    if (index !== -1) {
+      collection.drillEntries.splice(index, 1);
+    }
+  };
+
+  /** Called from recordLand for EVERY land across the whole app, any
+   * mode — a Drill target doesn't only progress during a dedicated
+   * Drill session; happening to land it during ordinary Solo play
+   * still counts, since the point is getting good at that one trick,
+   * not at "doing Drill sessions". Moves the entry to drillMastered
+   * once BOTH targets are met. */
+  function updateDrillOnLand(trickName) {
+    const drill = collection.drillEntries.find((d) => d.trickName === trickName);
+    if (!drill) {
+      return;
+    }
+    drill.totalLanded += 1;
+    drill.currentStreak += 1;
+    drill.bestStreak = Math.max(drill.bestStreak, drill.currentStreak);
+    if (drill.totalLanded >= drill.targetTotal && drill.bestStreak >= drill.targetStreak) {
+      collection.drillMastered.push({
+        id: drill.id,
+        trickName: drill.trickName,
+        entry: drill.entry,
+        source: drill.source,
+        addedAt: drill.addedAt,
+        completedAt: new Date().toISOString(),
+        targetTotal: drill.targetTotal,
+        targetStreak: drill.targetStreak,
+      });
+      removeDrillEntry(drill.id);
+    }
+  }
+
+  /** Called from recordSkip for every skip — breaks the streak (a skip
+   * means giving up on it this time, same as a miss for this purpose)
+   * without touching the cumulative total. */
+  function updateDrillOnSkip(trickName) {
+    const drill = collection.drillEntries.find((d) => d.trickName === trickName);
+    if (drill) {
+      drill.currentStreak = 0;
+    }
+  }
+
+  /** Tricks that keep coming up short — candidates to suggest adding to
+   * Drill. Prefers whichever record (a land or a skip) most recently
+   * exists for the trick to rebuild its exact recipe from; either
+   * works now that both store the same fields. Excludes anything
+   * already being drilled or already mastered. */
+  const drillSuggestions = (limit = 10) => {
+    const alreadyDrilled = new Set(collection.drillEntries.map((d) => d.trickName));
+    const alreadyMastered = new Set(collection.drillMastered.map((d) => d.trickName));
+    const recordByName = {};
+    for (const land of collection.lands) {
+      recordByName[land.trickName] = land;
+    }
+    for (const skip of collection.skips) {
+      // A skip only fills in the recipe if no land has already; a
+      // trick that's been landed at least once is better represented
+      // by that land record (has a real score, etc.).
+      if (!recordByName[skip.trickName]) {
+        recordByName[skip.trickName] = skip;
+      }
+    }
+    return Object.entries(collection.tricks)
+      .map(([name, stats]) => {
+        const totalAttempts = stats.landed + stats.skipped;
+        const strain = stats.failed + stats.skipped;
+        return {
+          name,
+          totalAttempts,
+          landed: stats.landed,
+          skipped: stats.skipped,
+          failed: stats.failed || 0,
+          struggleScore: totalAttempts ? strain / (totalAttempts + strain) : 0,
+        };
+      })
+      .filter(
+        (t) =>
+          t.totalAttempts >= DRILL_SUGGESTION_MIN_ATTEMPTS &&
+          t.struggleScore > 0 &&
+          !alreadyDrilled.has(t.name) &&
+          !alreadyMastered.has(t.name) &&
+          recordByName[t.name]
+      )
+      .sort((a, b) => b.struggleScore - a.struggleScore || b.totalAttempts - a.totalAttempts)
+      .slice(0, limit)
+      .map((t) => ({
+        trickName: t.name,
+        landed: t.landed,
+        skipped: t.skipped,
+        failed: t.failed,
+        entry: entryFromRecord(recordByName[t.name]),
+      }));
+  };
+
+  // Most recently added first.
+  const drillList = computed(() =>
+    [...collection.drillEntries].sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt))
+  );
+
+  // Most recently mastered first.
+  const drillMasteredHistory = computed(() =>
+    [...collection.drillMastered].sort(
+      (a, b) => new Date(b.completedAt) - new Date(a.completedAt)
+    )
+  );
+
   const recordLand = (spin, tries = 1, sessionId = null, familyId = null, familyEntry = null) => {
     const winners = spinWinners(spin);
     statsIn(collection.tricks, spin.name).landed += 1;
     statsIn(collection.grinds, winners.Grind).landed += 1;
+    // tries includes the successful attempt itself — every attempt
+    // before it was a "Raté".
+    if (tries > 1) {
+      statsIn(collection.tricks, spin.name).failed += tries - 1;
+      statsIn(collection.grinds, winners.Grind).failed += tries - 1;
+    }
     collection.landedTotal += 1;
+    updateDrillOnLand(spin.name);
 
     collection.lands.push({
       sessionId,
@@ -1238,12 +1464,39 @@ export function useCollection() {
     const winners = spinWinners(spin);
     statsIn(collection.tricks, spin.name).skipped += 1;
     statsIn(collection.grinds, winners.Grind).skipped += 1;
+    // tries starts at 1 as a baseline (same convention as recordLand,
+    // see there) — a skip with tries=1 means it was skipped on first
+    // sight, no "Raté" taps at all. Every tap past that baseline was a
+    // failure, none of them ever landed (that's what makes it a skip).
+    if (tries > 1) {
+      statsIn(collection.tricks, spin.name).failed += tries - 1;
+      statsIn(collection.grinds, winners.Grind).failed += tries - 1;
+    }
     collection.skips.push({
       sessionId,
       date: new Date().toISOString(),
       trickName: spin.name,
       grindName: winners.Grind,
       variationName: winners.GrindVariation,
+      // Full recipe, same fields recordLand stores — without these, a
+      // trick that's only ever been skipped (never landed) couldn't be
+      // exactly reconstructed and re-forced later (Drill's
+      // auto-detected suggestions, in particular, depend on this: the
+      // whole point is surfacing tricks you've never actually landed).
+      approach: winners.Approach,
+      spinToName: winners.SpinTo,
+      spinOffName: winners.SpinOff,
+      switchUpVariationName:
+        winners.SwitchUp !== "None" ? winners.SwitchUpVariation : null,
+      switchSpinName: winners.SwitchUp !== "None" ? winners.SwitchSpin : null,
+      switchUp2GrindName:
+        winners.SwitchUp !== "None" && winners.SwitchUp2 !== "None" ? winners.SwitchUp2 : null,
+      switchUp2VariationName:
+        winners.SwitchUp !== "None" && winners.SwitchUp2 !== "None"
+          ? winners.SwitchUp2Variation
+          : null,
+      switchSpin2Name:
+        winners.SwitchUp !== "None" && winners.SwitchUp2 !== "None" ? winners.SwitchSpin2 : null,
       // How many Raté taps happened before this skip — a trick can be
       // attempted several times and still end up skipped rather than
       // landed; that shouldn't just collapse into "1 attempt".
@@ -1256,6 +1509,7 @@ export function useCollection() {
       familyEntryKey: familyEntry ? familyEntryKey(familyEntry) : null,
     });
     collection.streak = 0;
+    updateDrillOnSkip(spin.name);
     if (sessionId) {
       const session = sessionById(sessionId);
       if (session) {
@@ -1343,6 +1597,12 @@ export function useCollection() {
     recordVsMatch,
     vsMatchHistory,
     vsRecord,
+    addDrillEntry,
+    removeDrillEntry,
+    drillSuggestions,
+    drillList,
+    drillMasteredHistory,
+    entryFromSpin,
     monthlyReport,
     monthsWithActivity,
     weakPointsEntries,

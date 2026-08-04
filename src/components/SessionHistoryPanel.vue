@@ -25,6 +25,11 @@ const {
   earnedBadges,
   allBadges,
   careerProgress,
+  drillList,
+  drillMasteredHistory,
+  drillSuggestions,
+  addDrillEntry,
+  removeDrillEntry,
 } = useCollection();
 
 const confirmingReset = ref(false);
@@ -64,6 +69,21 @@ function formatDate(iso) {
 const showSwitchUps = ref(false);
 const showMonthlyReport = ref(false);
 
+// ---- Drill -----------------------------------------------------------
+const drillSuggestionList = computed(() => drillSuggestions(8));
+
+function onAddSuggestion(suggestion) {
+  addDrillEntry({
+    trickName: suggestion.trickName,
+    entry: suggestion.entry,
+    source: "auto",
+  });
+}
+
+function onRemoveDrillEntry(id) {
+  removeDrillEntry(id);
+}
+
 // ---- Tabs -------------------------------------------------------------
 const TABS = [
   { id: "apercu", label: "Aperçu" },
@@ -71,6 +91,7 @@ const TABS = [
   { id: "trick", label: "Par trick" },
   { id: "combos", label: "Combos" },
   { id: "vs", label: "BLADE VS" },
+  { id: "drill", label: "Drill" },
 ];
 const activeTab = ref("apercu");
 
@@ -151,10 +172,17 @@ const rankedTricks = computed(() =>
 
 // Every trick ever touched — landed and/or skipped — most-attempted
 // first. This is the full universe the "Par trick" search covers,
-// including tricks you've tried but never once landed.
+// including tricks you've tried but never once landed. `failed` is
+// every "Raté" tap that didn't end in a land — whether the trick was
+// eventually landed after those, or skipped instead.
 const allTouchedTricks = computed(() =>
   Object.entries(collection.tricks)
-    .map(([name, stats]) => ({ name, landed: stats.landed, skipped: stats.skipped }))
+    .map(([name, stats]) => ({
+      name,
+      landed: stats.landed,
+      skipped: stats.skipped,
+      failed: stats.failed || 0,
+    }))
     .sort((a, b) => b.landed + b.skipped - (a.landed + a.skipped))
 );
 
@@ -368,6 +396,7 @@ watch(
           <select class="select" v-model="trickSearch">
             <option v-for="trick in filteredTouchedTricks" :key="trick.name" :value="trick.name">
               {{ trick.name }} &mdash; {{ trick.landed }} réussi{{ trick.landed > 1 ? "s" : "" }},
+              {{ trick.failed }} raté{{ trick.failed > 1 ? "s" : "" }},
               {{ trick.skipped }} passé{{ trick.skipped > 1 ? "s" : "" }}
             </option>
           </select>
@@ -375,13 +404,19 @@ watch(
 
         <template v-if="selectedTrickStats">
           <p v-if="selectedTrickStats.landed === 0" class="hint trick-detail__never">
-            Tenté {{ selectedTrickStats.skipped }} fois, jamais réussi.
+            {{ selectedTrickStats.failed }} raté{{ selectedTrickStats.failed > 1 ? "s" : "" }},
+            {{ selectedTrickStats.skipped }} passé{{ selectedTrickStats.skipped > 1 ? "s" : "" }}
+            &mdash; jamais réussi.
           </p>
           <template v-else>
             <AttemptsChart v-if="selectedTrickChartSeries" :series="selectedTrickChartSeries" />
             <p v-else class="hint">
               Réussi {{ selectedTrickStats.landed }} fois &mdash; pas encore assez
               de répétitions pour un graphique (il en faut au moins 2).
+            </p>
+            <p v-if="selectedTrickStats.failed" class="trick-detail__failed">
+              {{ selectedTrickStats.failed }} raté{{ selectedTrickStats.failed > 1 ? "s" : "" }}
+              au total avant d'y arriver.
             </p>
           </template>
 
@@ -425,7 +460,10 @@ watch(
             @click="selectTrick(trick.name)"
           >
             <span>{{ trick.name }}</span>
-            <span class="never-landed__count">&times;{{ trick.skipped }}</span>
+            <span class="never-landed__count">
+              <template v-if="trick.failed">{{ trick.failed }} raté{{ trick.failed > 1 ? "s" : "" }} &middot; </template
+              >{{ trick.skipped }} passé{{ trick.skipped > 1 ? "s" : "" }}
+            </span>
           </button>
         </div>
       </template>
@@ -533,6 +571,95 @@ watch(
       </template>
     </section>
 
+    <!-- Drill -->
+    <section v-else-if="activeTab === 'drill'">
+      <h3 class="section-title">En cours</h3>
+      <p v-if="!drillList.length" class="hint">
+        Ta liste Drill est vide. Ajoute un trick depuis le bouton "+ Drill"
+        sur l'écran de tirage (n'importe quel mode), ou accepte une
+        suggestion ci-dessous.
+      </p>
+      <div v-else class="drill-list">
+        <div v-for="drill in drillList" :key="drill.id" class="drill-card">
+          <div class="drill-card__top">
+            <span class="drill-card__name">{{ drill.trickName }}</span>
+            <button
+              class="drill-card__remove"
+              aria-label="Retirer du Drill"
+              @click="onRemoveDrillEntry(drill.id)"
+            >
+              <AppIcon name="close" :size="14" />
+            </button>
+          </div>
+          <div class="drill-card__bars">
+            <div class="drill-bar">
+              <div class="drill-bar__track">
+                <div
+                  class="drill-bar__fill"
+                  :style="{ width: Math.min(100, (drill.totalLanded / drill.targetTotal) * 100) + '%' }"
+                />
+              </div>
+              <span class="drill-bar__label">
+                {{ drill.totalLanded }}/{{ drill.targetTotal }} au total
+              </span>
+            </div>
+            <div class="drill-bar">
+              <div class="drill-bar__track">
+                <div
+                  class="drill-bar__fill drill-bar__fill--streak"
+                  :style="{ width: Math.min(100, (drill.bestStreak / drill.targetStreak) * 100) + '%' }"
+                />
+              </div>
+              <span class="drill-bar__label">
+                meilleure série {{ drill.bestStreak }}/{{ drill.targetStreak }}
+                <template v-if="drill.currentStreak > 0">
+                  (série en cours : {{ drill.currentStreak }})
+                </template>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="section-title">Suggestions</h3>
+      <p v-if="!drillSuggestionList.length" class="hint">
+        Rien à suggérer pour l'instant &mdash; reviens après avoir tenté
+        quelques tricks plusieurs fois.
+      </p>
+      <div v-else class="drill-list">
+        <div v-for="s in drillSuggestionList" :key="s.trickName" class="drill-card drill-card--suggestion">
+          <div class="drill-card__top">
+            <span class="drill-card__name">{{ s.trickName }}</span>
+            <button class="btn btn--ghost drill-card__add" @click="onAddSuggestion(s)">
+              + Drill
+            </button>
+          </div>
+          <p class="drill-card__stats">
+            {{ s.landed }} réussi{{ s.landed > 1 ? "s" : "" }} &middot;
+            {{ s.failed }} raté{{ s.failed > 1 ? "s" : "" }} &middot;
+            {{ s.skipped }} passé{{ s.skipped > 1 ? "s" : "" }}
+          </p>
+        </div>
+      </div>
+
+      <h3 class="section-title">Domptés</h3>
+      <p v-if="!drillMasteredHistory.length" class="hint">
+        Pas encore de trick complètement dompté via Drill.
+      </p>
+      <div v-else class="drill-list">
+        <div v-for="m in drillMasteredHistory" :key="m.id" class="drill-card drill-card--mastered">
+          <div class="drill-card__top">
+            <span class="drill-card__name">{{ m.trickName }}</span>
+            <AppIcon name="trophy" :size="16" />
+          </div>
+          <p class="drill-card__stats">
+            {{ formatDate(m.completedAt) }} &middot; {{ m.targetTotal }} réussis,
+            {{ m.targetStreak }} d'affilée
+          </p>
+        </div>
+      </div>
+    </section>
+
     <SwitchUpHistoryPanel v-if="showSwitchUps" @close="showSwitchUps = false" />
     <MonthlyReportPanel v-if="showMonthlyReport" @close="showMonthlyReport = false" />
   </AppModal>
@@ -621,6 +748,11 @@ watch(
 }
 .trick-detail__never {
   margin-bottom: 14px;
+}
+.trick-detail__failed {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin: 8px 0 0;
 }
 .trick-detail__sessions-title {
   color: var(--text-dim);
@@ -798,5 +930,77 @@ watch(
 }
 .combo-detail strong {
   color: var(--red-hi);
+}
+
+.drill-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.drill-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: var(--panel);
+}
+.drill-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.drill-card__name {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.drill-card__remove {
+  flex: none;
+  color: var(--text-dim);
+  padding: 4px;
+}
+.drill-card__add {
+  flex: none;
+  font-size: 12px;
+  padding: 6px 12px;
+}
+.drill-card__stats {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.drill-card--mastered .drill-card__top {
+  color: var(--red-hi);
+}
+.drill-card__bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+.drill-bar__track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.drill-bar__fill {
+  height: 100%;
+  background: var(--red-hi);
+  box-shadow: var(--glow-red-hi);
+  transition: width 0.3s ease;
+}
+.drill-bar__fill--streak {
+  background: var(--green-hi);
+  box-shadow: none;
+}
+.drill-bar__label {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-dim);
 }
 </style>

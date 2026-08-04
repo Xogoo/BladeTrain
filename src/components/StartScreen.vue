@@ -20,7 +20,7 @@ import { useBackup } from "../composables/useBackup.js";
 const emit = defineEmits(["open-settings"]);
 
 const { settings, applyLevel, saveCustomFamily, deleteCustomFamily } = useSettings();
-const { startGame, startFamilySession, startMixSession, startWeakPointsSession, WEAK_POINTS_FAMILY_ID, startComboCareer, startComboMix, hasOpenSessionToday, endOpenSession, state } =
+const { startGame, startFamilySession, startMixSession, startWeakPointsSession, WEAK_POINTS_FAMILY_ID, startComboCareer, startComboMix, startDrillSession, DRILL_FAMILY_ID, hasOpenSessionToday, endOpenSession, state } =
   useGame();
 const {
   familyIndex,
@@ -29,6 +29,7 @@ const {
   resetCareerProgress,
   resetFamilyProgress,
   weakPointsEntries,
+  drillList,
 } = useCollection();
 const { needsBackupReminder, exportBackup, exportFamilies, importFamilies } = useBackup();
 
@@ -174,9 +175,14 @@ const selectedFamilyObject = computed(() =>
 // enough attempt history yet — no separate "enough data" flag to keep
 // in sync.
 const hasWeakPoints = computed(() => weakPointsEntries(1).length > 0);
+const hasDrillEntries = computed(() => drillList.value.length > 0);
 
 function onStartWeakPoints() {
   startWeakPointsSession(settings);
+}
+
+function onStartDrill() {
+  startDrillSession(settings);
 }
 
 // "Points faibles" lives in settings.customFamilies (see
@@ -184,8 +190,12 @@ function onStartWeakPoints() {
 // storage slot — it's rebuilt fresh each time from stats, not
 // something the player made, so it's filtered back out of the picker
 // here rather than showing up as if it were a real personal family.
+// Drill (see startDrillSession) uses the same trick, for the same
+// reason.
 const visibleCustomFamilies = computed(() =>
-  settings.customFamilies.filter((family) => family.id !== WEAK_POINTS_FAMILY_ID)
+  settings.customFamilies.filter(
+    (family) => family.id !== WEAK_POINTS_FAMILY_ID && family.id !== DRILL_FAMILY_ID
+  )
 );
 
 function startFamilyModeSession() {
@@ -704,6 +714,20 @@ function removePlayer(index) {
         <p v-if="!hasWeakPoints" class="setup__hint">
           Pas encore assez de données — reviens après avoir réussi et passé
           quelques tricks plusieurs fois.
+        </p>
+
+        <button
+          class="btn btn--go weak-points-btn"
+          :disabled="!hasDrillEntries"
+          @click="onStartDrill"
+        >
+          <AppIcon name="target" :size="16" />
+          Session Drill
+          <template v-if="hasDrillEntries">({{ drillList.length }})</template>
+        </button>
+        <p v-if="!hasDrillEntries" class="setup__hint">
+          Ta liste Drill est vide — ajoute un trick depuis l'écran de tirage
+          (bouton "+ Drill") ou depuis l'Historique.
         </p>
       </div>
 
