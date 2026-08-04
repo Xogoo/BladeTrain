@@ -95,6 +95,7 @@ const state = reactive({
   // mode-picker. Consumed and cleared by StartScreen as soon as it
   // reads it.
   pendingVsSetup: false,
+  pendingDrillSetup: false,
   // Solo only: which setup screen the session report's "Retour" button
   // should jump back to — "mix" | "family" | "setup" | null. Set by
   // giveUp() right before leaving for the report, cleared by
@@ -166,6 +167,14 @@ const state = reactive({
   // cleared on the next combo start. { source, label, chain, cleared,
   // endedAt } | null.
   comboRecap: null,
+  // Drill mode: set to the trick name once it's just been mastered
+  // (both targets met on THIS land) — pauses the draw on a "Mission
+  // réussie !" screen instead of drawing again, same idea as
+  // familyJustCompleted's pause. The entry itself is already removed
+  // from collection.drillEntries by the time this is set (see
+  // useCollection.js's updateDrillOnLand); this is purely about
+  // showing the player the moment it happened.
+  drillJustCompleted: null,
 });
 
 const collection = useCollection();
@@ -246,6 +255,7 @@ export function useGame() {
   const isSolo = computed(() => state.mode === "solo");
   const isVs = computed(() => state.mode === "vs");
   const isCombo = computed(() => state.mode === "combo");
+  const isDrill = computed(() => state.mode === "drill");
   const currentPlayer = computed(() =>
     state.mode === "group" && state.turnOrder.length > state.turnPos
       ? state.players[state.turnOrder[state.turnPos]]
@@ -483,19 +493,32 @@ export function useGame() {
   // not disappear from the draw the first time it's landed the way
   // normal family "remaining" progress would.
   const DRILL_FAMILY_ID = "drill";
-  const startDrillSession = (settings) => {
-    const entries = collection.drillList.value.map((d) => d.entry);
-    if (!entries.length) {
+  /** Drill is its own mode, not a Solo variant — one trick at a time,
+   * picked from the Drill list via the dropdown on its setup screen.
+   * Builds a single-entry "mini family" so the existing forced-trick
+   * machinery (and freeLoopFamilyId's "never runs out, no completion
+   * gating" behavior) does the actual drawing — same trick works and
+   * works and works. */
+  const startDrillSession = (settings, trickName) => {
+    const drill = collection.drillList.value.find((d) => d.trickName === trickName);
+    if (!drill) {
       return false;
     }
-    const family = { id: DRILL_FAMILY_ID, name: "Drill", entries };
+    const family = { id: DRILL_FAMILY_ID, name: "Drill", entries: [drill.entry] };
     const existingIndex = settings.customFamilies.findIndex((f) => f.id === DRILL_FAMILY_ID);
     if (existingIndex >= 0) {
       settings.customFamilies.splice(existingIndex, 1, family);
     } else {
       settings.customFamilies.push(family);
     }
-    state.mode = "solo";
+    // Always a clean slate — Drill doesn't silently continue whatever
+    // solo session happened to be dangling open, unlike plain Solo.
+    if (state.sessionId) {
+      collection.endSession(state.sessionId);
+      backupApi.autoBackupIfDue();
+      state.sessionId = null;
+    }
+    state.mode = "drill";
     state.lockedPairs = null;
     state.activeFamilyId = null;
     state.activeFamilyEntryIndex = null;
@@ -503,11 +526,19 @@ export function useGame() {
     state.activeMixEntry = null;
     state.familyJustCompleted = null;
     state.careerJustCompleted = null;
+    state.drillJustCompleted = null;
     state.isCareerSession = false;
     state.freeLoopFamilyId = DRILL_FAMILY_ID;
     state.screen = "game";
     state.spinsTotal = Infinity;
-    beginOrContinueSoloSession("Drill");
+    state.points = 0;
+    state.spinsUsed = 0;
+    state.tricks = [];
+    state.skipped = [];
+    state.usedGrinds = [];
+    state.newBadges = [];
+    state.sessionId = collection.startSession(`Drill — ${trickName}`);
+    clearUndoSnapshot();
     nextSpin(settings);
     return true;
   };
@@ -1013,7 +1044,7 @@ export function useGame() {
       landFamily && landEntryIndex !== null ? landFamily.entries[landEntryIndex] : null;
 
     let badges =
-      state.mode === "solo"
+      state.mode === "solo" || state.mode === "drill"
         ? collection.recordLand(
             state.spin,
             state.tries,
@@ -1089,6 +1120,20 @@ export function useGame() {
       state.familyJustCompleted = justCompletedFamily;
       return;
     }
+    if (state.mode === "drill") {
+      // Mastered on this exact land? collection.recordLand above
+      // already ran the Drill progress hook, which removes the entry
+      // from drillEntries the instant both targets are met — so "no
+      // longer there" IS the mastery signal, checked right here rather
+      // than needing recordLand to return anything Drill-specific.
+      const stillActive = collection.drillList.value.some(
+        (d) => d.trickName === state.spin.name
+      );
+      if (!stillActive) {
+        state.drillJustCompleted = state.spin.name;
+        return;
+      }
+    }
     nextSpin(settings);
   };
 
@@ -1132,7 +1177,7 @@ export function useGame() {
   const skipTrick = (settings) => {
     captureUndoSnapshot();
     state.skipped.push(currentTrick());
-    if (state.mode === "solo") {
+    if (state.mode === "solo" || state.mode === "drill") {
       const familyId = state.activeFamilyId ?? state.activeMixEntry?.familyId ?? null;
       const family = familyId ? resolveFamilyById(familyId) : null;
       const entryIndex = state.activeFamilyId
@@ -1193,6 +1238,25 @@ export function useGame() {
       // whatever chain was built still gets logged to Combo history,
       // it just wasn't broken by a miss this time.
       finishComboRun({ cleared: false });
+      return;
+    }
+    if (state.mode === "drill") {
+      // Whether this is "mission accomplie, tap through" or just
+      // giving up mid-attempt, Drill always drops straight back on its
+      // own picker (the dropdown to pick a trick) — never the generic
+      // Solo setup screen. That mismatch (falling through to the
+      // "solo" branch below, whose pendingReturnStep logic has no
+      // idea Drill even exists) was the actual bug: it would land on
+      // the wrong screen instead of back where Drill was launched from.
+      if (state.sessionId) {
+        collection.endSession(state.sessionId);
+        backupApi.autoBackupIfDue();
+        state.lastSessionId = state.sessionId;
+        state.sessionId = null;
+      }
+      state.drillJustCompleted = null;
+      state.pendingDrillSetup = true;
+      goToStart();
       return;
     }
     if (state.mode === "solo") {
@@ -1308,6 +1372,7 @@ export function useGame() {
     isSolo,
     isVs,
     isCombo,
+    isDrill,
     currentPlayer,
     onLastLetter,
     startGame,

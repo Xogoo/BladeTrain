@@ -29,6 +29,7 @@ const {
   isSolo,
   isVs,
   isCombo,
+  isDrill,
   currentPlayer,
   onLastLetter,
   attempt,
@@ -67,7 +68,7 @@ const nextFamilyPreview = computed(() =>
 
 // Group: a game starts with the "fight!" call.
 onMounted(() => {
-  if (!isSolo.value) {
+  if (!isSolo.value && !isDrill.value) {
     playKeys(["fight"]);
   }
 });
@@ -242,7 +243,7 @@ const { isSupported: voiceSupported, isListening: voiceListening, lastHeard: voi
   useVoiceControl();
 
 watch(
-  () => settings.voiceControl && (isSolo.value || isVs.value || isCombo.value) && !openPanel.value,
+  () => settings.voiceControl && (isSolo.value || isVs.value || isCombo.value || isDrill.value) && !openPanel.value,
   (shouldListen) => {
     if (shouldListen) {
       startVoice({
@@ -397,7 +398,7 @@ function onReelStopped() {
       {{ familyIndex(activeFamilyProgressId, activeFamily.entries) }}/{{ activeFamily.entries.length }} tricks réussis
     </button>
 
-    <div v-if="!isSolo && !isVs && !isCombo" class="roster">
+    <div v-if="!isSolo && !isVs && !isCombo && !isDrill" class="roster">
       <div
         v-for="(player, i) in state.players"
         :key="i"
@@ -448,9 +449,37 @@ function onReelStopped() {
         </div>
 
         <div v-if="currentDrillEntry" class="drill-progress">
-          <AppIcon name="target" :size="14" />
-          Drill : {{ currentDrillEntry.totalLanded }}/{{ currentDrillEntry.targetTotal }}
-          &middot; série {{ currentDrillEntry.currentStreak }}/{{ currentDrillEntry.targetStreak }}
+          <div class="drill-bar">
+            <div class="drill-bar__track">
+              <div
+                class="drill-bar__fill"
+                :style="{
+                  width:
+                    Math.min(100, (currentDrillEntry.totalLanded / currentDrillEntry.targetTotal) * 100) + '%',
+                }"
+              />
+            </div>
+            <span class="drill-bar__label">
+              {{ Math.min(currentDrillEntry.totalLanded, currentDrillEntry.targetTotal) }}/{{ currentDrillEntry.targetTotal }} au total
+            </span>
+          </div>
+          <div class="drill-bar">
+            <div class="drill-bar__track">
+              <div
+                class="drill-bar__fill drill-bar__fill--streak"
+                :style="{
+                  width:
+                    Math.min(100, (currentDrillEntry.bestStreak / currentDrillEntry.targetStreak) * 100) + '%',
+                }"
+              />
+            </div>
+            <span class="drill-bar__label">
+              meilleure série {{ Math.min(currentDrillEntry.bestStreak, currentDrillEntry.targetStreak) }}/{{ currentDrillEntry.targetStreak }}
+              <template v-if="currentDrillEntry.currentStreak > 0 && currentDrillEntry.currentStreak !== currentDrillEntry.bestStreak">
+                (en cours : {{ currentDrillEntry.currentStreak }})
+              </template>
+            </span>
+          </div>
         </div>
         <button v-else class="drill-add-btn" @click="onAddToDrill()">
           <AppIcon :name="justAddedToDrill ? 'check' : 'target'" :size="14" />
@@ -547,6 +576,42 @@ function onReelStopped() {
                 @click="openPanel = 'tricklist'"
               >
                 <AppIcon name="list" :size="16" /> Liste des tricks ({{ state.tricks.length }})
+              </button>
+            </div>
+          </template>
+        </template>
+
+        <!-- drill: one specific trick, on repeat, until both targets hit -->
+        <template v-else-if="isDrill">
+          <template v-if="state.drillJustCompleted">
+            <div class="family-pause">
+              <AppIcon name="trophy" :size="26" />
+              <h3 class="family-pause__title">Mission réussie !</h3>
+            </div>
+            <div class="result__actions">
+              <button class="btn btn--go" @click="giveUp()">
+                <AppIcon name="check" :size="18" /> Supprimer Drill
+              </button>
+            </div>
+          </template>
+          <template v-else>
+            <div class="result__actions">
+              <button class="btn" @click="skipTrick(settings)">
+                <AppIcon name="forward" :size="18" /> Passer
+              </button>
+              <button class="btn btn--go" @click="landTrick(settings)">
+                <AppIcon name="check" :size="18" /> Blade! +{{ state.spin.score }}
+              </button>
+            </div>
+            <div class="result__actions result__actions--secondary">
+              <button
+                class="btn btn--ghost"
+                :class="{ 'btn--confirm': confirmingEndSession }"
+                @click="onEndSessionClick()"
+                @blur="confirmingEndSession = false"
+              >
+                <AppIcon name="flag" :size="16" />
+                {{ confirmingEndSession ? "Confirmer" : "Terminer la session" }}
               </button>
             </div>
           </template>
@@ -1026,13 +1091,38 @@ function onReelStopped() {
 
 .drill-progress {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  align-self: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--red-hi);
+  flex-direction: column;
+  align-self: stretch;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.drill-bar__track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.drill-bar__fill {
+  height: 100%;
+  background: var(--red-hi);
+  box-shadow: var(--glow-red-hi);
+  transition: width 0.3s ease;
+}
+.drill-bar__fill--streak {
+  background: var(--green-hi);
+  box-shadow: none;
+}
+.drill-bar__label {
+  display: block;
   margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-dim);
 }
 
 .drill-add-btn {

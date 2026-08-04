@@ -177,12 +177,25 @@ const selectedFamilyObject = computed(() =>
 const hasWeakPoints = computed(() => weakPointsEntries(1).length > 0);
 const hasDrillEntries = computed(() => drillList.value.length > 0);
 
+// Which entry the dropdown on the Drill step currently points at —
+// defaults to the most recently added one, and stays in sync if the
+// list changes (an entry gets mastered/removed) while this screen is
+// open.
+const selectedDrillTrick = ref(drillList.value[0]?.trickName ?? "");
+watch(drillList, (list) => {
+  if (!list.some((d) => d.trickName === selectedDrillTrick.value)) {
+    selectedDrillTrick.value = list[0]?.trickName ?? "";
+  }
+});
+
 function onStartWeakPoints() {
   startWeakPointsSession(settings);
 }
 
 function onStartDrill() {
-  startDrillSession(settings);
+  if (selectedDrillTrick.value) {
+    startDrillSession(settings, selectedDrillTrick.value);
+  }
 }
 
 // "Points faibles" lives in settings.customFamilies (see
@@ -422,6 +435,11 @@ const MODES = [
     name: "Groupe",
     tagline: "S.K.A.T.E entre potes — loupe et récolte B·L·A·D·E",
   },
+  {
+    id: "drill",
+    name: "Drill",
+    tagline: "Un trick précis, en boucle, jusqu'à le dompter",
+  },
 ];
 
 const step = ref(
@@ -429,17 +447,22 @@ const step = ref(
     ? "career-track"
     : state.pendingVsSetup
     ? "setup"
+    : state.pendingDrillSetup
+    ? "drill"
     : state.pendingReturnStep === "mix" || state.pendingReturnStep === "family"
     ? "family"
     : state.pendingReturnStep === "setup"
     ? "setup"
     : "mode"
-); // 'mode' | 'family' | 'career' | 'career-track' | 'setup'
+); // 'mode' | 'family' | 'career' | 'career-track' | 'setup' | 'drill'
 if (state.pendingCareerTrack) {
   state.pendingCareerTrack = null;
 }
 if (state.pendingVsSetup) {
   state.pendingVsSetup = false;
+}
+if (state.pendingDrillSetup) {
+  state.pendingDrillSetup = false;
 }
 if (state.pendingReturnStep) {
   state.pendingReturnStep = null;
@@ -485,6 +508,11 @@ function chooseMode(modeId) {
   if (modeId === "family") {
     step.value = "family";
     familyView.value = "family";
+    fadeOutMusic();
+    return;
+  }
+  if (modeId === "drill") {
+    step.value = "drill";
     fadeOutMusic();
     return;
   }
@@ -671,6 +699,38 @@ function removePlayer(index) {
     </div>
   </section>
 
+  <!-- step 1c-bis: Drill — pick one trick from the list, train it alone -->
+  <section v-else-if="step === 'drill'" class="start setup rise-in">
+    <div class="setup__top">
+      <button class="btn btn--ghost setup__back" @click="step = 'mode'">
+        &lsaquo; Retour
+      </button>
+    </div>
+    <h2 class="setup__title sticker-text">Drill</h2>
+    <p class="setup__hint setup__hint--standalone">
+      Un trick précis, en boucle, jusqu'à le réussir 20 fois au total et
+      5 fois d'affilée.
+    </p>
+
+    <div v-if="hasDrillEntries" class="setup__section">
+      <select class="select" v-model="selectedDrillTrick">
+        <option v-for="d in drillList" :key="d.id" :value="d.trickName">
+          {{ d.trickName }} ({{ Math.min(d.totalLanded, d.targetTotal) }}/{{ d.targetTotal }}
+          &middot; série {{ Math.min(d.bestStreak, d.targetStreak) }}/{{ d.targetStreak }})
+        </option>
+      </select>
+
+      <button class="btn btn--go setup__go" @click="onStartDrill">
+        <AppIcon name="play" :size="20" /> Lancer
+      </button>
+    </div>
+    <p v-else class="setup__hint">
+      Ta liste Drill est vide — ajoute un trick depuis le bouton "+ Drill"
+      sur l'écran de tirage (n'importe quel mode), ou depuis l'onglet Drill
+      de l'Historique (suggestions automatiques).
+    </p>
+  </section>
+
   <!-- step 1d: Famille — a builtin or personal family, straight into training -->
   <section v-else-if="step === 'family'" class="start setup rise-in">
     <div class="setup__top">
@@ -714,20 +774,6 @@ function removePlayer(index) {
         <p v-if="!hasWeakPoints" class="setup__hint">
           Pas encore assez de données — reviens après avoir réussi et passé
           quelques tricks plusieurs fois.
-        </p>
-
-        <button
-          class="btn btn--go weak-points-btn"
-          :disabled="!hasDrillEntries"
-          @click="onStartDrill"
-        >
-          <AppIcon name="target" :size="16" />
-          Session Drill
-          <template v-if="hasDrillEntries">({{ drillList.length }})</template>
-        </button>
-        <p v-if="!hasDrillEntries" class="setup__hint">
-          Ta liste Drill est vide — ajoute un trick depuis l'écran de tirage
-          (bouton "+ Drill") ou depuis l'Historique.
         </p>
       </div>
 

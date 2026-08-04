@@ -68,7 +68,7 @@ onUnmounted(() => {
   background: rgba(4, 6, 16, 0.72);
   backdrop-filter: blur(6px);
   overscroll-behavior-x: none;
-  touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
 }
 
 .modal {
@@ -79,7 +79,7 @@ onUnmounted(() => {
   background: linear-gradient(180deg, var(--bg-2), var(--bg-1));
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
   overscroll-behavior-x: none;
-  touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
 }
 
 .modal__header {
@@ -105,8 +105,14 @@ onUnmounted(() => {
      to scroll to sideways. Without this, a touch drag that's even
      slightly diagonal can get misread as a horizontal swipe (rubber-
      band bounce, or worse, the OS's own edge-swipe navigation), which
-     reads as the whole screen "swiping" instead of just scrolling. */
-  touch-action: pan-y;
+     reads as the whole screen "swiping" instead of just scrolling.
+     pinch-zoom is listed explicitly alongside pan-y — omitting it
+     doesn't just fall back to the default, it actively disables
+     two-finger zoom inside every modal (Réglages, Historique,
+     Collection...), which is never supposed to be blocked; only the
+     double-tap-zoom gesture (see base.css's touch-action:
+     manipulation) is meant to be off. */
+  touch-action: pan-y pinch-zoom;
   padding: 20px;
 }
 </style>

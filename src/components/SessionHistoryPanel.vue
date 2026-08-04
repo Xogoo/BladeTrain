@@ -600,7 +600,7 @@ watch(
                 />
               </div>
               <span class="drill-bar__label">
-                {{ drill.totalLanded }}/{{ drill.targetTotal }} au total
+                {{ Math.min(drill.totalLanded, drill.targetTotal) }}/{{ drill.targetTotal }} au total
               </span>
             </div>
             <div class="drill-bar">
@@ -611,7 +611,7 @@ watch(
                 />
               </div>
               <span class="drill-bar__label">
-                meilleure série {{ drill.bestStreak }}/{{ drill.targetStreak }}
+                meilleure série {{ Math.min(drill.bestStreak, drill.targetStreak) }}/{{ drill.targetStreak }}
                 <template v-if="drill.currentStreak > 0">
                   (série en cours : {{ drill.currentStreak }})
                 </template>
