@@ -669,6 +669,12 @@ export function useGame() {
       source: state.comboSource,
       label,
       chain: state.comboChain,
+      // The trick showing when the run ended — the 2nd failed try (or
+      // wherever the player abandoned) leaves state.spin pointing at
+      // exactly that trick, since neither path draws a new one before
+      // calling this. null for a full clear: there's no "failing
+      // trick" to show, the whole path is done.
+      endedOnTrick: cleared ? null : (state.spin?.name ?? null),
     });
     if (state.sessionId) {
       collection.endSession(state.sessionId);
@@ -765,7 +771,7 @@ export function useGame() {
       bot.letters += 1;
     }
     if (player.letters >= LETTERS.length || bot.letters >= LETTERS.length) {
-      endGame();
+      endGame(settings);
       return;
     }
     state.vsRoundResult = {
@@ -1093,15 +1099,33 @@ export function useGame() {
     nextSpin(settings);
   };
 
-  const endGame = () => {
+  const endGame = (settings = null) => {
     // A VS match closes out its session here too (win or lose) — same
     // history bookkeeping solo sessions get, just triggered by the
-    // match actually finishing instead of "Terminer la session".
-    if (state.mode === "vs" && state.sessionId) {
-      collection.endSession(state.sessionId);
-      backupApi.autoBackupIfDue();
-      state.lastSessionId = state.sessionId;
-      state.sessionId = null;
+    // match actually finishing instead of "Terminer la session". Also
+    // logs the match itself to its own history (see recordVsMatch) —
+    // separate from the generic session row, same idea as Combo's own
+    // dedicated history alongside its session bookkeeping.
+    if (state.mode === "vs") {
+      const [player, bot] = state.players;
+      const result =
+        player.letters === bot.letters
+          ? "draw"
+          : player.letters < bot.letters
+            ? "win"
+            : "loss";
+      collection.recordVsMatch({
+        playerLetters: player.letters,
+        robotLetters: bot.letters,
+        result,
+        robotChance: settings?.vsRobotChance ?? null,
+      });
+      if (state.sessionId) {
+        collection.endSession(state.sessionId);
+        backupApi.autoBackupIfDue();
+        state.lastSessionId = state.sessionId;
+        state.sessionId = null;
+      }
     }
     state.screen = "gameover";
     state.phase = "idle";

@@ -140,7 +140,11 @@ function defaultCollection() {
     // above — it's a single self-contained attempt that always ends
     // (chain broken, or the whole track cleared), so it gets its own
     // short log rather than being folded into Session history.
-    comboRuns: [], // { id, source: "career"|"mix", label, chain, endedAt }
+    comboRuns: [], // { id, source: "career"|"mix", label, chain, endedOnTrick, endedAt }
+    // BLADE VS match history — one entry per finished match (win, loss,
+    // or draw). See useGame.js's endGame(), which is the only place a
+    // VS match actually concludes.
+    vsMatches: [], // { id, playerLetters, robotLetters, result, robotChance, endedAt }
   };
 }
 
@@ -579,12 +583,13 @@ export function useCollection() {
   /** Records a finished Combo run (Carrière or Mix) — see useGame.js's
    * startComboCareer/startComboMix/comboAttempt. `chain` is how many
    * tricks were landed in a row before the run ended. */
-  const recordComboRun = ({ source, label, chain }) => {
+  const recordComboRun = ({ source, label, chain, endedOnTrick = null }) => {
     const run = {
       id: Date.now(),
       source, // "career" | "mix"
       label, // e.g. "Carrière — Normal" or "Mix (Soul, Groove)"
       chain,
+      endedOnTrick, // the trick showing on the 2nd failed try — null for a full clear
       endedAt: new Date().toISOString(),
     };
     collection.comboRuns.push(run);
@@ -600,6 +605,39 @@ export function useCollection() {
       (a, b) => new Date(b.endedAt) - new Date(a.endedAt)
     )
   );
+
+  const MAX_VS_MATCHES = 100;
+
+  /** Records a finished BLADE VS match — see useGame.js's endGame(). */
+  const recordVsMatch = ({ playerLetters, robotLetters, result, robotChance }) => {
+    const match = {
+      id: Date.now(),
+      playerLetters,
+      robotLetters,
+      result, // "win" | "loss" | "draw"
+      robotChance,
+      endedAt: new Date().toISOString(),
+    };
+    collection.vsMatches.push(match);
+    if (collection.vsMatches.length > MAX_VS_MATCHES) {
+      collection.vsMatches.splice(0, collection.vsMatches.length - MAX_VS_MATCHES);
+    }
+    return match;
+  };
+
+  // Most recent VS match first.
+  const vsMatchHistory = computed(() =>
+    [...collection.vsMatches].sort(
+      (a, b) => new Date(b.endedAt) - new Date(a.endedAt)
+    )
+  );
+
+  const vsRecord = computed(() => {
+    const wins = collection.vsMatches.filter((m) => m.result === "win").length;
+    const losses = collection.vsMatches.filter((m) => m.result === "loss").length;
+    const draws = collection.vsMatches.filter((m) => m.result === "draw").length;
+    return { wins, losses, draws };
+  });
 
   // Longest chain ever reached across every Combo run — the headline
   // stat shown above the Combo history list. null if none finished yet.
@@ -1302,6 +1340,9 @@ export function useCollection() {
     recordComboRun,
     comboRunHistory,
     bestComboChain,
+    recordVsMatch,
+    vsMatchHistory,
+    vsRecord,
     monthlyReport,
     monthsWithActivity,
     weakPointsEntries,

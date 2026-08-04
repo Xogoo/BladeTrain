@@ -3,6 +3,7 @@ import { computed, ref, watch } from "vue";
 import AppModal from "./AppModal.vue";
 import AppIcon from "./AppIcon.vue";
 import AttemptsChart from "./AttemptsChart.vue";
+import ComboChainChart from "./ComboChainChart.vue";
 import SessionSummary from "./SessionSummary.vue";
 import SwitchUpHistoryPanel from "./SwitchUpHistoryPanel.vue";
 import MonthlyReportPanel from "./MonthlyReportPanel.vue";
@@ -17,12 +18,13 @@ const {
   resetCollection,
   comboRunHistory,
   bestComboChain,
+  vsMatchHistory,
+  vsRecord,
   collection,
   uniqueTrickCount,
   earnedBadges,
   allBadges,
   careerProgress,
-  isCareerComplete,
 } = useCollection();
 
 const confirmingReset = ref(false);
@@ -39,6 +41,15 @@ const expandedId = ref(null);
 function toggle(id) {
   expandedId.value = expandedId.value === id ? null : id;
 }
+
+const expandedComboId = ref(null);
+function toggleCombo(id) {
+  expandedComboId.value = expandedComboId.value === id ? null : id;
+}
+
+// Oldest-first for the chart (comboRunHistory itself is newest-first,
+// which reads naturally as a list but backwards as a timeline).
+const comboRunsChronological = computed(() => [...comboRunHistory.value].reverse());
 
 function formatDate(iso) {
   return new Date(iso).toLocaleString("fr-FR", {
@@ -59,7 +70,7 @@ const TABS = [
   { id: "sessions", label: "Sessions" },
   { id: "trick", label: "Par trick" },
   { id: "combos", label: "Combos" },
-  { id: "carriere", label: "Carrière" },
+  { id: "vs", label: "BLADE VS" },
 ];
 const activeTab = ref("apercu");
 
@@ -157,6 +168,20 @@ const neverLandedTricks = computed(() =>
 
 const trickSearch = ref("");
 
+// '' = tous, 'landed' = réussis au moins une fois, 'never' = tentés
+// (raté ou passé) mais jamais réussis.
+const trickStatusFilter = ref("");
+
+const filteredTouchedTricks = computed(() => {
+  if (trickStatusFilter.value === "landed") {
+    return allTouchedTricks.value.filter((t) => t.landed > 0);
+  }
+  if (trickStatusFilter.value === "never") {
+    return allTouchedTricks.value.filter((t) => t.landed === 0);
+  }
+  return allTouchedTricks.value;
+});
+
 function selectTrick(name) {
   trickSearch.value = name;
 }
@@ -183,16 +208,21 @@ const selectedTrickSessions = computed(() => {
 
 // Default the search to the most-repeated trick, same starting point
 // the old "Progression" chart used, and keep it valid if the ranking
-// changes (e.g. right after landing a new repeat).
+// changes (e.g. right after landing a new repeat) — or if the status
+// filter changes and the current pick falls outside it.
 watch(
-  allTouchedTricks,
-  (list) => {
-    if (!list.length) {
+  [allTouchedTricks, trickStatusFilter],
+  ([list]) => {
+    const filtered = filteredTouchedTricks.value;
+    if (!filtered.length) {
       trickSearch.value = "";
       return;
     }
-    if (!list.some((t) => t.name === trickSearch.value)) {
-      trickSearch.value = (rankedTricks.value[0] || list[0]).name;
+    if (!filtered.some((t) => t.name === trickSearch.value)) {
+      const topRanked = rankedTricks.value.find((t) =>
+        filtered.some((f) => f.name === t.name)
+      );
+      trickSearch.value = (topRanked || filtered[0]).name;
     }
   },
   { immediate: true }
@@ -323,9 +353,20 @@ watch(
         tricks pour voir cette page se remplir.
       </p>
       <template v-else>
-        <div class="trick-picker">
+        <div class="filters">
+          <select class="select" v-model="trickStatusFilter">
+            <option value="">Tous les tricks</option>
+            <option value="landed">Réussis au moins une fois</option>
+            <option value="never">Jamais réussis (raté ou passé)</option>
+          </select>
+        </div>
+
+        <p v-if="!filteredTouchedTricks.length" class="hint">
+          Aucun trick ne correspond à ce filtre.
+        </p>
+        <div v-else class="trick-picker">
           <select class="select" v-model="trickSearch">
-            <option v-for="trick in allTouchedTricks" :key="trick.name" :value="trick.name">
+            <option v-for="trick in filteredTouchedTricks" :key="trick.name" :value="trick.name">
               {{ trick.name }} &mdash; {{ trick.landed }} réussi{{ trick.landed > 1 ? "s" : "" }},
               {{ trick.skipped }} passé{{ trick.skipped > 1 ? "s" : "" }}
             </option>
@@ -400,36 +441,96 @@ watch(
         <p class="combo-best">
           Meilleure chaîne : <strong>{{ bestComboChain }}</strong>
         </p>
+
+        <ComboChainChart :runs="comboRunsChronological" />
+
+        <h3 class="section-title">Runs</h3>
         <div class="sessions">
           <div v-for="run in comboRunHistory" :key="run.id" class="session-card">
-            <div class="session-card__row combo-run-row">
-              <span class="session-card__date">{{ formatDate(run.endedAt) }}</span>
-              <span class="session-card__stats">
-                {{ run.label }} &middot; chaîne de {{ run.chain }}
-                <template v-if="run.cleared"> &middot; chemin terminé ✓</template>
+            <button class="session-card__row" @click="toggleCombo(run.id)">
+              <span class="session-card__main">
+                <span class="session-card__date">{{ formatDate(run.endedAt) }}</span>
+                <span class="session-card__label">{{ run.label }}</span>
               </span>
+              <span class="session-card__stats">
+                chaîne de {{ run.chain }}
+                <template v-if="run.cleared"> &middot; terminé ✓</template>
+              </span>
+              <AppIcon
+                name="forward"
+                :size="14"
+                :class="{ 'session-card__chevron--open': expandedComboId === run.id }"
+                class="session-card__chevron"
+              />
+            </button>
+            <div v-if="expandedComboId === run.id" class="session-card__detail combo-detail">
+              <p v-if="run.cleared">
+                Chemin entièrement terminé — les {{ run.chain }} tricks du parcours
+                landés sans une seule chaîne cassée. ✓
+              </p>
+              <p v-else-if="run.endedOnTrick">
+                Arrêté sur <strong>{{ run.endedOnTrick }}</strong> après une chaîne
+                de {{ run.chain }} &mdash; deux essais ratés d'affilée dessus.
+              </p>
+              <p v-else>
+                Chaîne de {{ run.chain }}, run interrompu.
+              </p>
             </div>
           </div>
         </div>
       </template>
     </section>
 
-    <!-- Carrière -->
-    <section v-else-if="activeTab === 'carriere'">
-      <div class="career-track" v-for="track in ['normal', 'switch']" :key="track">
-        <h3 class="section-title">{{ track === "normal" ? "Normal" : "Switch" }}</h3>
-        <div class="career-track__bar">
-          <div
-            class="career-track__fill"
-            :style="{ width: careerProgress(track).percent + '%' }"
-          />
+    <!-- BLADE VS -->
+    <section v-else-if="activeTab === 'vs'">
+      <p v-if="!vsMatchHistory.length" class="hint">
+        Pas encore de match BLADE VS terminé &mdash; lance-en un pour voir
+        ton historique apparaître ici.
+      </p>
+      <template v-else>
+        <div class="stat-grid vs-record">
+          <div class="stat-tile">
+            <span class="stat-tile__value">{{ vsRecord.wins }}</span>
+            <span class="stat-tile__label">victoires</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-tile__value">{{ vsRecord.losses }}</span>
+            <span class="stat-tile__label">défaites</span>
+          </div>
+          <div class="stat-tile">
+            <span class="stat-tile__value">{{ vsRecord.draws }}</span>
+            <span class="stat-tile__label">nuls</span>
+          </div>
         </div>
-        <p class="career-track__stats">
-          {{ careerProgress(track).percent }}% &middot;
-          {{ careerProgress(track).landed }}/{{ careerProgress(track).total }} tricks
-          <template v-if="isCareerComplete(track)"> &middot; complète ✓</template>
-        </p>
-      </div>
+
+        <h3 class="section-title">Matchs</h3>
+        <div class="sessions">
+          <div v-for="match in vsMatchHistory" :key="match.id" class="session-card">
+            <div
+              class="session-card__row combo-run-row"
+              :class="{
+                'vs-match--win': match.result === 'win',
+                'vs-match--loss': match.result === 'loss',
+              }"
+            >
+              <span class="session-card__date">{{ formatDate(match.endedAt) }}</span>
+              <span class="session-card__stats">
+                {{
+                  match.result === "win"
+                    ? "Victoire"
+                    : match.result === "loss"
+                      ? "Défaite"
+                      : "Match nul"
+                }}
+                &middot; {{ match.playerLetters }}-{{ match.robotLetters }}
+                <template v-if="match.robotChance !== null">
+                  &middot; robot {{ match.robotChance }}%
+                </template>
+              </span>
+            </div>
+          </div>
+        </div>
+      </template>
     </section>
 
     <SwitchUpHistoryPanel v-if="showSwitchUps" @close="showSwitchUps = false" />
@@ -679,25 +780,23 @@ watch(
   background: var(--bg-2);
 }
 
-.career-track {
-  margin-bottom: 22px;
+.vs-record {
+  grid-template-columns: repeat(3, 1fr);
+  margin-bottom: 8px;
 }
-.career-track__bar {
-  height: 10px;
-  border-radius: 999px;
-  background: var(--bg-1);
-  border: 1px solid var(--line);
-  overflow: hidden;
+
+.vs-match--win .session-card__stats {
+  color: var(--green-hi);
 }
-.career-track__fill {
-  height: 100%;
-  background: var(--red-hi);
-  box-shadow: var(--glow-red-hi);
-  transition: width 0.3s ease;
+.vs-match--loss .session-card__stats {
+  color: var(--danger-hi);
 }
-.career-track__stats {
-  margin-top: 8px;
+
+.combo-detail {
   font-size: 14px;
   color: var(--text-dim);
+}
+.combo-detail strong {
+  color: var(--red-hi);
 }
 </style>
