@@ -59,6 +59,10 @@ const rain = Array.from({ length: 22 }, () => ({
 
 <template>
   <section class="gameover rise-in">
+    <button class="btn btn--ghost gameover__back" @click="changeConfig()">
+      &lsaquo; Retour
+    </button>
+
     <div class="logo-rain" aria-hidden="true">
       <img
         v-for="(drop, i) in rain"
@@ -134,6 +138,13 @@ const rain = Array.from({ length: 22 }, () => ({
   align-items: center;
   gap: 10px;
   text-align: center;
+}
+
+.gameover__back {
+  align-self: flex-start;
+  font-size: 13px;
+  padding: 10px 16px;
+  margin-bottom: 4px;
 }
 
 .gameover__title {

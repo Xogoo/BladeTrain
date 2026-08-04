@@ -74,9 +74,36 @@ onMounted(() => {
 const openPanel = ref(null); // 'explain' | 'tricklist' | 'familyChecklist' | null
 const stoppedReels = ref(0);
 
+let vsAutoAdvanceTimer = null;
+function clearVsAutoAdvance() {
+  if (vsAutoAdvanceTimer) {
+    window.clearTimeout(vsAutoAdvanceTimer);
+    vsAutoAdvanceTimer = null;
+  }
+}
+
 onUnmounted(() => {
   window.clearTimeout(settleFailsafeTimer);
+  clearVsAutoAdvance();
 });
+
+// BLADE VS: once a round is decided (landed, or 3 tries used up), the
+// result stays on screen — réussi/+1 lettre — for 2s, then the next
+// trick starts automatically, no tap needed. Still tappable early via
+// "Trick suivant" (which clears vsRoundResult itself, so this watch's
+// next run just sees nothing pending and does nothing) or via voice.
+watch(
+  () => state.vsRoundResult,
+  (result) => {
+    clearVsAutoAdvance();
+    if (result) {
+      vsAutoAdvanceTimer = window.setTimeout(() => {
+        vsAutoAdvanceTimer = null;
+        nextVsRound(settings);
+      }, 2000);
+    }
+  }
+);
 
 // Read the trick aloud once the reels have settled.
 watch(

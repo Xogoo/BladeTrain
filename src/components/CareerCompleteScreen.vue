@@ -31,6 +31,10 @@ const rain = Array.from({ length: 30 }, () => ({
 
 <template>
   <section class="career-win rise-in">
+    <button class="btn btn--ghost career-win__back" @click="goToStart()">
+      &lsaquo; Retour
+    </button>
+
     <div class="logo-rain" aria-hidden="true">
       <img
         v-for="(drop, i) in rain"
@@ -88,6 +92,13 @@ const rain = Array.from({ length: 30 }, () => ({
   align-items: center;
   gap: 8px;
   text-align: center;
+}
+
+.career-win__back {
+  align-self: flex-start;
+  font-size: 13px;
+  padding: 10px 16px;
+  margin-bottom: 4px;
 }
 
 .career-win__stamp {
