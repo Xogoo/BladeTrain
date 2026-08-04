@@ -13,6 +13,22 @@ body {
   max-width: 100vw;
 }
 
+/* Kills the double-tap-to-zoom gesture app-wide — a stray double-tap
+   on a button/reel while playing shouldn't ever zoom the page.
+   "manipulation" specifically means pan + pinch-zoom stay allowed
+   (two-finger zoom still works fine), it only strips out double-tap
+   zoom (and the ~300ms tap delay that comes with it). Deliberately NOT
+   done via the viewport meta tag's user-scalable=no/maximum-scale=1 —
+   those would kill pinch-zoom entirely too, which is an accessibility
+   regression this isn't meant to cause. Elements that need their own
+   finer-grained touch handling (ColorWheel's drag, AppModal's
+   swipe-to-dismiss sheets) already set a more specific touch-action of
+   their own, which still takes precedence over this default.
+   */
+html {
+  touch-action: manipulation;
+}
+
 /* Respect the OS-level "reduce motion" accessibility setting across
    the whole app in one place — badge unlock slams/shakes, reel spins,
    panel rise-ins, the pulsing "Terminé" CTA, all of it — rather than

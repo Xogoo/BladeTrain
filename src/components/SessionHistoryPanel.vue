@@ -19,7 +19,6 @@ const {
   bestComboChain,
   collection,
   uniqueTrickCount,
-  grindProgressPercent,
   earnedBadges,
   allBadges,
   careerProgress,
@@ -229,10 +228,6 @@ watch(
         <div class="stat-tile">
           <span class="stat-tile__value">{{ bestComboChain ?? "—" }}</span>
           <span class="stat-tile__label">meilleure chaîne Combo</span>
-        </div>
-        <div class="stat-tile">
-          <span class="stat-tile__value">{{ grindProgressPercent }}%</span>
-          <span class="stat-tile__label">grinds découverts</span>
         </div>
         <div class="stat-tile">
           <span class="stat-tile__value">{{ careerProgress("normal").percent }}%</span>
