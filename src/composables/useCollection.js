@@ -1421,18 +1421,14 @@ export function useCollection() {
   // family-completion badges tied to it — those have their own
   // dedicated reset button on the Carrière screen (resetCareerProgress
   // below), precisely so the two stay independent of each other.
+  // Full reset: every piece of history/progress this app tracks —
+  // sessions, lands/skips, trick & grind stats, badges, family &
+  // Career progress, Combo runs, VS matches, Drill — goes back to a
+  // clean slate. Settings (voice, theme/accent color, targeted-
+  // training config, personal families...) live entirely in
+  // useSettings.js, not here, so this never touches any of that.
   const resetCollection = () => {
-    const { familyProgress, badges } = collection;
-    const preservedBadges = {};
-    for (const [id, date] of Object.entries(badges)) {
-      if (id.startsWith("family-")) {
-        preservedBadges[id] = date;
-      }
-    }
-    Object.assign(collection, defaultCollection(), {
-      familyProgress,
-      badges: preservedBadges,
-    });
+    Object.assign(collection, defaultCollection());
   };
 
   // The Career screen's own reset: wipes every BUILT-IN family's
