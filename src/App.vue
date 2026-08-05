@@ -225,7 +225,7 @@ const openPanel = ref(requestedPanel ?? null);
     <GameOverScreen v-else />
   </main>
 
-  <nav v-if="!(settings.focusMode && state.screen === 'game')" class="app-nav">
+  <nav v-if="state.screen !== 'game'" class="app-nav">
     <button
       class="app-nav__btn"
       :disabled="state.phase === 'spinning'"
