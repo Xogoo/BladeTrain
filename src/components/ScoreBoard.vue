@@ -7,7 +7,7 @@ import { resolveFamily } from "../game/families.js";
 import FamilyChecklistPanel from "./FamilyChecklistPanel.vue";
 import TargetedTrainingChecklistPanel from "./TargetedTrainingChecklistPanel.vue";
 
-const { state, isSolo, activeFamily } = useGame();
+const { state, isSolo, isDrill, activeFamily } = useGame();
 const { settings, levelName } = useSettings();
 const { familyIndex, sessionById, targetedTrainingItems } = useCollection();
 
@@ -135,7 +135,7 @@ const sessionDuration = computed(() => {
 
 <template>
   <div class="scoreboard-wrap">
-    <div v-if="isSolo" class="scoreboard panel">
+    <div v-if="isSolo || isDrill" class="scoreboard panel">
       <div class="scoreboard__block">
         <span class="scoreboard__caption">Score</span>
         <span class="scoreboard__value" :class="{ pop: pointsPop }">{{ state.points }}</span>
@@ -148,8 +148,12 @@ const sessionDuration = computed(() => {
         }}</span>
       </div>
       <div class="scoreboard__divider" />
+      <div v-if="isDrill" class="scoreboard__block">
+        <span class="scoreboard__caption">Niveau</span>
+        <span class="scoreboard__level">Drill</span>
+      </div>
       <button
-        v-if="activeFamily"
+        v-else-if="activeFamily"
         class="scoreboard__block scoreboard__block--tap"
         @click="showChecklist = true"
       >
