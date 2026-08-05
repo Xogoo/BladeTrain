@@ -2,6 +2,7 @@
 import { computed, ref, watch } from "vue";
 import AppIcon from "./AppIcon.vue";
 import FamilyHistoryPanel from "./FamilyHistoryPanel.vue";
+import SettingsPanel from "./SettingsPanel.vue";
 import TargetedTrainingHistoryPanel from "./TargetedTrainingHistoryPanel.vue";
 import {
   CUSTOM_LEVEL,
@@ -176,6 +177,7 @@ const selectedFamilyObject = computed(() =>
 // in sync.
 const hasWeakPoints = computed(() => weakPointsEntries(1).length > 0);
 const hasDrillEntries = computed(() => drillList.value.length > 0);
+const showDrillAddSettings = ref(false);
 
 // Which entry the dropdown on the Drill step currently points at —
 // defaults to the most recently added one, and stays in sync if the
@@ -431,14 +433,14 @@ const MODES = [
     tagline: "Toi contre le robot — 3 essais chacun, un B·L·A·D·E qui compte",
   },
   {
-    id: "group",
-    name: "Groupe",
-    tagline: "S.K.A.T.E entre potes — loupe et récolte B·L·A·D·E",
-  },
-  {
     id: "drill",
     name: "Drill",
     tagline: "Un trick précis, en boucle, jusqu'à le dompter",
+  },
+  {
+    id: "group",
+    name: "Groupe",
+    tagline: "S.K.A.T.E entre potes — loupe et récolte B·L·A·D·E",
   },
 ];
 
@@ -573,7 +575,7 @@ function removePlayer(index) {
         @click="chooseMode(mode.id)"
       >
         <span class="mode-card__name">{{ mode.name }}</span>
-        <span class="mode-card__go"><AppIcon name="play" :size="16" /></span>
+        <span class="mode-card__go"><AppIcon name="play" :size="14" /></span>
       </button>
     </div>
 
@@ -725,10 +727,20 @@ function removePlayer(index) {
       </button>
     </div>
     <p v-else class="setup__hint">
-      Ta liste Drill est vide — ajoute un trick depuis le bouton "+ Drill"
-      sur l'écran de tirage (n'importe quel mode), ou depuis l'onglet Drill
-      de l'Historique (suggestions automatiques).
+      Ta liste Drill est vide — ajoute un trick ci-dessous, depuis le bouton
+      "+ Drill" sur l'écran de tirage (n'importe quel mode), ou depuis
+      l'onglet Drill de l'Historique (suggestions automatiques).
     </p>
+
+    <button class="btn btn--ghost setup__go" @click="showDrillAddSettings = true">
+      <AppIcon name="target" :size="18" /> Ajouter un drill
+    </button>
+
+    <SettingsPanel
+      v-if="showDrillAddSettings"
+      mode="addDrill"
+      @close="showDrillAddSettings = false"
+    />
   </section>
 
   <!-- step 1d: Famille — a builtin or personal family, straight into training -->
@@ -1290,16 +1302,16 @@ function removePlayer(index) {
 /* full-width banner like the original start screen */
 .start__logo {
   width: min(500px, 95%);
-  padding-bottom: 16px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--line-strong);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .start__logo-mark {
-  width: min(280px, 60%);
+  width: min(170px, 42%);
   aspect-ratio: 700 / 656;
   -webkit-mask-image: url(/img/blade-skater-silhouette.png);
   mask-image: url(/img/blade-skater-silhouette.png);
@@ -1325,7 +1337,7 @@ body.theme-inverted .start__logo-mark {
 
 .start__logo-text {
   font-family: var(--font-display);
-  font-size: clamp(64px, 18vw, 108px);
+  font-size: clamp(40px, 11vw, 68px);
   font-weight: 900;
   letter-spacing: 0.06em;
   line-height: 1;
@@ -1341,9 +1353,9 @@ body.theme-inverted .start__logo-mark {
 .start__modes {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
-  margin-top: 14px;
+  margin-top: 10px;
 }
 
 .backup-reminder {
@@ -1362,8 +1374,8 @@ body.theme-inverted .start__logo-mark {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 24px 20px;
+  gap: 3px;
+  padding: 13px 18px;
   text-align: left;
   transition: transform 0.15s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -1377,7 +1389,7 @@ body.theme-inverted .start__logo-mark {
 .mode-card__name {
   font-family: var(--font-display);
   font-weight: 900;
-  font-size: 24px;
+  font-size: 17px;
   text-transform: uppercase;
   color: var(--text);
 }
@@ -1389,7 +1401,7 @@ body.theme-inverted .start__logo-mark {
 
 .mode-card__go {
   position: absolute;
-  right: 18px;
+  right: 16px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--red-hi);

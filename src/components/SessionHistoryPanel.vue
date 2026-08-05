@@ -5,7 +5,6 @@ import AppIcon from "./AppIcon.vue";
 import AttemptsChart from "./AttemptsChart.vue";
 import ComboChainChart from "./ComboChainChart.vue";
 import SessionSummary from "./SessionSummary.vue";
-import SwitchUpHistoryPanel from "./SwitchUpHistoryPanel.vue";
 import MonthlyReportPanel from "./MonthlyReportPanel.vue";
 import { useCollection } from "../composables/useCollection.js";
 
@@ -66,7 +65,6 @@ function formatDate(iso) {
   });
 }
 
-const showSwitchUps = ref(false);
 const showMonthlyReport = ref(false);
 
 // ---- Drill -----------------------------------------------------------
@@ -89,6 +87,7 @@ const TABS = [
   { id: "apercu", label: "Aperçu" },
   { id: "sessions", label: "Sessions" },
   { id: "trick", label: "Par trick" },
+  { id: "switchup", label: "Switch up" },
   { id: "combos", label: "Combos" },
   { id: "vs", label: "BLADE VS" },
   { id: "drill", label: "Drill" },
@@ -234,6 +233,100 @@ const selectedTrickSessions = computed(() => {
   return sessionHistory.value.filter((s) => ids.has(s.id));
 });
 
+// ---- Switch up -------------------------------------------------------
+// Same "1er trick" grouping this used to do as its own standalone
+// panel — every switch-up's trickName is "<first trick> to <...>", so
+// the first trick is just everything before that first " to ".
+function firstTrickOf(trickName) {
+  return trickName.split(" to ")[0];
+}
+
+const switchUpFirstTrickOptions = computed(() => {
+  const counts = {};
+  for (const land of switchUpLands.value) {
+    const name = firstTrickOf(land.trickName);
+    counts[name] = (counts[name] || 0) + 1;
+  }
+  return Object.entries(counts)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+});
+
+const selectedFirstTrick = ref(null);
+watch(
+  switchUpFirstTrickOptions,
+  (list) => {
+    if (!list.length) {
+      selectedFirstTrick.value = null;
+      return;
+    }
+    if (!list.some((o) => o.name === selectedFirstTrick.value)) {
+      selectedFirstTrick.value = list[0].name;
+    }
+  },
+  { immediate: true }
+);
+
+// Every distinct switch-up starting from the selected first trick —
+// same shape as allTouchedTricks above (Par trick), just scoped down
+// to this one first-trick's switch-ups, most-attempted first.
+const switchUpTrickOptions = computed(() => {
+  if (!selectedFirstTrick.value) {
+    return [];
+  }
+  const names = new Set(
+    switchUpLands.value
+      .filter((l) => firstTrickOf(l.trickName) === selectedFirstTrick.value)
+      .map((l) => l.trickName)
+  );
+  return [...names]
+    .map(
+      (name) =>
+        allTouchedTricks.value.find((t) => t.name === name) || {
+          name,
+          landed: 0,
+          skipped: 0,
+          failed: 0,
+        }
+    )
+    .sort((a, b) => b.landed + b.skipped - (a.landed + a.skipped));
+});
+
+const selectedSwitchUpTrick = ref(null);
+watch(
+  switchUpTrickOptions,
+  (list) => {
+    if (!list.length) {
+      selectedSwitchUpTrick.value = null;
+      return;
+    }
+    if (!list.some((o) => o.name === selectedSwitchUpTrick.value)) {
+      selectedSwitchUpTrick.value = list[0].name;
+    }
+  },
+  { immediate: true }
+);
+
+// Same three "Par trick" elements (stats, chart, sessions it appeared
+// in), just reading from selectedSwitchUpTrick instead of trickSearch.
+const selectedSwitchUpStats = computed(
+  () => allTouchedTricks.value.find((t) => t.name === selectedSwitchUpTrick.value) || null
+);
+const selectedSwitchUpChartSeries = computed(
+  () => rankedTricks.value.find((t) => t.name === selectedSwitchUpTrick.value) || null
+);
+const selectedSwitchUpSessions = computed(() => {
+  if (!selectedSwitchUpTrick.value) {
+    return [];
+  }
+  const ids = new Set(
+    collection.lands
+      .filter((l) => l.trickName === selectedSwitchUpTrick.value)
+      .map((l) => l.sessionId)
+  );
+  return sessionHistory.value.filter((s) => ids.has(s.id));
+});
+
 // Default the search to the most-repeated trick, same starting point
 // the old "Progression" chart used, and keep it valid if the ranking
 // changes (e.g. right after landing a new repeat) — or if the status
@@ -304,14 +397,6 @@ watch(
       <div class="quick-links">
         <button class="btn monthly-report-teaser" @click="showMonthlyReport = true">
           <AppIcon name="zap" :size="16" /> Rapport mensuel
-        </button>
-        <button
-          v-if="switchUpLands.length"
-          class="btn switchup-teaser"
-          @click="showSwitchUps = true"
-        >
-          <AppIcon name="list" :size="16" />
-          Voir tes {{ switchUpLands.length }} switch-up{{ switchUpLands.length === 1 ? "" : "s" }}
         </button>
       </div>
 
@@ -466,6 +551,77 @@ watch(
             </span>
           </button>
         </div>
+      </template>
+    </section>
+
+    <!-- Switch up -->
+    <section v-else-if="activeTab === 'switchup'">
+      <p v-if="!switchUpFirstTrickOptions.length" class="hint">
+        Pas encore de switch-up réussi &mdash; ils apparaîtront ici une fois
+        que tu en auras réussi un.
+      </p>
+      <template v-else>
+        <div class="filters">
+          <select class="select" v-model="selectedFirstTrick">
+            <option v-for="opt in switchUpFirstTrickOptions" :key="opt.name" :value="opt.name">
+              1er trick : {{ opt.name }} ({{ opt.count }})
+            </option>
+          </select>
+        </div>
+
+        <div class="trick-picker">
+          <select class="select" v-model="selectedSwitchUpTrick">
+            <option v-for="trick in switchUpTrickOptions" :key="trick.name" :value="trick.name">
+              {{ trick.name }} &mdash; {{ trick.landed }} réussi{{ trick.landed > 1 ? "s" : "" }},
+              {{ trick.failed }} raté{{ trick.failed > 1 ? "s" : "" }},
+              {{ trick.skipped }} passé{{ trick.skipped > 1 ? "s" : "" }}
+            </option>
+          </select>
+        </div>
+
+        <template v-if="selectedSwitchUpStats">
+          <p v-if="selectedSwitchUpStats.landed === 0" class="hint trick-detail__never">
+            {{ selectedSwitchUpStats.failed }} raté{{ selectedSwitchUpStats.failed > 1 ? "s" : "" }},
+            {{ selectedSwitchUpStats.skipped }} passé{{ selectedSwitchUpStats.skipped > 1 ? "s" : "" }}
+            &mdash; jamais réussi.
+          </p>
+          <template v-else>
+            <AttemptsChart v-if="selectedSwitchUpChartSeries" :series="selectedSwitchUpChartSeries" />
+            <p v-else class="hint">
+              Réussi {{ selectedSwitchUpStats.landed }} fois &mdash; pas encore assez
+              de répétitions pour un graphique (il en faut au moins 2).
+            </p>
+            <p v-if="selectedSwitchUpStats.failed" class="trick-detail__failed">
+              {{ selectedSwitchUpStats.failed }} raté{{ selectedSwitchUpStats.failed > 1 ? "s" : "" }}
+              au total avant d'y arriver.
+            </p>
+          </template>
+
+          <p v-if="selectedSwitchUpSessions.length" class="trick-detail__sessions-title">
+            Apparu dans {{ selectedSwitchUpSessions.length }} session{{
+              selectedSwitchUpSessions.length > 1 ? "s" : ""
+            }} :
+          </p>
+          <div v-if="selectedSwitchUpSessions.length" class="sessions">
+            <div v-for="session in selectedSwitchUpSessions" :key="session.id" class="session-card">
+              <button class="session-card__row" @click="toggle(session.id)">
+                <span class="session-card__main">
+                  <span class="session-card__date">{{ formatDate(session.startedAt) }}</span>
+                  <span v-if="session.label" class="session-card__label">{{ session.label }}</span>
+                </span>
+                <AppIcon
+                  name="forward"
+                  :size="14"
+                  :class="{ 'session-card__chevron--open': expandedId === session.id }"
+                  class="session-card__chevron"
+                />
+              </button>
+              <div v-if="expandedId === session.id" class="session-card__detail">
+                <SessionSummary :session-id="session.id" />
+              </div>
+            </div>
+          </div>
+        </template>
       </template>
     </section>
 
@@ -660,7 +816,6 @@ watch(
       </div>
     </section>
 
-    <SwitchUpHistoryPanel v-if="showSwitchUps" @close="showSwitchUps = false" />
     <MonthlyReportPanel v-if="showMonthlyReport" @close="showMonthlyReport = false" />
   </AppModal>
 </template>
@@ -840,12 +995,6 @@ watch(
   color: var(--text-dim);
   font-family: var(--font-display);
   font-size: 13px;
-}
-
-.switchup-teaser {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .monthly-report-teaser {

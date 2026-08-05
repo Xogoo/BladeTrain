@@ -4,15 +4,24 @@ import AppModal from "./AppModal.vue";
 import AppIcon from "./AppIcon.vue";
 import { generateSpin, enumeratePossibleTricks } from "../game/trickGenerator.js";
 import { useSettings } from "../composables/useSettings.js";
+import { useCollection } from "../composables/useCollection.js";
 
 const props = defineProps({
   settings: { type: Object, required: true },
+  // 'default': the normal "Réglages > Aperçu" flow (create a personal
+  // family, or Débuter! starts a live session with these settings).
+  // 'addDrill': opened from Drill's own "+ Ajouter un trick" button —
+  // each row gets its own "+ Drill" button to add that EXACT trick,
+  // and the footer only offers a way back (nothing to "start" here).
+  mode: { type: String, default: "default" },
 });
 const emit = defineEmits(["back", "start"]);
 
 const { saveCustomFamily } = useSettings();
+const { addDrillEntry } = useCollection();
 const newFamilyName = ref("");
 const saveStatus = ref("");
+const justAddedName = ref("");
 
 function onCreateFamily() {
   if (!newFamilyName.value.trim() || !sample.value.isExact) {
@@ -21,6 +30,16 @@ function onCreateFamily() {
   saveCustomFamily(newFamilyName.value, sample.value.entries);
   saveStatus.value = `Famille perso créée : "${newFamilyName.value.trim()}"`;
   newFamilyName.value = "";
+}
+
+function onAddDrill(name, entry) {
+  addDrillEntry({ trickName: name, entry, source: "manual" });
+  justAddedName.value = name;
+  window.setTimeout(() => {
+    if (justAddedName.value === name) {
+      justAddedName.value = "";
+    }
+  }, 1500);
 }
 
 const SAMPLE_ROLLS = 400;
@@ -73,7 +92,10 @@ const sample = computed(() => {
 </script>
 
 <template>
-  <AppModal title="Aperçu des tricks possibles" @close="emit('back')">
+  <AppModal
+    :title="mode === 'addDrill' ? 'Ajouter un trick au Drill' : 'Aperçu des tricks possibles'"
+    @close="emit('back')"
+  >
     <p class="hint">
       <template v-if="sample.isExact">
         {{ sample.total }} trick{{ sample.total === 1 ? "" : "s" }} possible{{
@@ -88,10 +110,24 @@ const sample = computed(() => {
     </p>
 
     <ul class="preview-list">
-      <li v-for="name in sample.shown" :key="name">{{ name }}</li>
+      <li v-for="(name, index) in sample.shown" :key="name" class="preview-list__row">
+        <span>{{ name }}</span>
+        <button
+          v-if="mode === 'addDrill' && sample.isExact"
+          class="btn btn--ghost preview-list__add"
+          @click="onAddDrill(name, sample.entries[index])"
+        >
+          <AppIcon :name="justAddedName === name ? 'check' : 'target'" :size="14" />
+          {{ justAddedName === name ? "Ajouté" : "+ Drill" }}
+        </button>
+      </li>
     </ul>
+    <p v-if="mode === 'addDrill' && !sample.isExact" class="preset-save__hint">
+      Impossible d'ajouter tant que la liste n'est pas exacte — resserre tes
+      réglages (moins de grinds/variations activés à la fois).
+    </p>
 
-    <div class="preset-save">
+    <div v-if="mode !== 'addDrill'" class="preset-save">
       <input
         type="text"
         class="select"
@@ -120,8 +156,11 @@ const sample = computed(() => {
       <button class="btn btn--ghost" @click="emit('back')">
         <AppIcon name="forward" :size="16" style="transform: scaleX(-1)" /> Retour
       </button>
-      <button class="btn btn--go" @click="emit('start')">
+      <button v-if="mode !== 'addDrill'" class="btn btn--go" @click="emit('start')">
         <AppIcon name="play" :size="18" /> Débuter !
+      </button>
+      <button v-else class="btn btn--go" @click="emit('back')">
+        <AppIcon name="check" :size="18" /> Terminé
       </button>
     </div>
   </AppModal>
@@ -144,13 +183,24 @@ const sample = computed(() => {
   margin-bottom: 18px;
 }
 
-.preview-list li {
+.preview-list li,
+.preview-list__row {
   padding: 9px 12px;
   border-radius: 10px;
   border: 1px solid var(--line);
   background: var(--bg-1);
   font-size: 14px;
   color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.preview-list__add {
+  flex: none;
+  font-size: 12px;
+  padding: 6px 10px;
 }
 
 .preset-save {

@@ -20,6 +20,14 @@ import {
 } from "../composables/useSettings.js";
 import { useBackup } from "../composables/useBackup.js";
 
+const props = defineProps({
+  // 'default': normal Réglages flow. 'addDrill': opened from Drill's
+  // own "+ Ajouter un trick" button — same grind/variation pickers,
+  // but the preview at the end lets you add one exact trick straight
+  // to the Drill list instead of starting a live session or saving a
+  // personal family.
+  mode: { type: String, default: "default" },
+});
 const emit = defineEmits(["close"]);
 
 const { startGame } = useGame();
@@ -543,6 +551,7 @@ const grindList = [
   <TrickPreviewPanel
     v-if="showPreview"
     :settings="settings"
+    :mode="mode"
     @back="showPreview = false"
     @start="onStartFromPreview"
   />
