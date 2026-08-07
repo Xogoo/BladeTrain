@@ -1331,30 +1331,50 @@ export function useGame() {
 
   /**
    * There's no way to run code while the app is closed, so "at
-   * midnight" really means "next time the Start screen is shown" — if
-   * a solo session was left dangling open from a PREVIOUS calendar day
-   * (forgot to tap "Terminer la session"), it's quietly closed out
-   * here instead of silently growing forever. A session still open
-   * from TODAY is left alone — jumping back into it is likely, and the
-   * Start screen offers its own manual "Terminer" button for that case
-   * (see hasOpenSessionToday below).
+   * midnight" really means "next time the Start screen is shown".
+   *
+   * Locking the phone (or backgrounding the app) leaves state.sessionId
+   * intact in memory — that case is already handled fine by
+   * hasOpenSessionToday/endOpenSession below. But fully CLOSING the
+   * app (swiped away, or iOS killing the tab under memory pressure)
+   * wipes state.sessionId along with everything else in memory — the
+   * session itself is still sitting in collection.sessions with
+   * endedAt still null (that part IS persisted, synchronously, same as
+   * always), there's just nothing left connecting it to "the session
+   * currently in progress" once the app restarts fresh. Scanning
+   * collection.sessions directly, instead of only ever trusting
+   * state.sessionId, is the only way to notice that case at all.
+   *
+   * A session dangling from a PREVIOUS calendar day is closed out
+   * quietly here, same as before. One still open from TODAY is left
+   * alone and surfaced instead (see danglingSession/
+   * resumeDanglingSession/closeDanglingSession below) — the Start
+   * screen offers the player an actual choice for that case, rather
+   * than silently deciding for them.
    */
   function closeStaleSessionIfNeeded() {
-    if (!state.sessionId) {
-      return;
-    }
-    const session = collection.sessionById(state.sessionId);
-    if (!session) {
-      state.sessionId = null;
-      return;
-    }
-    const startedDay = session.startedAt.slice(0, 10);
     const today = new Date().toISOString().slice(0, 10);
-    if (startedDay !== today) {
-      collection.endSession(state.sessionId);
-      backupApi.autoBackupIfDue();
-      state.lastSessionId = state.sessionId;
-      state.sessionId = null;
+    for (const session of collection.collection.sessions) {
+      if (session.endedAt !== null || session.id === state.sessionId) {
+        continue;
+      }
+      if (session.startedAt.slice(0, 10) !== today) {
+        collection.endSession(session.id);
+      }
+    }
+    // The in-memory case (state.sessionId survived, but from a
+    // previous day) still needs its own cleanup — endSession above
+    // only touched the persisted session record, not this reference.
+    if (state.sessionId) {
+      const session = collection.sessionById(state.sessionId);
+      if (!session) {
+        state.sessionId = null;
+      } else if (session.startedAt.slice(0, 10) !== today) {
+        collection.endSession(state.sessionId);
+        backupApi.autoBackupIfDue();
+        state.lastSessionId = state.sessionId;
+        state.sessionId = null;
+      }
     }
   }
 
@@ -1367,6 +1387,65 @@ export function useGame() {
     if (state.sessionId) {
       giveUp();
     }
+  }
+
+  // Labels this genuinely knows how to continue — plain solo-family
+  // training, where "resume" just means letting
+  // beginOrContinueSoloSession's own existing continuation logic take
+  // over once state.sessionId points at it again. BLADE VS/Combo/Drill
+  // carry a lot more live state (letters, chain, which exact trick was
+  // up) that never got persisted anywhere — there's nothing real to
+  // resume INTO for those, only a session record to close out.
+  function isResumableSessionLabel(label) {
+    if (!label) {
+      return true;
+    }
+    return (
+      !label.startsWith("BLADE VS") &&
+      !label.startsWith("Combo — ") &&
+      !label.startsWith("Drill — ")
+    );
+  }
+
+  /** The session left dangling by a full app close TODAY, if any — see
+   * closeStaleSessionIfNeeded's own comment above for the full
+   * mechanism. null when there's nothing to recover, which is the
+   * normal case almost all the time. */
+  const danglingSession = computed(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const found = [...collection.collection.sessions]
+      .reverse()
+      .find(
+        (s) =>
+          s.endedAt === null &&
+          s.id !== state.sessionId &&
+          s.startedAt.slice(0, 10) === today
+      );
+    if (!found) {
+      return null;
+    }
+    return { ...found, resumable: isResumableSessionLabel(found.label) };
+  });
+
+  /** "Clôturer" — just closes the session record out where it is,
+   * exactly as if the player had tapped "Terminer la session" back
+   * when it actually happened. */
+  function closeDanglingSession(sessionId) {
+    collection.endSession(sessionId);
+    backupApi.autoBackupIfDue();
+  }
+
+  /** "Reprendre" — only offered for resumable (solo-family) sessions.
+   * Re-attaches state.sessionId to the dangling record so the next
+   * Solo/Carrière/Famille/Mix session started continues accumulating
+   * into it instead of starting fresh — same
+   * beginOrContinueSoloSession continuation logic used when the app
+   * never left memory in the first place, just re-triggered from
+   * scratch. Doesn't relaunch the exact trick that was on screen
+   * (that part of the state is genuinely gone) — picking up training
+   * where the numbers left off, not a pixel-perfect replay. */
+  function resumeDanglingSession(sessionId) {
+    state.sessionId = sessionId;
   }
 
   return {
@@ -1410,5 +1489,8 @@ export function useGame() {
     closeStaleSessionIfNeeded,
     hasOpenSessionToday,
     endOpenSession,
+    danglingSession,
+    resumeDanglingSession,
+    closeDanglingSession,
   };
 }

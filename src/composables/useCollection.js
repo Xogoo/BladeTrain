@@ -25,6 +25,10 @@ const LOG_DB_NAME = "blade-log";
 const LOG_DB_VERSION = 1;
 const LANDS_STORE = "lands";
 const SKIPS_STORE = "skips";
+// Generously covers a big single session (the report that led to this
+// safety net was a 39-trick Combo run) while staying tiny in
+// localStorage terms — a couple hundred records is nothing.
+const RECENT_LOG_CAP = 150;
 
 function openLogDb() {
   return new Promise((resolve, reject) => {
@@ -272,6 +276,16 @@ function defaultCollection() {
     // of `tricks`'s dedupe once mastered (see addDrillEntry).
     drillEntries: [], // { id, trickName, entry, source: "manual"|"auto", addedAt, targetTotal, targetStreak, totalLanded, currentStreak, bestStreak }
     drillMastered: [], // { id, trickName, entry, source, addedAt, completedAt, targetTotal, targetStreak }
+    // A small, always-synchronously-persisted safety net for the most
+    // recent lands/skips — see hydrateLog's own comment for why this
+    // exists: an IndexedDB write can be lost if the app gets killed
+    // (not just backgrounded) right after it starts, since that write
+    // is fire-and-forget and asynchronous, unlike this array, which
+    // rides the exact same synchronous localStorage write as
+    // everything else in `collection`. Capped small on purpose — this
+    // is only ever meant to cover the tail end of one real session,
+    // not to become a second full copy of the log.
+    recentLog: [], // { kind: "land" | "skip", record }
   };
 }
 
@@ -382,6 +396,17 @@ watch(
 // (necessarily older) records in front of whatever's already there
 // avoids that regardless of timing, and keeps chronological order
 // intact either way.
+// A cheap, good-enough identity for a land/skip record when comparing
+// across storage layers (IndexedDB doesn't share any real key with
+// the plain objects pushed into collection.lands/skips) — a
+// genuine collision would need two DIFFERENT attempts at the exact
+// same trick, in the exact same session, with the exact same try
+// count, at the exact same millisecond. Not worth a dedicated id field
+// just to rule that out.
+function logRecordKey(record) {
+  return `${record.date}|${record.trickName}|${record.sessionId}|${record.tries}`;
+}
+
 async function hydrateLog() {
   const [idbLands, idbSkips] = await Promise.all([
     getAllLogRecords(LANDS_STORE),
@@ -400,6 +425,35 @@ async function hydrateLog() {
     bulkAddLogRecords(SKIPS_STORE, collection.skips);
   } else if (idbSkips.length) {
     collection.skips.unshift(...idbSkips);
+  }
+
+  // Recovery pass: cross-check the small always-synchronous recentLog
+  // buffer against what actually made it into IndexedDB. A record
+  // that's in recentLog but missing from IndexedDB means its
+  // fire-and-forget write never finished before the app got killed —
+  // this is exactly how a session's own landed/skipped COUNTERS (which
+  // persist synchronously) could end up correct while the detailed
+  // log for it came back empty or partial. Recovered records are
+  // pushed back into both the in-memory array and IndexedDB, so this
+  // only ever needs to happen once per record.
+  const landKeys = new Set(collection.lands.map(logRecordKey));
+  const skipKeys = new Set(collection.skips.map(logRecordKey));
+  const recoveredLands = [];
+  const recoveredSkips = [];
+  for (const entry of collection.recentLog) {
+    if (entry.kind === "land" && !landKeys.has(logRecordKey(entry.record))) {
+      recoveredLands.push(entry.record);
+    } else if (entry.kind === "skip" && !skipKeys.has(logRecordKey(entry.record))) {
+      recoveredSkips.push(entry.record);
+    }
+  }
+  if (recoveredLands.length) {
+    collection.lands.push(...recoveredLands);
+    bulkAddLogRecords(LANDS_STORE, recoveredLands);
+  }
+  if (recoveredSkips.length) {
+    collection.skips.push(...recoveredSkips);
+    bulkAddLogRecords(SKIPS_STORE, recoveredSkips);
   }
 }
 hydrateLog();
@@ -1563,6 +1617,12 @@ export function useCollection() {
     // this file. The in-memory array above (and the whole game) is
     // already fully updated regardless of how/whether this resolves.
     addLogRecord(LANDS_STORE, landRecord);
+    // Synchronous safety net for the SAME record — see recentLog's own
+    // comment in defaultCollection above.
+    collection.recentLog.push({ kind: "land", record: landRecord });
+    if (collection.recentLog.length > RECENT_LOG_CAP) {
+      collection.recentLog.splice(0, collection.recentLog.length - RECENT_LOG_CAP);
+    }
     if (sessionId) {
       const session = sessionById(sessionId);
       if (session) {
@@ -1699,6 +1759,10 @@ export function useCollection() {
     collection.skips.push(skipRecord);
     // Fire-and-forget — see recordLand's identical comment above.
     addLogRecord(SKIPS_STORE, skipRecord);
+    collection.recentLog.push({ kind: "skip", record: skipRecord });
+    if (collection.recentLog.length > RECENT_LOG_CAP) {
+      collection.recentLog.splice(0, collection.recentLog.length - RECENT_LOG_CAP);
+    }
     collection.streak = 0;
     updateDrillOnSkip(spin.name);
     if (sessionId) {

@@ -21,7 +21,7 @@ import { useBackup } from "../composables/useBackup.js";
 const emit = defineEmits(["open-settings"]);
 
 const { settings, applyLevel, saveCustomFamily, deleteCustomFamily } = useSettings();
-const { startGame, startFamilySession, startMixSession, startWeakPointsSession, WEAK_POINTS_FAMILY_ID, startComboCareer, startComboMix, startDrillSession, DRILL_FAMILY_ID, hasOpenSessionToday, endOpenSession, state } =
+const { startGame, startFamilySession, startMixSession, startWeakPointsSession, WEAK_POINTS_FAMILY_ID, startComboCareer, startComboMix, startDrillSession, DRILL_FAMILY_ID, hasOpenSessionToday, endOpenSession, danglingSession, resumeDanglingSession, closeDanglingSession, state } =
   useGame();
 const {
   familyIndex,
@@ -179,6 +179,22 @@ const hasWeakPoints = computed(() => weakPointsEntries(1).length > 0);
 const hasDrillEntries = computed(() => drillList.value.length > 0);
 const showDrillAddSettings = ref(false);
 
+// How the dropdown ITSELF displays drillList — 'recent' just mirrors
+// drillList's own default order (most recently added first); the
+// other two are purely for browsing convenience here and don't affect
+// drillList's own order used elsewhere (e.g. the Historique's Drill
+// tab, which always stays most-recent-first regardless of this).
+const drillSortOrder = ref("recent");
+const sortedDrillOptions = computed(() => {
+  const list = [...drillList.value];
+  if (drillSortOrder.value === "alpha") {
+    list.sort((a, b) => a.trickName.localeCompare(b.trickName));
+  } else if (drillSortOrder.value === "occurrences") {
+    list.sort((a, b) => b.totalLanded - a.totalLanded);
+  }
+  return list;
+});
+
 // Which entry the dropdown on the Drill step currently points at —
 // defaults to the most recently added one, and stays in sync if the
 // list changes (an entry gets mastered/removed) while this screen is
@@ -192,6 +208,16 @@ watch(drillList, (list) => {
 
 function onStartWeakPoints() {
   startWeakPointsSession(settings);
+}
+
+// Reprendre: re-attaches state.sessionId (see resumeDanglingSession's
+// own comment in useGame.js), then drops the player on the general
+// Famille/Mix picker — whatever they pick next continues accumulating
+// into the recovered session instead of starting a new one.
+function onResumeDanglingSession() {
+  resumeDanglingSession(danglingSession.value.id);
+  step.value = "family";
+  familyView.value = "family";
 }
 
 function onStartDrill() {
@@ -588,6 +614,26 @@ function removePlayer(index) {
       <span>Une session est encore en cours.</span>
       <button class="btn" @click="endOpenSession">Terminer la session</button>
     </div>
+
+    <div v-if="danglingSession" class="backup-reminder panel dangling-session">
+      <span>
+        Session non clôturée ({{ danglingSession.label || "Solo" }} &mdash;
+        {{ danglingSession.landed }} réussis) &mdash; l'app a dû se fermer en
+        plein milieu.
+      </span>
+      <div class="dangling-session__actions">
+        <button class="btn btn--ghost" @click="closeDanglingSession(danglingSession.id)">
+          Clôturer
+        </button>
+        <button
+          v-if="danglingSession.resumable"
+          class="btn btn--go"
+          @click="onResumeDanglingSession"
+        >
+          Reprendre
+        </button>
+      </div>
+    </div>
   </section>
 
   <!-- step 1b: Carrière chosen — Normal vs Switch, each own progress -->
@@ -715,8 +761,14 @@ function removePlayer(index) {
     </p>
 
     <div v-if="hasDrillEntries" class="setup__section">
+      <select class="select" v-model="drillSortOrder">
+        <option value="recent">Trier : ajout récent</option>
+        <option value="occurrences">Trier : nombre de réussites</option>
+        <option value="alpha">Trier : alphabétique</option>
+      </select>
+
       <select class="select" v-model="selectedDrillTrick">
-        <option v-for="d in drillList" :key="d.id" :value="d.trickName">
+        <option v-for="d in sortedDrillOptions" :key="d.id" :value="d.trickName">
           {{ d.trickName }} ({{ Math.min(d.totalLanded, d.targetTotal) }}/{{ d.targetTotal }}
           &middot; série {{ Math.min(d.bestStreak, d.targetStreak) }}/{{ d.targetStreak }})
         </option>
@@ -1370,6 +1422,20 @@ body.theme-inverted .start__logo-mark {
   padding: 12px 14px;
   font-size: 13px;
   color: var(--text-dim);
+}
+
+.dangling-session {
+  flex-direction: column;
+  align-items: stretch;
+  text-align: left;
+}
+
+.dangling-session__actions {
+  display: flex;
+  gap: 8px;
+}
+.dangling-session__actions .btn {
+  flex: 1;
 }
 
 .mode-card {
