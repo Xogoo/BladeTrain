@@ -95,13 +95,11 @@ const TABS = [
 const activeTab = ref("apercu");
 
 // ---- Aperçu -------------------------------------------------------------
-// Sessions that actually belong on the Sessions tab — Combo runs get
-// their own session row too (so recordLand has somewhere to attach),
-// but they're already fully represented in the Combos tab/history, so
-// they're excluded here to avoid showing the same run twice.
-const trainingSessions = computed(() =>
-  sessionHistory.value.filter((s) => !s.label || !s.label.startsWith("Combo — "))
-);
+// Every session, every mode — the Sessions tab is the full unified
+// timeline, "what did I do and when" across everything, including
+// Combo runs (which ALSO get their own richer view in the Combos tab —
+// showing up in both is intentional, not a duplicate to avoid).
+const trainingSessions = computed(() => sessionHistory.value);
 
 const badgeCount = computed(() => `${earnedBadges.value.length}/${allBadges.value.length}`);
 
@@ -128,6 +126,8 @@ const allTrickNames = computed(() => {
 // read as plain Solo, same as an unlabeled Custom session today.
 function sessionCategory(session) {
   const label = session.label || "Solo";
+  if (label.startsWith("Combo")) return "Combo";
+  if (label.startsWith("Drill")) return "Drill";
   if (label.startsWith("Carrière")) return "Carrière";
   if (label.startsWith("Famille")) return "Famille";
   if (label.startsWith("Mix")) return "Mix";

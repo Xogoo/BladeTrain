@@ -717,6 +717,7 @@ export function useGame() {
    * extends the chain and draws the next one; a 2nd failed try in a
    * row ends the whole run right there. */
   const comboAttempt = (landed, settings) => {
+    captureUndoSnapshot();
     if (landed) {
       state.newBadges = collection.recordLand(
         state.spin,
@@ -871,6 +872,7 @@ export function useGame() {
    * are spent — otherwise the same trick stays up for another go.
    */
   const vsAttempt = (landed, settings) => {
+    captureUndoSnapshot();
     if (!landed && state.vsTries < 3) {
       state.vsTries += 1;
       return;
@@ -1004,6 +1006,7 @@ export function useGame() {
 
   /** Group: resolve the current player's attempt at the round's trick. */
   const attempt = (landed, settings) => {
+    captureUndoSnapshot();
     const player = state.players[state.turnOrder[state.turnPos]];
     if (!landed) {
       player.letters += 1;

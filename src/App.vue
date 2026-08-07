@@ -16,10 +16,12 @@ import SessionHistoryPanel from "./components/SessionHistoryPanel.vue";
 import { useGame } from "./composables/useGame.js";
 import { useSettings } from "./composables/useSettings.js";
 import { useSpeech } from "./composables/useSpeech.js";
+import { useBackup } from "./composables/useBackup.js";
 import { computeAccentPalette, computeAccentGlow } from "./game/accentPalette.js";
 
 const { state, goToStart, closeStaleSessionIfNeeded } = useGame();
 const { settings } = useSettings();
+const { autoBackupIfDue } = useBackup();
 
 // A solo session left dangling open from a previous day (forgot to tap
 // "Terminer la session") gets quietly closed out the next time the
@@ -157,24 +159,35 @@ function animateCounter(startedAt) {
   }
 }
 
-// Any button press in the game cuts running speech short. Capture
-// phase, so the stop happens before the button's own handler (which may
-// speak again, like the replay button). The intro music is NOT touched
-// here — it keeps playing through the toolbar panels and only fades
-// when a mode is chosen (see StartScreen).
-function stopSpeechOnButton(event) {
-  if (showApp.value && event.target.closest("button")) {
+// Any button press in the game cuts running speech short (capture
+// phase, so the stop happens before the button's own handler, which
+// may speak again, like the replay button) AND checks whether today's
+// automatic backup is still due (see useBackup.js's autoBackupIfDue —
+// it's a cheap same-day string check, so calling it on every single
+// tap costs nothing; the actual backup work only ever runs once a
+// day). Piggybacking here means the FIRST tap of the day anywhere in
+// the app triggers it — not just finishing a training session — since
+// a day where the player only checks the Historique or Réglages
+// should still get backed up. The intro music is NOT touched here —
+// it keeps playing through the toolbar panels and only fades when a
+// mode is chosen (see StartScreen).
+function onGlobalButtonClick(event) {
+  if (!event.target.closest("button")) {
+    return;
+  }
+  if (showApp.value) {
     stopSpeech();
   }
+  autoBackupIfDue();
 }
 
 onMounted(() => {
   setTimeout(() => (introTimeDone.value = true), INTRO_MIN_MS);
   animateCounter(performance.now());
-  document.addEventListener("click", stopSpeechOnButton, true);
+  document.addEventListener("click", onGlobalButtonClick, true);
 });
 onUnmounted(() => {
-  document.removeEventListener("click", stopSpeechOnButton, true);
+  document.removeEventListener("click", onGlobalButtonClick, true);
 });
 
 // 'settings' | 'tricktionary' | 'collection' | 'about' | 'history' | null;
@@ -183,6 +196,11 @@ const openPanel = ref(requestedPanel ?? null);
 </script>
 
 <template>
+  <div class="landscape-lock" role="alert">
+    <span class="landscape-lock__icon" aria-hidden="true">&#8635;</span>
+    Tourne ton téléphone en mode portrait pour continuer.
+  </div>
+
   <transition name="intro-out">
     <div v-if="!showApp" class="app-loading">
       <div class="app-loading__logo-mark" aria-hidden="true" />
@@ -273,6 +291,61 @@ const openPanel = ref(requestedPanel ?? null);
 </template>
 
 <style scoped>
+/* No web API can actually LOCK orientation on iOS (Safari, and
+   Add-to-Home-Screen PWAs, ignore both the Screen Orientation API and
+   the manifest's "orientation" field — a longstanding platform gap,
+   not something fixable from here). This is the reliable fallback
+   every mobile web app uses instead: a fullscreen block that only
+   shows up in landscape, on phone-sized screens specifically (the
+   max-height guard keeps this from ever firing on a wide desktop
+   browser window, which is technically "landscape" too but obviously
+   not a phone turned sideways). Hidden by default; note this can't
+   live in a normal v-if/computed the rest of the app uses, since it
+   has to react to the DEVICE rotating, not any app state — a pure CSS
+   media query is both simpler and instant, no orientationchange
+   listener needed.
+   For the native (Capacitor) iOS build specifically, this can be
+   locked properly at the OS level instead — set "Supported interface
+   orientations" to Portrait only in Xcode/Info.plist, which is outside
+   what this web source can reach. */
+.landscape-lock {
+  display: none;
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .landscape-lock {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 24px;
+    text-align: center;
+    background: #050505;
+    color: #f4f4f4;
+    font-family: var(--font-display, sans-serif);
+    font-size: 16px;
+  }
+}
+
+.landscape-lock__icon {
+  font-size: 40px;
+  animation: landscape-lock-spin 1.6s ease-in-out infinite;
+}
+
+@keyframes landscape-lock-spin {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-90deg);
+  }
+}
+
 .app-shell {
   flex: 1;
   display: flex;

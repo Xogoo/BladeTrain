@@ -575,7 +575,7 @@ function removePlayer(index) {
         @click="chooseMode(mode.id)"
       >
         <span class="mode-card__name">{{ mode.name }}</span>
-        <span class="mode-card__go"><AppIcon name="play" :size="14" /></span>
+        <span class="mode-card__go"><AppIcon name="play" :size="16" /></span>
       </button>
     </div>
 
@@ -1291,27 +1291,29 @@ function removePlayer(index) {
 .start {
   width: min(560px, 100%);
   margin: 0 auto;
-  padding: 34px 16px 40px;
+  padding: 30px 16px 30px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  justify-content: center;
+  gap: 16px;
   text-align: center;
+  min-height: 100%;
 }
 
 /* full-width banner like the original start screen */
 .start__logo {
   width: min(500px, 95%);
-  padding-bottom: 10px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--line-strong);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .start__logo-mark {
-  width: min(170px, 42%);
+  width: min(210px, 48%);
   aspect-ratio: 700 / 656;
   -webkit-mask-image: url(/img/blade-skater-silhouette.png);
   mask-image: url(/img/blade-skater-silhouette.png);
@@ -1337,7 +1339,7 @@ body.theme-inverted .start__logo-mark {
 
 .start__logo-text {
   font-family: var(--font-display);
-  font-size: clamp(40px, 11vw, 68px);
+  font-size: clamp(48px, 13vw, 82px);
   font-weight: 900;
   letter-spacing: 0.06em;
   line-height: 1;
@@ -1353,9 +1355,9 @@ body.theme-inverted .start__logo-mark {
 .start__modes {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 11px;
   width: 100%;
-  margin-top: 10px;
+  margin-top: 4px;
 }
 
 .backup-reminder {
@@ -1374,8 +1376,8 @@ body.theme-inverted .start__logo-mark {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 13px 18px;
+  gap: 4px;
+  padding: 17px 20px;
   text-align: left;
   transition: transform 0.15s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -1389,7 +1391,7 @@ body.theme-inverted .start__logo-mark {
 .mode-card__name {
   font-family: var(--font-display);
   font-weight: 900;
-  font-size: 17px;
+  font-size: 19px;
   text-transform: uppercase;
   color: var(--text);
 }
@@ -1413,6 +1415,8 @@ body.theme-inverted .start__logo-mark {
   align-items: stretch;
   text-align: left;
   gap: 18px;
+  justify-content: flex-start;
+  min-height: 0;
 }
 
 .setup__top {

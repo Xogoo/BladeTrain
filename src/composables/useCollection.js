@@ -6,6 +6,122 @@ import { useSettings } from "./useSettings.js";
 
 const STORAGE_KEY = "aight-collection-v1";
 
+// ---- Log storage (lands/skips) --------------------------------------
+// Every single land and skip, ever — unlike everything else in
+// `collection` (which grows with the number of DISTINCT tricks/grinds/
+// sessions, all individually capped), these two grow with every single
+// ATTEMPT, forever, with no natural ceiling. Keeping them in the same
+// localStorage blob as the rest of `collection` meant re-serializing
+// this ever-growing log on every single land/skip, and eventually
+// hitting localStorage's ~5-10MB quota outright after enough months of
+// play. IndexedDB has a much larger practical quota and writes
+// incrementally instead of re-serializing everything each time — a
+// better fit for a log that only ever grows. `collection.lands`/
+// `collection.skips` themselves stay exactly as they were (plain
+// reactive arrays every existing reader still just filters/maps over
+// synchronously) — only WHERE they're persisted changes; see
+// hydrateLog, recordLog, and resyncLog below for the actual plumbing.
+const LOG_DB_NAME = "blade-log";
+const LOG_DB_VERSION = 1;
+const LANDS_STORE = "lands";
+const SKIPS_STORE = "skips";
+
+function openLogDb() {
+  return new Promise((resolve, reject) => {
+    if (typeof indexedDB === "undefined") {
+      reject(new Error("IndexedDB unavailable"));
+      return;
+    }
+    const request = indexedDB.open(LOG_DB_NAME, LOG_DB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(LANDS_STORE)) {
+        db.createObjectStore(LANDS_STORE, { autoIncrement: true });
+      }
+      if (!db.objectStoreNames.contains(SKIPS_STORE)) {
+        db.createObjectStore(SKIPS_STORE, { autoIncrement: true });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// One new record — fire-and-forget from recordLand/recordSkip, same
+// "never interrupt the actual game" philosophy as the auto-backup
+// snapshot in useBackup.js. If IndexedDB is blocked/unavailable
+// (private browsing, an old browser, storage full...), the record
+// simply won't survive a reload — the in-memory array (and this
+// session) is completely unaffected either way.
+async function addLogRecord(storeName, record) {
+  try {
+    const db = await openLogDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, "readwrite");
+      tx.objectStore(storeName).add(record);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch {
+    // swallowed on purpose — see comment above
+  }
+}
+
+async function bulkAddLogRecords(storeName, records) {
+  if (!records.length) {
+    return;
+  }
+  try {
+    const db = await openLogDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, "readwrite");
+      const store = tx.objectStore(storeName);
+      for (const record of records) {
+        store.add(record);
+      }
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch {
+    // Best-effort migration/restore — if this fails, the records stay
+    // in memory for the current session (nothing lost right now), but
+    // won't survive a reload. Same fallback as addLogRecord above.
+  }
+}
+
+async function getAllLogRecords(storeName) {
+  try {
+    const db = await openLogDb();
+    const rows = await new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, "readonly");
+      const request = tx.objectStore(storeName).getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    db.close();
+    return rows;
+  } catch {
+    return [];
+  }
+}
+
+async function clearLogStore(storeName) {
+  try {
+    const db = await openLogDb();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, "readwrite");
+      tx.objectStore(storeName).clear();
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch {
+    // best effort — see addLogRecord above
+  }
+}
+
 const settingsApi = useSettings();
 
 // Resolves either a built-in family (families.js) or a player-built one
@@ -237,11 +353,71 @@ const collection = reactive(
   migrateFamilyEntryKeyFormat(migrateZerospinSplit(loadCollection()))
 );
 
+// lands/skips excluded on purpose — see the Log storage comment near
+// the top of this file. Everything else (aggregate stats, badges,
+// sessions, familyProgress, comboRuns, vsMatches, drillEntries...)
+// still persists exactly as before.
 watch(
   collection,
-  () => localStorage.setItem(STORAGE_KEY, JSON.stringify(collection)),
+  () => {
+    const { lands, skips, ...toPersist } = collection;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toPersist));
+  },
   { deep: true }
 );
+
+// Runs once at startup — loads lands/skips from IndexedDB into the
+// live reactive arrays. One-time migration built in: if
+// loadCollection() above pulled in lands/skips from an OLDER
+// localStorage blob (from before this moved to IndexedDB) and
+// IndexedDB itself is still empty, those get pushed into IndexedDB
+// once here so they're not lost.
+//
+// Deliberately MERGES rather than replaces: this is async, so there's
+// a brief window right after the app starts where a player could land
+// or skip something (pushing straight onto collection.lands/skips
+// already, synchronously, same as always) before this resolves.
+// Replacing the array outright at that point would silently discard
+// whatever got pushed in that window. Unshifting IndexedDB's
+// (necessarily older) records in front of whatever's already there
+// avoids that regardless of timing, and keeps chronological order
+// intact either way.
+async function hydrateLog() {
+  const [idbLands, idbSkips] = await Promise.all([
+    getAllLogRecords(LANDS_STORE),
+    getAllLogRecords(SKIPS_STORE),
+  ]);
+  if (collection.lands.length && idbLands.length === 0) {
+    // Legacy data still sitting in collection.lands from an old
+    // localStorage blob (possibly plus anything landed in the
+    // meantime) — push all of it into IndexedDB now; it's already
+    // exactly where it needs to be in memory, nothing further to do.
+    bulkAddLogRecords(LANDS_STORE, collection.lands);
+  } else if (idbLands.length) {
+    collection.lands.unshift(...idbLands);
+  }
+  if (collection.skips.length && idbSkips.length === 0) {
+    bulkAddLogRecords(SKIPS_STORE, collection.skips);
+  } else if (idbSkips.length) {
+    collection.skips.unshift(...idbSkips);
+  }
+}
+hydrateLog();
+
+// Replaces IndexedDB's entire lands/skips content with whatever's
+// CURRENTLY in collection.lands/skips — used right after a restore
+// (useBackup.js's restoreBackup) or a full reset (resetCollection
+// below), both of which just overwrite the in-memory arrays directly;
+// without this, the next app load would re-hydrate from the OLD
+// IndexedDB content and silently undo the restore/reset. Exported for
+// useBackup.js; called internally by resetCollection.
+export async function resyncLog() {
+  await Promise.all([clearLogStore(LANDS_STORE), clearLogStore(SKIPS_STORE)]);
+  await Promise.all([
+    bulkAddLogRecords(LANDS_STORE, collection.lands),
+    bulkAddLogRecords(SKIPS_STORE, collection.skips),
+  ]);
+}
 
 function statsIn(map, name) {
   if (!map[name]) {
@@ -1339,7 +1515,7 @@ export function useCollection() {
     collection.landedTotal += 1;
     updateDrillOnLand(spin.name);
 
-    collection.lands.push({
+    const landRecord = {
       sessionId,
       date: new Date().toISOString(),
       trickName: spin.name,
@@ -1381,7 +1557,12 @@ export function useCollection() {
       familyEntryKey: familyEntry ? familyEntryKey(familyEntry) : null,
       tries,
       score: spin.score,
-    });
+    };
+    collection.lands.push(landRecord);
+    // Fire-and-forget — see the Log storage comment near the top of
+    // this file. The in-memory array above (and the whole game) is
+    // already fully updated regardless of how/whether this resolves.
+    addLogRecord(LANDS_STORE, landRecord);
     if (sessionId) {
       const session = sessionById(sessionId);
       if (session) {
@@ -1429,6 +1610,17 @@ export function useCollection() {
   // useSettings.js, not here, so this never touches any of that.
   const resetCollection = () => {
     Object.assign(collection, defaultCollection());
+    // Without this, the old lands/skips would still be sitting in
+    // IndexedDB — invisible right now (collection.lands is freshly
+    // empty in memory), but hydrateLog would find IndexedDB already
+    // non-empty on the next app load and never re-run its "still
+    // empty, migrate from localStorage" check, so nothing would
+    // actively resurrect them either... except they'd already be
+    // there from before this reset ran, since resetCollection doesn't
+    // touch IndexedDB on its own. Clear it explicitly instead of
+    // relying on that.
+    clearLogStore(LANDS_STORE);
+    clearLogStore(SKIPS_STORE);
   };
 
   // The Career screen's own reset: wipes every BUILT-IN family's
@@ -1468,7 +1660,7 @@ export function useCollection() {
       statsIn(collection.tricks, spin.name).failed += tries - 1;
       statsIn(collection.grinds, winners.Grind).failed += tries - 1;
     }
-    collection.skips.push({
+    const skipRecord = {
       sessionId,
       date: new Date().toISOString(),
       trickName: spin.name,
@@ -1503,7 +1695,10 @@ export function useCollection() {
       switchUpGrindName: winners.SwitchUp !== "None" ? winners.SwitchUp : null,
       familyId,
       familyEntryKey: familyEntry ? familyEntryKey(familyEntry) : null,
-    });
+    };
+    collection.skips.push(skipRecord);
+    // Fire-and-forget — see recordLand's identical comment above.
+    addLogRecord(SKIPS_STORE, skipRecord);
     collection.streak = 0;
     updateDrillOnSkip(spin.name);
     if (sessionId) {

@@ -1,13 +1,20 @@
 import { computed } from "vue";
-import { useCollection, migrateZerospinSplit, migrateFamilyEntryKeyFormat } from "./useCollection.js";
+import { useCollection, migrateZerospinSplit, migrateFamilyEntryKeyFormat, resyncLog } from "./useCollection.js";
 import { useSettings } from "./useSettings.js";
 
 // There is no server here, and this app is sideloaded (not from the
-// App Store) — there is no way to run code in the background on a
-// schedule and silently email a file with zero interaction from the
-// player. The closest honest equivalent: nudge the player once a
-// backup is overdue (needsBackupReminder below), and make the actual
-// send/save a single tap once they act on it (exportBackup below).
+// App Store) — there is no way to run code on a schedule in the
+// background. What IS possible: piggyback on the player's own next
+// tap. Every session-ending action (Terminer la session, a VS match
+// finishing, Combo running out...) already happens inside a genuine
+// tap, so autoBackupIfDue below rides that same click to trigger a
+// real file download once a day — no share sheet, no extra
+// confirmation, the file just lands whereever downloads normally go
+// on this device (typically Fichiers > Téléchargements on iOS). Not a
+// silent background job (nothing can do that here), but the closest
+// practical equivalent: automatic from the player's point of view,
+// even though technically it's still riding a tap they were already
+// making anyway.
 
 // How long we let a backup go stale before nudging the player again.
 const BACKUP_REMINDER_DAYS = 7;
@@ -122,6 +129,20 @@ async function shareOrDownloadJson(json, fileName, shareText) {
     }
   }
 
+  return { method: downloadJsonNow(json, fileName) };
+}
+
+// The actual download trigger, factored out and kept synchronous (no
+// await anywhere in here) — used directly by shareOrDownloadJson's own
+// fallback above, and by the automatic daily backup below, which
+// deliberately calls this FIRST, before any async IndexedDB work,
+// so it fires as close to the player's own tap as possible. Browsers
+// (iOS Safari in particular) can silently swallow a download/share
+// trigger that happens even one microtask removed from a real user
+// gesture — this order is the whole reason the automatic backup can
+// produce a real file with no extra tap at all instead of needing its
+// own "Enregistrer" prompt.
+function downloadJsonNow(json, fileName) {
   const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
   const link = document.createElement("a");
   link.href = url;
@@ -130,7 +151,7 @@ async function shareOrDownloadJson(json, fileName, shareText) {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
-  return { method: "download" };
+  return "download";
 }
 
 export function useBackup() {
@@ -265,23 +286,38 @@ export function useBackup() {
     if (payload.settings) {
       Object.assign(settings, payload.settings);
     }
+    // Without this, the next app load would hydrate lands/skips from
+    // whatever was in IndexedDB BEFORE this restore, not what was just
+    // restored above — see resyncLog's own comment in useCollection.js.
+    resyncLog();
   }
 
   /**
-   * Called once per solo session end (see useGame.js) — snapshots
-   * collection+settings into IndexedDB, but at most once a day, so a
-   * long session or several short ones in the same day don't pile up
-   * redundant snapshots. Failures are swallowed on purpose (see
-   * saveAutoBackupSnapshot above) — this must never interrupt or
-   * error out the actual game flow it's called from.
+   * Called once per solo session end (see useGame.js) — at most once a
+   * day, so a long session or several short ones on the same day don't
+   * pile up redundant downloads/snapshots. Triggers a REAL file
+   * download first (synchronously, before anything async — see
+   * downloadJsonNow's own comment for why the order matters), then
+   * also snapshots into IndexedDB as a second, invisible safety net.
+   * Both failures are swallowed on purpose — this must never interrupt
+   * or error out the actual game flow it's riding along on.
    */
-  async function autoBackupIfDue() {
+  function autoBackupIfDue() {
     const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
     if (collection.lastAutoBackupDate === today) {
       return;
     }
-    await saveAutoBackupSnapshot(buildPayload());
+    const payload = buildPayload();
+    try {
+      downloadJsonNow(JSON.stringify(payload, null, 2), backupFileName());
+    } catch {
+      // Download blocked/unsupported in this context — the IndexedDB
+      // snapshot below still goes ahead regardless.
+    }
     collection.lastAutoBackupDate = today;
+    markBackedUp();
+    // Fire-and-forget — nothing downstream needs to await this.
+    saveAutoBackupSnapshot(payload);
   }
 
   /** Newest-first list of local auto-backup snapshots, for a small

@@ -10,6 +10,7 @@ import { useSettings } from "../composables/useSettings.js";
 import { useSpeech } from "../composables/useSpeech.js";
 import { useCollection } from "../composables/useCollection.js";
 import { useVoiceControl } from "../composables/useVoiceControl.js";
+import { generateSpin } from "../game/trickGenerator.js";
 
 const REEL_STAGGER_MS = 320;
 
@@ -214,6 +215,49 @@ const isResult = computed(() => state.phase === "result");
 const currentDrillEntry = computed(() =>
   state.spin ? drillList.value.find((d) => d.trickName === state.spin.name) || null : null
 );
+
+// Combo-Carrière only — Combo-Mix draws randomly from a pool, there's
+// no fixed order or "next family" to count down to. Finds the
+// contiguous stretch of state.comboPath belonging to the CURRENT
+// trick's family, so the scoreboard can show "X/Y avant la famille
+// suivante" and, tapped, the exact order those tricks come in.
+const comboFamilySegment = computed(() => {
+  if (!isCombo.value || state.comboSource !== "career" || !state.comboPath.length) {
+    return null;
+  }
+  const current = state.comboPath[state.comboPathIndex];
+  if (!current) {
+    return null;
+  }
+  let start = state.comboPathIndex;
+  while (start > 0 && state.comboPath[start - 1].familyId === current.familyId) {
+    start--;
+  }
+  let end = state.comboPathIndex;
+  while (
+    end < state.comboPath.length - 1 &&
+    state.comboPath[end + 1].familyId === current.familyId
+  ) {
+    end++;
+  }
+  return {
+    familyName: current.familyName,
+    landed: state.comboPathIndex - start,
+    total: end - start + 1,
+    entries: state.comboPath.slice(start, end + 1),
+    currentOffset: state.comboPathIndex - start,
+  };
+});
+
+const showComboPathList = ref(false);
+
+// Path entries only store the forced-trick recipe (grindName,
+// variationName, ...), not the display name — this reconstructs it
+// exactly, same as any other forced draw (see trickGenerator.js), safe
+// to call regardless of the player's own live settings.
+function comboEntryName(entry) {
+  return generateSpin(settings.tricks, [], null, null, null, null, entry, null).name;
+}
 
 const justAddedToDrill = ref(false);
 function onAddToDrill() {
@@ -432,6 +476,32 @@ function onReelStopped() {
       <div class="vs-scoreboard__side">
         <span class="vs-scoreboard__name">Combo</span>
         <span class="vs-scoreboard__letters">{{ state.comboChain }}</span>
+      </div>
+      <button
+        v-if="comboFamilySegment"
+        class="vs-scoreboard__side combo-milestone"
+        @click="showComboPathList = !showComboPathList"
+      >
+        <span class="vs-scoreboard__name">{{ comboFamilySegment.familyName }}</span>
+        <span class="vs-scoreboard__letters combo-milestone__count">
+          {{ comboFamilySegment.landed }}/{{ comboFamilySegment.total }}
+        </span>
+      </button>
+    </div>
+
+    <div v-if="comboFamilySegment && showComboPathList" class="combo-path-list panel">
+      <div
+        v-for="(step, i) in comboFamilySegment.entries"
+        :key="i"
+        class="combo-path-list__row"
+        :class="{
+          'combo-path-list__row--done': i < comboFamilySegment.currentOffset,
+          'combo-path-list__row--current': i === comboFamilySegment.currentOffset,
+        }"
+      >
+        <span class="combo-path-list__index">{{ i + 1 }}</span>
+        <span class="combo-path-list__name">{{ comboEntryName(step.entry) }}</span>
+        <AppIcon v-if="i < comboFamilySegment.currentOffset" name="check" :size="14" />
       </div>
     </div>
 
@@ -1347,6 +1417,51 @@ function onReelStopped() {
   letter-spacing: 0.1em;
   color: var(--red);
   text-shadow: var(--glow-red);
+}
+
+.combo-milestone {
+  cursor: pointer;
+}
+.combo-milestone__count {
+  font-size: 14px;
+}
+
+.combo-path-list {
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+  padding: 8px;
+}
+.combo-path-list__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.combo-path-list__row--done {
+  color: var(--text-dim);
+  opacity: 0.6;
+}
+.combo-path-list__row--current {
+  color: var(--red-hi);
+  background: var(--bg-1);
+  font-weight: 700;
+}
+.combo-path-list__index {
+  flex: none;
+  width: 22px;
+  text-align: right;
+  font-family: var(--font-display);
+  opacity: 0.7;
+}
+.combo-path-list__name {
+  flex: 1;
 }
 
 .vs-scoreboard__vs {
