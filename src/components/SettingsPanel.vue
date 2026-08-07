@@ -282,9 +282,13 @@ const grindList = [
     </label>
     <p class="hint voice-hint">
       <template v-if="voiceSupported">
-        Dis "réussi", "raté" ou "passe" pendant une session solo au lieu de
-        toucher l'écran. Le micro n'écoute que pendant l'entraînement solo,
-        jamais ailleurs.
+        Dis "réussi", "raté", "passe" ou "annule" pendant une session (Solo,
+        BLADE VS, Combo, Drill) au lieu de toucher l'écran. Le micro
+        n'écoute que pendant un tirage, jamais ailleurs.
+        <br />
+        Musique en fond ? Utilise des écouteurs plutôt que le haut-parleur du
+        téléphone — sinon le micro risque d'entendre la musique et de mal
+        reconnaître tes commandes.
       </template>
       <template v-else>
         Pas disponible sur ce navigateur/appareil.

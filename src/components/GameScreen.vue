@@ -327,6 +327,11 @@ watch(
           }
           addTry();
         },
+        onUndo: () => {
+          if (canUndo.value) {
+            undoLastAction();
+          }
+        },
       });
     } else {
       stopVoice();
