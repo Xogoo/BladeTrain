@@ -199,14 +199,29 @@ const trickSearch = ref("");
 // (raté ou passé) mais jamais réussis.
 const trickStatusFilter = ref("");
 
+// 'occurrences' (le plus tenté d'abord — le tri par défaut d'origine)
+// or 'alpha'. Shared shape/values with the Switch up tab's own sort
+// picker below, so the same <select> markup and function work for
+// both.
+const trickSortOrder = ref("occurrences");
+function sortTricks(list, order) {
+  const sorted = [...list];
+  if (order === "alpha") {
+    sorted.sort((a, b) => a.name.localeCompare(b.name));
+  } else {
+    sorted.sort((a, b) => b.landed + b.skipped - (a.landed + a.skipped));
+  }
+  return sorted;
+}
+
 const filteredTouchedTricks = computed(() => {
+  let list = allTouchedTricks.value;
   if (trickStatusFilter.value === "landed") {
-    return allTouchedTricks.value.filter((t) => t.landed > 0);
+    list = list.filter((t) => t.landed > 0);
+  } else if (trickStatusFilter.value === "never") {
+    list = list.filter((t) => t.landed === 0);
   }
-  if (trickStatusFilter.value === "never") {
-    return allTouchedTricks.value.filter((t) => t.landed === 0);
-  }
-  return allTouchedTricks.value;
+  return sortTricks(list, trickSortOrder.value);
 });
 
 function selectTrick(name) {
@@ -241,15 +256,25 @@ function firstTrickOf(trickName) {
   return trickName.split(" to ")[0];
 }
 
+// Shared by both dropdowns on this tab — sorting them independently
+// would be more flexible but also more controls than this needs;
+// "how do you want to browse this list" naturally applies to both at
+// once.
+const switchUpSortOrder = ref("occurrences");
+
 const switchUpFirstTrickOptions = computed(() => {
   const counts = {};
   for (const land of switchUpLands.value) {
     const name = firstTrickOf(land.trickName);
     counts[name] = (counts[name] || 0) + 1;
   }
-  return Object.entries(counts)
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const options = Object.entries(counts).map(([name, count]) => ({ name, count }));
+  if (switchUpSortOrder.value === "alpha") {
+    options.sort((a, b) => a.name.localeCompare(b.name));
+  } else {
+    options.sort((a, b) => b.count - a.count);
+  }
+  return options;
 });
 
 const selectedFirstTrick = ref(null);
@@ -269,7 +294,7 @@ watch(
 
 // Every distinct switch-up starting from the selected first trick —
 // same shape as allTouchedTricks above (Par trick), just scoped down
-// to this one first-trick's switch-ups, most-attempted first.
+// to this one first-trick's switch-ups.
 const switchUpTrickOptions = computed(() => {
   if (!selectedFirstTrick.value) {
     return [];
@@ -279,17 +304,16 @@ const switchUpTrickOptions = computed(() => {
       .filter((l) => firstTrickOf(l.trickName) === selectedFirstTrick.value)
       .map((l) => l.trickName)
   );
-  return [...names]
-    .map(
-      (name) =>
-        allTouchedTricks.value.find((t) => t.name === name) || {
-          name,
-          landed: 0,
-          skipped: 0,
-          failed: 0,
-        }
-    )
-    .sort((a, b) => b.landed + b.skipped - (a.landed + a.skipped));
+  const options = [...names].map(
+    (name) =>
+      allTouchedTricks.value.find((t) => t.name === name) || {
+        name,
+        landed: 0,
+        skipped: 0,
+        failed: 0,
+      }
+  );
+  return sortTricks(options, switchUpSortOrder.value);
 });
 
 const selectedSwitchUpTrick = ref(null);
@@ -472,6 +496,10 @@ watch(
             <option value="landed">Réussis au moins une fois</option>
             <option value="never">Jamais réussis (raté ou passé)</option>
           </select>
+          <select class="select" v-model="trickSortOrder">
+            <option value="occurrences">Trier : nombre de tentatives</option>
+            <option value="alpha">Trier : alphabétique</option>
+          </select>
         </div>
 
         <p v-if="!filteredTouchedTricks.length" class="hint">
@@ -566,6 +594,10 @@ watch(
             <option v-for="opt in switchUpFirstTrickOptions" :key="opt.name" :value="opt.name">
               1er trick : {{ opt.name }} ({{ opt.count }})
             </option>
+          </select>
+          <select class="select" v-model="switchUpSortOrder">
+            <option value="occurrences">Trier : nombre de tentatives</option>
+            <option value="alpha">Trier : alphabétique</option>
           </select>
         </div>
 
