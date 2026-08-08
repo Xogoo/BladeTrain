@@ -26,9 +26,9 @@ const { startGame, startFamilySession, startMixSession, startWeakPointsSession, 
 const {
   familyIndex,
   isFamilyComplete,
+  familyLifetimeLandedCount,
   careerProgress,
   resetCareerProgress,
-  resetFamilyProgress,
   weakPointsEntries,
   drillList,
 } = useCollection();
@@ -38,23 +38,21 @@ function startSoloSession() {
   startGame(settings);
 }
 
-// A built-in Career family (has a track) is reachable two ways — the
-// Carrière flow, or this plain family picker — and they're meant to be
-// entirely independent (see useGame.js's progressFamilyId, which this
-// mirrors exactly). Personal/custom families never have a track at
-// all, so they always just use their own id — there's only one way to
-// reach them.
-function displayProgressId(family) {
-  return family.track === "normal" || family.track === "switch"
-    ? `${family.id}::practice`
-    : family.id;
+// This picker (and the Mix family-selection list further down) is a
+// browsing/reference view, not an active session's own checklist —
+// "how far along am I on this family overall" reads best as lifetime
+// achievement (see familyLifetimeLandedCount's own comment), same
+// idea as CollectionPanel's summary. Only Career persists a progress
+// bucket at all now (see progressFamilyId in useGame.js) — everything
+// else resets to 0 each session, so there's nothing else to read here
+// besides "have I ever landed this, in any mode/session".
+function familyLifetimeDone(family) {
+  return familyLifetimeLandedCount(family) === family.entries.length;
 }
 
 function familyPercent(family) {
   return family.entries.length
-    ? Math.round(
-        (familyIndex(displayProgressId(family), family.entries) / family.entries.length) * 100
-      )
+    ? Math.round((familyLifetimeLandedCount(family) / family.entries.length) * 100)
     : 0;
 }
 
@@ -62,12 +60,12 @@ function familyPercent(family) {
 // can't hold rich markup, so the done/not-done color and the percent
 // both have to live in this one plain-text label.
 function familyOptionLabel(family) {
-  return isFamilyComplete(displayProgressId(family), family.entries)
+  return familyLifetimeDone(family)
     ? `${familyBaseName(family.name)} — Terminée ✓`
     : `${familyBaseName(family.name)} — ${familyPercent(family)}%`;
 }
 function familyOptionColor(family) {
-  return isFamilyComplete(displayProgressId(family), family.entries)
+  return familyLifetimeDone(family)
     ? "var(--green-hi)"
     : "var(--danger-hi)";
 }
@@ -413,29 +411,6 @@ function onCareerReset() {
   confirmingCareerReset.value = false;
 }
 
-// Same tap-again-to-confirm pattern, but for whichever single family
-// is currently selected in the picker (builtin or perso) — resets only
-// that family's progress, not the whole Career/Collection.
-const confirmingFamilyReset = ref(false);
-function onFamilyReset() {
-  if (!selectedFamilyId.value || !selectedFamilyObject.value) {
-    return;
-  }
-  if (!confirmingFamilyReset.value) {
-    confirmingFamilyReset.value = true;
-    return;
-  }
-  resetFamilyProgress(displayProgressId(selectedFamilyObject.value));
-  confirmingFamilyReset.value = false;
-}
-// The confirm must only ever fire on the SAME button/family that
-// armed it — switching the selected family (or the builtin/perso tab)
-// while armed silently carried the confirm over to whatever family
-// happened to be selected next, letting a single tap reset the wrong
-// one. Any change to what's selected disarms it.
-watch(selectedFamilyId, () => {
-  confirmingFamilyReset.value = false;
-});
 
 const MODES = [
   {
@@ -880,15 +855,6 @@ function removePlayer(index) {
           >
             Historique
           </button>
-          <button
-            class="btn btn--ghost family-picker__delete"
-            :class="{ 'btn--confirm': confirmingFamilyReset }"
-            :disabled="!selectedBuiltinFamilyId"
-            @click="onFamilyReset"
-            @blur="confirmingFamilyReset = false"
-          >
-            {{ confirmingFamilyReset ? "Confirmer" : "Réinitialiser" }}
-          </button>
         </div>
         <p class="setup__hint">
           Un trick précis à la fois, tiré au hasard parmi ceux pas encore
@@ -915,15 +881,6 @@ function removePlayer(index) {
             @click="showFamilyHistory = true"
           >
             Historique
-          </button>
-          <button
-            class="btn btn--ghost family-picker__delete"
-            :class="{ 'btn--confirm': confirmingFamilyReset }"
-            :disabled="!selectedCustomFamilyId"
-            @click="onFamilyReset"
-            @blur="confirmingFamilyReset = false"
-          >
-            {{ confirmingFamilyReset ? "Confirmer" : "Réinitialiser" }}
           </button>
           <button
             class="btn btn--ghost family-picker__delete"
@@ -1021,7 +978,7 @@ function removePlayer(index) {
             <span class="mix-family-row__name">{{ familyBaseName(family.name) }}</span>
             <span class="mix-family-row__pct" :style="{ color: familyOptionColor(family) }">
               {{
-                isFamilyComplete(displayProgressId(family), family.entries)
+                familyLifetimeDone(family)
                   ? "Terminée ✓"
                   : `${familyPercent(family)}%`
               }}
@@ -1046,7 +1003,7 @@ function removePlayer(index) {
             <span class="mix-family-row__name">{{ familyBaseName(family.name) }}</span>
             <span class="mix-family-row__pct" :style="{ color: familyOptionColor(family) }">
               {{
-                isFamilyComplete(displayProgressId(family), family.entries)
+                familyLifetimeDone(family)
                   ? "Terminée ✓"
                   : `${familyPercent(family)}%`
               }}
@@ -1225,7 +1182,7 @@ function removePlayer(index) {
             <span class="mix-family-row__name">{{ familyBaseName(family.name) }}</span>
             <span class="mix-family-row__pct" :style="{ color: familyOptionColor(family) }">
               {{
-                isFamilyComplete(displayProgressId(family), family.entries)
+                familyLifetimeDone(family)
                   ? "Terminée ✓"
                   : `${familyPercent(family)}%`
               }}
@@ -1250,7 +1207,7 @@ function removePlayer(index) {
             <span class="mix-family-row__name">{{ familyBaseName(family.name) }}</span>
             <span class="mix-family-row__pct" :style="{ color: familyOptionColor(family) }">
               {{
-                isFamilyComplete(displayProgressId(family), family.entries)
+                familyLifetimeDone(family)
                   ? "Terminée ✓"
                   : `${familyPercent(family)}%`
               }}

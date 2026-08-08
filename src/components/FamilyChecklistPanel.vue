@@ -3,6 +3,7 @@ import { computed } from "vue";
 import AppModal from "./AppModal.vue";
 import AppIcon from "./AppIcon.vue";
 import { useCollection } from "../composables/useCollection.js";
+import { useGame } from "../composables/useGame.js";
 import { resolveFamily } from "../game/families.js";
 import { nameEntry } from "../game/trickGenerator.js";
 import { useSettings } from "../composables/useSettings.js";
@@ -12,6 +13,13 @@ import { useSettings } from "../composables/useSettings.js";
 // and Focus mode's "Nom de famille X/Y" display. Deliberately lighter
 // than FamilyHistoryPanel (no chart/stats/hardest-trick callouts):
 // this is meant to be glanced at mid-session, not read like a report.
+//
+// Career resumes lifetime progress and reads familyEntryStatuses
+// (persisted, tricks acquired for good). Every other context — plain
+// "Familles de tricks" practice, Points faibles — resets to 0 each
+// session (see useGame.js's nextSpin/landTrick), so it reads
+// sessionFamilyEntryStatuses instead: what's landed in an OLDER
+// session, or never at all, is equally fair game again today.
 const props = defineProps({
   familyId: { type: String, required: true },
   isCareer: { type: Boolean, default: false },
@@ -19,25 +27,19 @@ const props = defineProps({
 defineEmits(["close"]);
 
 const { settings } = useSettings();
-const { familyEntryStatuses, familyIndex } = useCollection();
+const { familyEntryStatuses, sessionFamilyEntryStatuses } = useCollection();
+const { state } = useGame();
 
 const family = computed(() => resolveFamily(props.familyId, settings.customFamilies));
-// Mirrors useGame.js's progressFamilyId exactly — a Career family
-// (has a track) tracks Career-mode progress separately from plain
-// "Familles de tricks" training, so this checklist has to read
-// whichever one actually matches how the current session was
-// started, not always the family's own plain id.
-const progressId = computed(() => {
+const statuses = computed(() => {
   if (!family.value) {
-    return props.familyId;
+    return [];
   }
-  return family.value.track !== null && !props.isCareer
-    ? `${family.value.id}::practice`
-    : family.value.id;
+  return props.isCareer
+    ? familyEntryStatuses(family.value, family.value.id)
+    : sessionFamilyEntryStatuses(family.value, state.sessionId);
 });
-const statuses = computed(() =>
-  family.value ? familyEntryStatuses(family.value, progressId.value) : []
-);
+const landedCount = computed(() => statuses.value.filter((s) => s.landed).length);
 
 function displayName(status) {
   return status.land ? status.land.trickName : nameEntry(status.entry);
@@ -51,7 +53,7 @@ function displayName(status) {
   >
     <template v-if="family">
       <p class="checklist-progress">
-        {{ familyIndex(progressId, family.entries) }}/{{ family.entries.length }} réussis
+        {{ landedCount }}/{{ family.entries.length }} réussis
       </p>
       <div class="checklist">
         <div

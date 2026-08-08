@@ -3,6 +3,7 @@ import { computed } from "vue";
 import AppModal from "./AppModal.vue";
 import AppIcon from "./AppIcon.vue";
 import { useCollection } from "../composables/useCollection.js";
+import { useGame } from "../composables/useGame.js";
 import { resolveFamily } from "../game/families.js";
 import { nameEntry } from "../game/trickGenerator.js";
 import { useSettings } from "../composables/useSettings.js";
@@ -10,17 +11,23 @@ import { useSettings } from "../composables/useSettings.js";
 // Same idea as FamilyChecklistPanel, but for Mix's several families at
 // once — one section per family, each with its own mini-checklist, so
 // "which tricks are left in this Mix" is glanceable mid-session just
-// like a single family already is. Mix never trains Career (see
-// useGame.js's practiceProgressId in ScoreBoard.vue), so every family
-// here always reads its plain "::practice" progress bucket, never the
-// Career one — no isCareer prop needed, unlike FamilyChecklistPanel.
+// like a single family already is.
+//
+// Deliberately scoped to THIS SESSION (sessionFamilyEntryStatuses), not
+// lifetime familyProgress — Mix's whole point is training a pool that
+// never excludes already-landed entries (see useGame.js's buildMixPool
+// comment): you can mix in tricks you mastered long ago just to keep
+// them sharp. Reading lifetime progress here made that pointless —
+// anything ever landed before showed permanently green regardless of
+// what actually happened this run.
 const props = defineProps({
   familyIds: { type: Array, required: true },
 });
 defineEmits(["close"]);
 
 const { settings } = useSettings();
-const { familyEntryStatuses, familyIndex } = useCollection();
+const { sessionFamilyEntryStatuses } = useCollection();
+const { state } = useGame();
 
 const families = computed(() =>
   props.familyIds
@@ -28,24 +35,16 @@ const families = computed(() =>
     .filter(Boolean)
 );
 
-function practiceProgressId(family) {
-  return family.track !== null ? `${family.id}::practice` : family.id;
-}
-
 const sections = computed(() =>
-  families.value.map((family) => {
-    const progressId = practiceProgressId(family);
-    return {
-      family,
-      progressId,
-      statuses: familyEntryStatuses(family, progressId),
-    };
-  })
+  families.value.map((family) => ({
+    family,
+    statuses: sessionFamilyEntryStatuses(family, state.sessionId),
+  }))
 );
 
 const totalLanded = computed(() =>
   sections.value.reduce(
-    (sum, s) => sum + familyIndex(s.progressId, s.family.entries),
+    (sum, s) => sum + s.statuses.filter((st) => st.landed).length,
     0
   )
 );
@@ -67,7 +66,7 @@ function displayName(status) {
           <p class="mix-section__title">
             {{ section.family.name }}
             <span class="mix-section__count">
-              {{ familyIndex(section.progressId, section.family.entries) }}/{{ section.family.entries.length }}
+              {{ section.statuses.filter((s) => s.landed).length }}/{{ section.family.entries.length }}
             </span>
           </p>
           <div class="checklist">

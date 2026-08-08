@@ -547,11 +547,10 @@ function hasVariation(pattern) {
 // than risk misattributing it to the wrong tricks.
 // `entries` lets a caller supply a family's entry list directly for
 // the self-heal check below, instead of relying on
-// resolveFamilyById(familyId) to find it — needed for a Career
-// family's "::practice" progress id (see useGame.js's
-// progressFamilyId), which is a storage key only and never resolves
-// back to an actual family on its own. Without this, the self-heal
-// below would just silently skip for every practice-context entry.
+// resolveFamilyById(familyId) to find it — used by Career (the only
+// remaining caller of this whole progress-bucket mechanism, see
+// useGame.js's progressFamilyId). Without this, the self-heal below
+// would just silently skip.
 function familyProgressEntry(familyId, entries = null) {
   const existing = collection.familyProgress[familyId];
   if (!existing || !Array.isArray(existing.landedKeys)) {
@@ -587,14 +586,12 @@ function familyLandedKeySet(familyId, entries = null) {
   return new Set(familyProgressEntry(familyId, entries).landedKeys);
 }
 
-/** How many of the family's CURRENT entries have been landed so far. */
+/** How many of the family's CURRENT entries have been landed so far —
+ * Career only now (see useGame.js's progressFamilyId); every other
+ * mode resets each session (see familyLifetimeLandedCount for the
+ * lifetime-reporting equivalent used elsewhere). */
 // `entries` lets a caller pass a family's entry list directly instead
-// of relying on resolveFamilyById(familyId) to find it — needed for a
-// Career family's "::practice" progress id (see useGame.js's
-// progressFamilyId), which is a storage key only and was never meant
-// to resolve back to an actual family on its own. Every caller that
-// might pass one of those already has the real family object (and
-// therefore its entries) on hand.
+// of relying on resolveFamilyById(familyId) to find it.
 function familyIndex(familyId, entries = null) {
   const list = entries ?? resolveFamilyById(familyId)?.entries;
   if (!list) {
@@ -667,6 +664,37 @@ function familyRemainingIndices(familyId, entries) {
 }
 
 /**
+ * Same idea as familyRemainingIndices, but scoped to ONE session
+ * instead of lifetime familyProgress — the non-Career equivalent (see
+ * sessionFamilyEntryStatuses below, and the matching draw-pool use in
+ * useGame.js's nextSpin). Every non-Career mode resets to 0 at the
+ * start of each new session; only Career persists progress across
+ * sessions (see familyRemainingIndices above, still used for that).
+ */
+function sessionFamilyRemainingIndices(entries, familyId, sessionId) {
+  const keys = new Set(
+    collection.lands
+      .filter((l) => l.sessionId === sessionId && l.familyId === familyId && l.familyEntryKey)
+      .map((l) => l.familyEntryKey)
+  );
+  const remaining = [];
+  for (let i = 0; i < entries.length; i += 1) {
+    if (!keys.has(familyEntryKey(entries[i]))) {
+      remaining.push(i);
+    }
+  }
+  return remaining;
+}
+
+/** Every current entry of the family has a land recorded in THIS
+ * session — the non-Career equivalent of isFamilyComplete's lifetime
+ * completedAt check (see sessionFamilyRemainingIndices' own comment
+ * above for why the two need to be separate). */
+function isFamilySessionComplete(family, sessionId) {
+  return sessionFamilyRemainingIndices(family.entries, family.id, sessionId).length === 0;
+}
+
+/**
  * Call once a family's drawn entry has been landed. Marks its content
  * key done; if every one of the family's CURRENT entries is now
  * covered, marks the family complete and awards its badge (once).
@@ -715,6 +743,98 @@ function advanceFamilyProgress(family, entry, progressId = family.id) {
 /** Restart a family from scratch (keeps any badge already earned). */
 function resetFamilyProgress(familyId) {
   collection.familyProgress[familyId] = { landedKeys: [], completedAt: null };
+}
+
+/** Every distinct familyEntryKey ever landed for this family, across
+ * every session and mode it was ever trained in (Career, practice,
+ * Mix — recordLand always stores familyId regardless of context, see
+ * its own comment). The one true "have I ever landed this" source,
+ * used for lifetime reporting (badges, Historique, Collection, the
+ * family picker's own %) — deliberately independent of any progress
+ * bucket, which for non-Career modes no longer accumulates at all
+ * (see sessionFamilyRemainingIndices/isFamilySessionComplete above). */
+function familyLifetimeLandedKeySet(familyId) {
+  return new Set(
+    collection.lands
+      .filter((l) => l.familyId === familyId && l.familyEntryKey)
+      .map((l) => l.familyEntryKey)
+  );
+}
+
+/** How many of the family's CURRENT entries have EVER been landed, in
+ * any mode/session — the lifetime counterpart to familyIndex (which
+ * reads a specific progress bucket, meaningless for non-Career now
+ * that those reset every session). Used anywhere that's browsing/
+ * reporting rather than showing an active session's own checklist
+ * (CollectionPanel, the family picker's own % in StartScreen). */
+function familyLifetimeLandedCount(family) {
+  const keys = familyLifetimeLandedKeySet(family.id);
+  return family.entries.filter((e) => keys.has(familyEntryKey(e))).length;
+}
+
+/** Same shape as familyEntryStatuses, but "landed" means "ever, in any
+ * mode/session" instead of reading a progress bucket — the lifetime
+ * reporting counterpart used by FamilyHistoryPanel (a report screen,
+ * always reached from outside an active session, so a session-scoped
+ * read would make no sense there — see sessionFamilyEntryStatuses for
+ * the in-session equivalent this is NOT meant to replace). */
+function familyLifetimeEntryStatuses(family) {
+  const keys = familyLifetimeLandedKeySet(family.id);
+  const landsByKey = {};
+  for (const land of familyLands(family.id)) {
+    if (land.familyEntryKey) {
+      landsByKey[land.familyEntryKey] = land;
+    }
+  }
+  const skipCounts = {};
+  for (const skip of collection.skips) {
+    if (skip.familyId === family.id && skip.familyEntryKey) {
+      skipCounts[skip.familyEntryKey] =
+        (skipCounts[skip.familyEntryKey] || 0) + (skip.tries || 1);
+    }
+  }
+  return family.entries.map((entry) => {
+    const key = familyEntryKey(entry);
+    return {
+      entry,
+      landed: keys.has(key),
+      land: landsByKey[key] || null,
+      skipCount: skipCounts[key] || 0,
+    };
+  });
+}
+
+/**
+ * Non-Career equivalent of advanceFamilyProgress's badge-awarding half
+ * — every non-Career mode (single-family "practice", Mix) resets its
+ * OWN checklist to 0 at the start of each new session (see
+ * sessionFamilyRemainingIndices/isFamilySessionComplete above), so
+ * there's no persisted "::practice" bucket left to track completion
+ * against. But "have you ever landed every trick in this family" is
+ * still a real, meaningful, lifetime achievement worth a badge — it
+ * just has to be computed straight from collection.lands (every land
+ * ever recorded for this family, across every session and mode it was
+ * ever trained in) instead of a bucket that no longer accumulates.
+ * Same "newly earned or null" return shape as advanceFamilyProgress.
+ */
+function checkFamilyMasteryBadge(family) {
+  const badgeId = `family-${family.id}`;
+  if (collection.badges[badgeId]) {
+    return null;
+  }
+  const keys = familyLifetimeLandedKeySet(family.id);
+  const complete = family.entries.every((e) => keys.has(familyEntryKey(e)));
+  if (!complete) {
+    return null;
+  }
+  collection.badges[badgeId] = new Date().toISOString();
+  return (
+    BADGES.find((b) => b.id === badgeId) || {
+      id: badgeId,
+      name: family.badgeName || family.name,
+      desc: `Termine la famille "${family.name}"`,
+    }
+  );
 }
 
 /** Badge conditions, evaluated against the just-landed spin. */
@@ -1110,6 +1230,48 @@ export function useCollection() {
         entry,
         landed: keys.has(key),
         land: landsByKey[key] || null,
+        skipCount: skipCounts[key] || 0,
+      };
+    });
+  }
+
+  /**
+   * Same shape as familyEntryStatuses above, but scoped to ONE session
+   * instead of lifetime familyProgress — built for Mix, whose whole
+   * point is training a pool that never excludes already-landed
+   * entries (see useGame.js's buildMixPool comment): a player can
+   * deliberately mix in tricks they've mastered long ago just to keep
+   * them sharp. Reading lifetime "::practice" progress for Mix's own
+   * checklist made that pointless — anything ever landed before showed
+   * permanently green regardless of what actually happened THIS run,
+   * which is the opposite of what the checklist is for. skipCount is
+   * similarly scoped: only this session's skips count, not history.
+   */
+  function sessionFamilyEntryStatuses(family, sessionId) {
+    const landsByKey = {};
+    for (const land of sessionLands(sessionId)) {
+      if (land.familyId === family.id && land.familyEntryKey) {
+        landsByKey[land.familyEntryKey] = land;
+      }
+    }
+    const skipCounts = {};
+    for (const skip of collection.skips) {
+      if (
+        skip.sessionId === sessionId &&
+        skip.familyId === family.id &&
+        skip.familyEntryKey
+      ) {
+        skipCounts[skip.familyEntryKey] =
+          (skipCounts[skip.familyEntryKey] || 0) + (skip.tries || 1);
+      }
+    }
+    return family.entries.map((entry) => {
+      const key = familyEntryKey(entry);
+      const land = landsByKey[key] || null;
+      return {
+        entry,
+        landed: Boolean(land),
+        land,
         skipCount: skipCounts[key] || 0,
       };
     });
@@ -1836,6 +1998,11 @@ export function useCollection() {
     familyIndex,
     isFamilyComplete,
     familyRemainingIndices,
+    sessionFamilyRemainingIndices,
+    isFamilySessionComplete,
+    familyLifetimeLandedCount,
+    familyLifetimeEntryStatuses,
+    checkFamilyMasteryBadge,
     careerProgress,
     isCareerComplete,
     awardCareerBadgeIfComplete,
@@ -1865,6 +2032,7 @@ export function useCollection() {
     sessionBadges,
     sessionFamilyProgress,
     familyEntryStatuses,
+    sessionFamilyEntryStatuses,
     familyTriesSeries,
     repeatedTrickSeries,
     switchUpLands,

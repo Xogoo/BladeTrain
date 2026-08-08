@@ -55,7 +55,7 @@ const {
 } = useGame();
 const { settings, reelSpeedMs } = useSettings();
 const { speakTrick, playKeys } = useSpeech();
-const { familyIndex, drillList } = useCollection();
+const { familyIndex, sessionFamilyEntryStatuses, drillList } = useCollection();
 
 // Switch families carry their own leading "Switch " prefix (see
 // families.js) — nothing to strip here anymore, kept as a pass-through
@@ -126,17 +126,20 @@ watch(
 // return to instead of its regular giveUp behavior.
 const isCareerFamily = computed(() => state.isCareerSession);
 
-// Mirrors useGame.js's progressFamilyId exactly — the Focus-mode "X/Y
-// tricks réussis" readout has to reflect whichever progress bucket
-// this session is actually writing to (Career vs plain "Familles de
-// tricks" training), not always the family's own plain id.
-const activeFamilyProgressId = computed(() => {
+// Career resumes lifetime progress (persisted, tricks acquired for
+// good — see progressFamilyId in useGame.js). Every other context
+// resets to 0 each session — what's landed in an OLDER session, or
+// never at all, is equally fair game again today (see ScoreBoard's
+// matching activeFamilyLanded for the same reasoning).
+const activeFamilyLanded = computed(() => {
   if (!activeFamily.value) {
-    return null;
+    return 0;
   }
-  return activeFamily.value.track !== null && !state.isCareerSession
-    ? `${activeFamily.value.id}::practice`
-    : activeFamily.value.id;
+  return state.isCareerSession
+    ? familyIndex(activeFamily.value.id, activeFamily.value.entries)
+    : sessionFamilyEntryStatuses(activeFamily.value, state.sessionId).filter(
+        (s) => s.landed
+      ).length;
 });
 
 // "Terminer la session/partie" needs a tap-again-to-confirm, same

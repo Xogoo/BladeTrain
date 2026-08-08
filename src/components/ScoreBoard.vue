@@ -10,7 +10,7 @@ import TargetedTrainingChecklistPanel from "./TargetedTrainingChecklistPanel.vue
 
 const { state, isSolo, isDrill, activeFamily } = useGame();
 const { settings, levelName } = useSettings();
-const { familyIndex, sessionById, targetedTrainingItems } = useCollection();
+const { familyIndex, sessionFamilyEntryStatuses, sessionById, targetedTrainingItems } = useCollection();
 
 const showChecklist = ref(false);
 const showMixChecklist = ref(false);
@@ -28,38 +28,37 @@ const mixFamilies = computed(() =>
     .filter(Boolean)
 );
 const isMix = computed(() => mixFamilies.value.length > 0);
-// Mix never trains Career — always the plain "::practice" bucket,
-// same one the single-family picker itself writes to (see
-// progressFamilyId in useGame.js, which this mirrors).
-function practiceProgressId(family) {
-  return family.track !== null ? `${family.id}::practice` : family.id;
-}
+// Scoped to THIS session, not lifetime "::practice" progress — Mix
+// deliberately draws from a pool that never excludes already-landed
+// entries (see useGame.js's buildMixPool), so a player can retrain
+// tricks mastered long ago on purpose. Reading lifetime progress here
+// made the readout permanently "done" for anything ever landed before,
+// regardless of what this run actually covered — see
+// MixChecklistPanel's matching fix for the same reasoning.
 const mixProgress = computed(() => {
   let landed = 0;
   let total = 0;
   for (const family of mixFamilies.value) {
-    landed += familyIndex(practiceProgressId(family), family.entries);
+    const statuses = sessionFamilyEntryStatuses(family, state.sessionId);
+    landed += statuses.filter((s) => s.landed).length;
     total += family.entries.length;
   }
   return `${landed}/${total}`;
 });
 
-// Same distinction as useGame.js's progressFamilyId — a built-in
-// family trained OUTSIDE Carrière writes its progress under
-// `${id}::practice`, not the family's own raw id (that Career/
-// Solo split is the whole point: training a family standalone must
-// never touch Career progress, and vice versa). Every real read/write
-// of family progress goes through that function; this display badge
-// was the one place still reading the raw id directly, so it stayed
-// stuck at 0/N for anything but a Career session even though tricks
-// were landing and being recorded correctly under the practice key.
-const activeFamilyProgressId = computed(() => {
+// Career resumes lifetime progress (persisted, tricks acquired for
+// good — see progressFamilyId in useGame.js). Every other context
+// resets to 0 each session, same as Mix above — what's landed in an
+// OLDER session, or never at all, is equally fair game again today.
+const activeFamilyLanded = computed(() => {
   if (!activeFamily.value) {
-    return null;
+    return 0;
   }
-  return activeFamily.value.track !== null && !state.isCareerSession
-    ? `${activeFamily.value.id}::practice`
-    : activeFamily.value.id;
+  return state.isCareerSession
+    ? familyIndex(activeFamily.value.id, activeFamily.value.entries)
+    : sessionFamilyEntryStatuses(activeFamily.value, state.sessionId).filter(
+        (s) => s.landed
+      ).length;
 });
 
 // "X/Y" for the Grinds block when there's no active family — same
@@ -161,7 +160,7 @@ const sessionDuration = computed(() => {
       >
         <span class="scoreboard__caption">{{ familyBaseName(activeFamily.name) }}</span>
         <span class="scoreboard__level">
-          {{ familyIndex(activeFamilyProgressId, activeFamily.entries) }}/{{ activeFamily.entries.length }}
+          {{ activeFamilyLanded }}/{{ activeFamily.entries.length }}
         </span>
       </button>
       <button

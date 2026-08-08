@@ -20,6 +20,7 @@ const {
   earnedBadges,
   hasBadge,
   familyIndex,
+  familyLifetimeLandedCount,
   resetCollection,
   staleCombos,
 } = useCollection();
@@ -79,14 +80,16 @@ const familyProgress = computed(() => {
     .map((family) => ({
       id: family.id,
       name: family.name,
-      // A Career family tracks Career-mode progress separately from
-      // plain "Familles de tricks" training (see useGame.js's
-      // progressFamilyId) — this summary shows whichever of the two
-      // is further along, so training it either way still counts here
-      // instead of one route silently looking incomplete.
+      // Career progress persists lifetime (see progressFamilyId in
+      // useGame.js). Every other mode resets each session now, so
+      // there's no persisted "::practice" bucket left to read — the
+      // "have I ever landed this trick, in ANY mode/session" lifetime
+      // count (familyLifetimeLandedCount) takes its place, so training
+      // a family either way still counts here instead of the practice
+      // side silently looking frozen or empty.
       landed: Math.max(
         familyIndex(family.id, family.entries),
-        familyIndex(`${family.id}::practice`, family.entries)
+        familyLifetimeLandedCount(family)
       ),
       total: family.entries.length,
     }));

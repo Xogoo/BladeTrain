@@ -198,20 +198,16 @@ function resolveFamilyById(familyId) {
   return familyId ? resolveFamily(familyId, settingsApi.settings.customFamilies) : null;
 }
 
-// A built-in Career family (has a track) is reachable two ways — the
-// Carrière flow itself, or the plain "Familles de tricks" picker — and
-// those two are meant to be entirely independent: training a family
-// outside Carrière must never advance Carrière's own progress, and
-// vice versa. Personal/custom families (track === null) only have one
-// way to reach them, so there's nothing to separate. This is the one
-// place that decides which of the two a given landed trick actually
-// counts towards — every progress read/write for a family goes
-// through this rather than the family's own `.id` directly.
-function progressFamilyId(family, isCareer) {
-  if (!family) {
-    return null;
-  }
-  return family.track !== null && !isCareer ? `${family.id}::practice` : family.id;
+// Career progress persists lifetime under the family's own plain id.
+// Every other mode (single-family "practice", Mix) resets to 0 each
+// session instead — no persisted bucket to key at all anymore, see
+// sessionFamilyRemainingIndices/isFamilySessionComplete in
+// useCollection.js and their use here in nextSpin/landTrick. Kept as
+// its own function (rather than inlining `family.id`) since every
+// Career progress read/write still goes through here, matching the
+// project's convention of never assuming the raw id directly.
+function progressFamilyId(family) {
+  return family ? family.id : null;
 }
 
 // Undo, for a mistapped Blade!/Passer/Loupé/Réussi — a full snapshot of
@@ -390,9 +386,13 @@ export function useGame() {
    * Solo only: family training (see game/families.js). Each spin draws
    * a random entry among the family's tricks not yet landed — skipping
    * doesn't block anything, it just redraws; landing removes that entry
-   * from the pool for good. Resumes where you left off unless `restart`
-   * is set (or the family was already fully complete, in which case it
-   * restarts anyway).
+   * from the pool for good, for the current session at least.
+   *
+   * Career resumes where it was left off (persisted, lifetime — see
+   * progressFamilyId/familyRemainingIndices), unless `restart` is set
+   * or the family was already fully complete. Every other mode always
+   * starts at 0 for a fresh session (see nextSpin/landTrick's own
+   * non-Career branches) — there's no persisted bucket left to reset.
    */
   const startFamilySession = (familyId, settings, { restart = false, isCareer = false } = {}) => {
     state.mode = "solo";
@@ -406,12 +406,14 @@ export function useGame() {
     state.freeLoopFamilyId = null;
     state.isCareerSession = isCareer;
     const resolvedFamily = resolveFamilyById(familyId);
-    const progressId = progressFamilyId(resolvedFamily, isCareer);
-    if (
-      progressId &&
-      (restart || collection.isFamilyComplete(progressId, resolvedFamily?.entries))
-    ) {
-      collection.resetFamilyProgress(progressId);
+    if (isCareer) {
+      const progressId = progressFamilyId(resolvedFamily);
+      if (
+        progressId &&
+        (restart || collection.isFamilyComplete(progressId, resolvedFamily?.entries))
+      ) {
+        collection.resetFamilyProgress(progressId);
+      }
     }
     state.screen = "game";
     state.spinsTotal = Infinity;
@@ -428,12 +430,12 @@ export function useGame() {
   /**
    * Solo only: Mix training — draws randomly across every entry of
    * several selected families (built-in and/or personal) at once,
-   * landed or not (see buildMixPool/nextSpin) — landing still advances
-   * that entry's OWN family's plain "::practice" progress, same bucket
-   * the regular single-family picker uses, so Mix shares progress with
-   * training a family alone and never touches Career (isCareerSession
-   * is always false here). Returns false without starting anything if
-   * the selection is empty or resolves to no real families.
+   * landed or not (see buildMixPool/nextSpin) — resets to 0 each
+   * session same as plain family "practice" training (see
+   * checkFamilyMasteryBadge in landTrick), and never touches Career
+   * (isCareerSession is always false here). Returns false without
+   * starting anything if the selection is empty or resolves to no real
+   * families.
    */
   const startMixSession = (familyIds, settings) => {
     const ids = [...new Set(familyIds)].filter((id) => resolveFamilyById(id));
@@ -914,9 +916,9 @@ export function useGame() {
   };
 
   /** Mix: pool of every {familyId, index} across ALL the given
-   * families, landed or not — landing still advances that family's
-   * plain "::practice" progress (see landTrick), it just no longer
-   * restricts what can come up again. Mix never touches Career. */
+   * families, landed or not — same session-scoped reset as any other
+   * non-Career mode, it just never restricts the draw either way (see
+   * landTrick's own comment). Mix never touches Career. */
   function buildMixPool(familyIds) {
     const pool = [];
     for (const familyId of familyIds) {
@@ -939,10 +941,22 @@ export function useGame() {
     state.activeFamilyEntryIndex = null;
     state.activeMixEntry = null;
     if (family) {
-      const remaining = collection.familyRemainingIndices(
-        progressFamilyId(family, state.isCareerSession),
-        family.entries
-      );
+      // Career persists its "remaining" pool across sessions (resumes
+      // where it was left off, tricks acquired for good — see
+      // familyRemainingIndices). Every other mode resets to 0 each
+      // session (see sessionFamilyRemainingIndices's own comment) —
+      // what's landed in an OLDER session, or never at all, is equally
+      // fair game again today.
+      const remaining = state.isCareerSession
+        ? collection.familyRemainingIndices(
+            progressFamilyId(family),
+            family.entries
+          )
+        : collection.sessionFamilyRemainingIndices(
+            family.entries,
+            family.id,
+            state.sessionId
+          );
       // Should only be empty for one frame right as the family
       // completes (landTrick clears activeFamilyId before this runs) —
       // guarded here anyway rather than crashing.
@@ -1077,40 +1091,53 @@ export function useGame() {
     if (state.activeFamilyId) {
       const family = landFamily;
       if (family && state.activeFamilyEntryIndex !== null) {
-        const progressId = progressFamilyId(family, state.isCareerSession);
-        const familyBadge = collection.advanceFamilyProgress(
-          family,
-          family.entries[state.activeFamilyEntryIndex],
-          progressId
-        );
-        if (familyBadge) {
-          badges = [...badges, familyBadge];
-        }
-        if (collection.isFamilyComplete(progressId, family.entries)) {
-          justCompletedFamily = family;
-          state.activeFamilyId = null;
-          state.activeFamilyEntryIndex = null;
+        const landedEntry = family.entries[state.activeFamilyEntryIndex];
+        if (state.isCareerSession) {
+          // Career: persists for good, resumes where it was left off —
+          // the whole point of Career (see progressFamilyId).
+          const progressId = progressFamilyId(family);
+          const familyBadge = collection.advanceFamilyProgress(
+            family,
+            landedEntry,
+            progressId
+          );
+          if (familyBadge) {
+            badges = [...badges, familyBadge];
+          }
+          if (collection.isFamilyComplete(progressId, family.entries)) {
+            justCompletedFamily = family;
+            state.activeFamilyId = null;
+            state.activeFamilyEntryIndex = null;
+          }
+        } else {
+          // Practice (outside Career): resets every session (see
+          // nextSpin's own branch above) — nothing persisted to write
+          // here beyond the lifetime "have you EVER finished this
+          // family" badge, computed straight from collection.lands.
+          const familyBadge = collection.checkFamilyMasteryBadge(family);
+          if (familyBadge) {
+            badges = [...badges, familyBadge];
+          }
+          if (collection.isFamilySessionComplete(family, state.sessionId)) {
+            justCompletedFamily = family;
+            state.activeFamilyId = null;
+            state.activeFamilyEntryIndex = null;
+          }
         }
       }
     } else if (state.mode === "solo" && state.activeMixEntry) {
       const family = landFamily;
       if (family) {
-        // Mix never trains Career — always the plain "::practice"
-        // bucket, same one the single-family picker itself writes to.
-        // Landing still advances/completes that family normally (and
-        // still awards its badge the first time it's fully landed);
-        // it just no longer removes anything from the draw — a family
-        // being complete doesn't pause or shrink the Mix pool anymore.
-        // (BLADE VS reuses this same activeMixEntry/activeFamilyIds
-        // mechanism to restrict its own draw to chosen families, but
-        // being mode "vs" and not "solo", it never lands here — VS
-        // never writes to family progress.)
-        const progressId = progressFamilyId(family, false);
-        const familyBadge = collection.advanceFamilyProgress(
-          family,
-          family.entries[state.activeMixEntry.index],
-          progressId
-        );
+        // Mix never trains Career, and resets every session same as
+        // plain practice — landing still checks the lifetime "have you
+        // EVER finished this family" badge (see checkFamilyMasteryBadge),
+        // it just no longer writes to any persisted progress bucket —
+        // a family being complete doesn't pause or shrink the Mix pool,
+        // same as before. (BLADE VS reuses this same activeMixEntry/
+        // activeFamilyIds mechanism to restrict its own draw to chosen
+        // families, but being mode "vs" and not "solo", it never lands
+        // here — VS never writes to family progress.)
+        const familyBadge = collection.checkFamilyMasteryBadge(family);
         if (familyBadge) {
           badges = [...badges, familyBadge];
         }
