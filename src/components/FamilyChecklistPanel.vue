@@ -51,7 +51,7 @@ function displayName(status) {
   >
     <template v-if="family">
       <p class="checklist-progress">
-        {{ familyIndex(progressId) }}/{{ family.entries.length }} réussis
+        {{ familyIndex(progressId, family.entries) }}/{{ family.entries.length }} réussis
       </p>
       <div class="checklist">
         <div

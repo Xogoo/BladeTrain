@@ -5,6 +5,7 @@ import { useSettings } from "../composables/useSettings.js";
 import { useCollection } from "../composables/useCollection.js";
 import { resolveFamily } from "../game/families.js";
 import FamilyChecklistPanel from "./FamilyChecklistPanel.vue";
+import MixChecklistPanel from "./MixChecklistPanel.vue";
 import TargetedTrainingChecklistPanel from "./TargetedTrainingChecklistPanel.vue";
 
 const { state, isSolo, isDrill, activeFamily } = useGame();
@@ -12,6 +13,7 @@ const { settings, levelName } = useSettings();
 const { familyIndex, sessionById, targetedTrainingItems } = useCollection();
 
 const showChecklist = ref(false);
+const showMixChecklist = ref(false);
 const showTargetedChecklist = ref(false);
 
 // Mix trains several families at once (state.activeFamilyIds) instead
@@ -162,10 +164,14 @@ const sessionDuration = computed(() => {
           {{ familyIndex(activeFamilyProgressId, activeFamily.entries) }}/{{ activeFamily.entries.length }}
         </span>
       </button>
-      <div v-else-if="isMix" class="scoreboard__block">
+      <button
+        v-else-if="isMix"
+        class="scoreboard__block scoreboard__block--tap"
+        @click="showMixChecklist = true"
+      >
         <span class="scoreboard__caption">Mix ({{ mixFamilies.length }})</span>
         <span class="scoreboard__level">{{ mixProgress }}</span>
-      </div>
+      </button>
       <button
         v-else
         class="scoreboard__block scoreboard__block--tap"
@@ -203,7 +209,14 @@ const sessionDuration = computed(() => {
   <FamilyChecklistPanel
     v-if="showChecklist && activeFamily"
     :family-id="activeFamily.id"
+    :is-career="state.isCareerSession"
     @close="showChecklist = false"
+  />
+
+  <MixChecklistPanel
+    v-if="showMixChecklist && isMix"
+    :family-ids="state.activeFamilyIds"
+    @close="showMixChecklist = false"
   />
 
   <TargetedTrainingChecklistPanel

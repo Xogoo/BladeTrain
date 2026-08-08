@@ -1,6 +1,6 @@
 import { computed, reactive, ref } from "vue";
 import { generateSpin } from "../game/trickGenerator.js";
-import { FAMILIES, resolveFamily, familiesInTrackOrder } from "../game/families.js";
+import { FAMILIES, resolveFamily, familiesInTrackOrder, familyEntryKey } from "../game/families.js";
 import { useCollection } from "./useCollection.js";
 import { useSettings, CUSTOM_LEVEL } from "./useSettings.js";
 import { useBackup } from "./useBackup.js";
@@ -141,19 +141,23 @@ const state = reactive({
   //   familiesInTrackOrder), switching family automatically the
   //   instant the current one's last entry lands — no pause, unlike
   //   normal Career.
-  // - "mix": a random draw from the pooled entries of the selected
-  //   families, exactly like Mix training's own buildMixPool, just
-  //   with the 2-tries/lose-it-all rule on top instead of Mix's usual
-  //   per-family progress tracking.
+  // - "mix": a random draw, without repeats, from the pooled entries
+  //   of the selected families (see comboLandedKeys below) — the run
+  //   clears successfully the instant every entry across every chosen
+  //   family has been landed once, same "reach the end" win condition
+  //   as career, just over an unordered pool instead of a fixed path.
   // Never advances family/Career progress either way — same
   // philosophy as BLADE VS (its own separate challenge, not a side
-  // door to grind out Career or a personal family).
+  // door to grind out Career or a personal family). comboLandedKeys is
+  // scoped to THIS run only, not lifetime familyProgress — nothing
+  // here persists once the run ends.
   comboActive: false,
   comboSource: null, // "career" | "mix" | null
   comboTrack: null, // "normal" | "switch" — set for career combos only
   comboPath: [], // career only: flattened [{ familyId, familyName, entry }] for the whole track
   comboPathIndex: 0, // career only: position along comboPath
   comboFamilyIds: [], // mix only: the selected family ids
+  comboLandedKeys: [], // mix only: familyEntryKey() of every entry landed so far THIS run — excluded from the draw so the pool actually empties
   // Which family (and, for mix, which of its entries) the CURRENT spin
   // was forced from — career derives the entry itself from
   // comboPath[comboPathIndex], mix needs the index remembered since
@@ -574,6 +578,7 @@ export function useGame() {
     state.freeLoopFamilyId = null;
     state.lockedPairs = null;
     state.isCareerSession = false;
+    state.comboLandedKeys = [];
     if (state.sessionId) {
       collection.endSession(state.sessionId);
       backupApi.autoBackupIfDue();
@@ -687,7 +692,13 @@ export function useGame() {
       state.comboCurrentFamilyId = step.familyId;
       state.comboCurrentEntryIndex = null;
     } else {
-      const pool = buildMixPool(state.comboFamilyIds);
+      const pool = buildMixPool(state.comboFamilyIds).filter(
+        ({ familyId, index }) => {
+          const family = resolveFamilyById(familyId);
+          const entry = family?.entries[index];
+          return entry && !state.comboLandedKeys.includes(familyEntryKey(entry));
+        }
+      );
       if (!pool.length) {
         finishComboRun({ cleared: true });
         return;
@@ -729,6 +740,11 @@ export function useGame() {
       state.comboChain += 1;
       if (state.comboSource === "career") {
         state.comboPathIndex += 1;
+      } else {
+        const entry = comboCurrentEntry();
+        if (entry) {
+          state.comboLandedKeys = [...state.comboLandedKeys, familyEntryKey(entry)];
+        }
       }
       nextComboSpin(settings);
       return;
@@ -1427,11 +1443,38 @@ export function useGame() {
     return { ...found, resumable: isResumableSessionLabel(found.label) };
   });
 
-  /** "Clôturer" — just closes the session record out where it is,
-   * exactly as if the player had tapped "Terminer la session" back
-   * when it actually happened. */
+  /** danglingSession only ever surfaces the single most recent open
+   * session from today (see its own comment above) — if the app got
+   * fully closed more than once in the same day without ever tapping
+   * "Clôturer"/"Reprendre"/"Terminer la session", several of these can
+   * pile up at once, each sitting with endedAt still null. Without
+   * this sweep, resolving the one shown just uncovers the next-oldest
+   * straight away, making a single tap on "Clôturer" look like it did
+   * nothing — the banner reappears immediately, just pointing at a
+   * different leftover session than the one just closed. `excludeId`
+   * lets resumeDanglingSession keep the one it's re-attaching to. */
+  function sweepDanglingSessionsFromToday(excludeId = null) {
+    const today = new Date().toISOString().slice(0, 10);
+    for (const session of collection.collection.sessions) {
+      if (
+        session.endedAt === null &&
+        session.id !== state.sessionId &&
+        session.id !== excludeId &&
+        session.startedAt.slice(0, 10) === today
+      ) {
+        collection.endSession(session.id);
+      }
+    }
+  }
+
+  /** "Clôturer" — closes the session record out where it is, exactly
+   * as if the player had tapped "Terminer la session" back when it
+   * actually happened — plus any OTHER session also left dangling from
+   * today, so a pile of several abandoned sessions clears out in one
+   * tap instead of resurfacing one at a time. */
   function closeDanglingSession(sessionId) {
     collection.endSession(sessionId);
+    sweepDanglingSessionsFromToday();
     backupApi.autoBackupIfDue();
   }
 
@@ -1443,9 +1486,13 @@ export function useGame() {
    * never left memory in the first place, just re-triggered from
    * scratch. Doesn't relaunch the exact trick that was on screen
    * (that part of the state is genuinely gone) — picking up training
-   * where the numbers left off, not a pixel-perfect replay. */
+   * where the numbers left off, not a pixel-perfect replay. Also
+   * sweeps up any OTHER dangling session from today (see
+   * sweepDanglingSessionsFromToday) — only the one just resumed stays
+   * open, so it doesn't surface again once this one is finished. */
   function resumeDanglingSession(sessionId) {
     state.sessionId = sessionId;
+    sweepDanglingSessionsFromToday(sessionId);
   }
 
   return {

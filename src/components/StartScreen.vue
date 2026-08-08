@@ -593,6 +593,26 @@ function removePlayer(index) {
       <h1 class="start__logo-text sticker-text">BLADE</h1>
     </div>
 
+    <div v-if="danglingSession" class="backup-reminder panel dangling-session dangling-session--top">
+      <span>
+        Session non clôturée ({{ danglingSession.label || "Solo" }} &mdash;
+        {{ danglingSession.landed }} réussis) &mdash; l'app a dû se fermer en
+        plein milieu.
+      </span>
+      <div class="dangling-session__actions">
+        <button class="btn btn--ghost" @click="closeDanglingSession(danglingSession.id)">
+          Clôturer
+        </button>
+        <button
+          v-if="danglingSession.resumable"
+          class="btn btn--go"
+          @click="onResumeDanglingSession"
+        >
+          Reprendre
+        </button>
+      </div>
+    </div>
+
     <div class="start__modes">
       <button
         v-for="mode in MODES"
@@ -613,26 +633,6 @@ function removePlayer(index) {
     <div v-if="hasOpenSessionToday" class="backup-reminder panel">
       <span>Une session est encore en cours.</span>
       <button class="btn" @click="endOpenSession">Terminer la session</button>
-    </div>
-
-    <div v-if="danglingSession" class="backup-reminder panel dangling-session">
-      <span>
-        Session non clôturée ({{ danglingSession.label || "Solo" }} &mdash;
-        {{ danglingSession.landed }} réussis) &mdash; l'app a dû se fermer en
-        plein milieu.
-      </span>
-      <div class="dangling-session__actions">
-        <button class="btn btn--ghost" @click="closeDanglingSession(danglingSession.id)">
-          Clôturer
-        </button>
-        <button
-          v-if="danglingSession.resumable"
-          class="btn btn--go"
-          @click="onResumeDanglingSession"
-        >
-          Reprendre
-        </button>
-      </div>
     </div>
   </section>
 
@@ -1428,6 +1428,12 @@ body.theme-inverted .start__logo-mark {
   flex-direction: column;
   align-items: stretch;
   text-align: left;
+}
+
+.dangling-session--top {
+  margin-top: 14px;
+  border: 1px solid var(--danger-hi);
+  background: rgba(var(--fg-rgb), 0.06);
 }
 
 .dangling-session__actions {

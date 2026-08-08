@@ -11,6 +11,7 @@ import { useSpeech } from "../composables/useSpeech.js";
 import { useCollection } from "../composables/useCollection.js";
 import { useVoiceControl } from "../composables/useVoiceControl.js";
 import { generateSpin } from "../game/trickGenerator.js";
+import { resolveFamily, familyEntryKey } from "../game/families.js";
 
 const REEL_STAGGER_MS = 320;
 
@@ -250,6 +251,42 @@ const comboFamilySegment = computed(() => {
 });
 
 const showComboPathList = ref(false);
+
+// Combo-Mix only — a random draw from a pool (see useGame.js's
+// comboLandedKeys), so there's no fixed order to count down to like
+// Career's comboFamilySegment above, but the pool IS bounded now: every
+// entry across the selected families, landed or not this run. Grouped
+// by family so the tap-to-open list reads the same way MixChecklistPanel
+// does. Deliberately reads state.comboLandedKeys (this run only) rather
+// than lifetime familyProgress — Combo never advances real family
+// progress (see useGame.js's own comment on that), so a lifetime
+// checklist would show a landed trick as still "to do" here, or vice
+// versa, and just be confusing mid-run.
+const comboMixSections = computed(() => {
+  if (!isCombo.value || state.comboSource !== "mix") {
+    return [];
+  }
+  return state.comboFamilyIds
+    .map((id) => resolveFamily(id, settings.customFamilies))
+    .filter(Boolean)
+    .map((family) => ({
+      familyId: family.id,
+      familyName: familyBaseName(family.name),
+      entries: family.entries.map((entry) => ({
+        entry,
+        landed: state.comboLandedKeys.includes(familyEntryKey(entry)),
+      })),
+    }));
+});
+const comboMixProgress = computed(() => {
+  const sections = comboMixSections.value;
+  if (!sections.length) {
+    return null;
+  }
+  const total = sections.reduce((sum, s) => sum + s.entries.length, 0);
+  return { landed: state.comboLandedKeys.length, total };
+});
+const showComboMixList = ref(false);
 
 // Path entries only store the forced-trick recipe (grindName,
 // variationName, ...), not the display name — this reconstructs it
@@ -494,6 +531,16 @@ function onReelStopped() {
           {{ comboFamilySegment.landed }}/{{ comboFamilySegment.total }}
         </span>
       </button>
+      <button
+        v-else-if="comboMixProgress"
+        class="vs-scoreboard__side combo-milestone"
+        @click="showComboMixList = !showComboMixList"
+      >
+        <span class="vs-scoreboard__name">Mix</span>
+        <span class="vs-scoreboard__letters combo-milestone__count">
+          {{ comboMixProgress.landed }}/{{ comboMixProgress.total }}
+        </span>
+      </button>
     </div>
 
     <div v-if="comboFamilySegment && showComboPathList" class="combo-path-list panel">
@@ -509,6 +556,21 @@ function onReelStopped() {
         <span class="combo-path-list__index">{{ i + 1 }}</span>
         <span class="combo-path-list__name">{{ comboEntryName(step.entry) }}</span>
         <AppIcon v-if="i < comboFamilySegment.currentOffset" name="check" :size="14" />
+      </div>
+    </div>
+
+    <div v-if="comboMixProgress && showComboMixList" class="combo-mix-list panel">
+      <div v-for="section in comboMixSections" :key="section.familyId" class="combo-mix-list__section">
+        <p class="combo-mix-list__title">{{ section.familyName }}</p>
+        <div
+          v-for="item in section.entries"
+          :key="comboEntryName(item.entry)"
+          class="combo-path-list__row combo-path-list__row--for-mix"
+          :class="{ 'combo-path-list__row--landed': item.landed }"
+        >
+          <AppIcon :name="item.landed ? 'check' : 'close'" :size="14" />
+          <span class="combo-path-list__name">{{ comboEntryName(item.entry) }}</span>
+        </div>
       </div>
     </div>
 
@@ -1469,6 +1531,39 @@ function onReelStopped() {
 }
 .combo-path-list__name {
   flex: 1;
+}
+
+/* Mix combo entries are pass/fail this run (landed or not) — same
+   red/green convention as every other checklist in the app (see
+   FamilyChecklistPanel/MixChecklistPanel), unlike Career's own
+   --done/--current styling above which is about sequence position,
+   not success. */
+.combo-path-list__row--for-mix {
+  color: var(--danger-hi);
+}
+.combo-path-list__row--landed {
+  color: var(--green-hi);
+}
+
+.combo-mix-list {
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 10px;
+}
+.combo-mix-list__section + .combo-mix-list__section {
+  margin-top: 4px;
+}
+.combo-mix-list__title {
+  font-family: var(--font-display);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text-dim);
+  margin: 0 0 4px 8px;
 }
 
 .vs-scoreboard__vs {
