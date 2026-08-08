@@ -328,9 +328,11 @@ watch(
           addTry();
         },
         onUndo: () => {
-          if (canUndo.value) {
-            undoLastAction();
+          if (!canUndo.value) {
+            return null;
           }
+          undoLastAction();
+          return state.spin?.name ?? null;
         },
       });
     } else {

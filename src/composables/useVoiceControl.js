@@ -96,7 +96,19 @@ export function useVoiceControl() {
           // Already stopped.
         }
       }
-      speakPhrase(CONFIRMATION_PHRASES[action], () => {
+      // Undo is different from the other three: what's worth saying
+      // back depends on what actually happens when it runs (which
+      // trick is back on screen), not a fixed phrase decided up
+      // front — so it has to run BEFORE speaking, not after like
+      // land/skip/fail below.
+      let phrase = CONFIRMATION_PHRASES[action];
+      if (action === "undo") {
+        const resultingTrickName = handlers.onUndo?.();
+        phrase = resultingTrickName
+          ? `Annulé. ${resultingTrickName}.`
+          : CONFIRMATION_PHRASES.undo;
+      }
+      speakPhrase(phrase, () => {
         if (wasListening) {
           shouldRestart = true;
           try {
@@ -110,7 +122,6 @@ export function useVoiceControl() {
       if (action === "land") handlers.onLand?.();
       else if (action === "skip") handlers.onSkip?.();
       else if (action === "fail") handlers.onFail?.();
-      else if (action === "undo") handlers.onUndo?.();
     };
 
     recognition.onerror = (event) => {
