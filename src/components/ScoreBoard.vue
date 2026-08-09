@@ -6,14 +6,16 @@ import { useCollection } from "../composables/useCollection.js";
 import { resolveFamily } from "../game/families.js";
 import FamilyChecklistPanel from "./FamilyChecklistPanel.vue";
 import MixChecklistPanel from "./MixChecklistPanel.vue";
+import ComboChecklistPanel from "./ComboChecklistPanel.vue";
 import TargetedTrainingChecklistPanel from "./TargetedTrainingChecklistPanel.vue";
 
-const { state, isSolo, isDrill, activeFamily } = useGame();
+const { state, isSolo, isDrill, isCombo, activeFamily } = useGame();
 const { settings, levelName } = useSettings();
 const { familyIndex, sessionFamilyEntryStatuses, sessionById, targetedTrainingItems } = useCollection();
 
 const showChecklist = ref(false);
 const showMixChecklist = ref(false);
+const showComboChecklist = ref(false);
 const showTargetedChecklist = ref(false);
 
 // Mix trains several families at once (state.activeFamilyIds) instead
@@ -78,6 +80,47 @@ const enabledGrindsCount = computed(() => {
 function familyBaseName(name) {
   return name.replace(/ \((Normal|Switch)\)$/, "");
 }
+
+// Combo — Carrière: the current family's own contiguous stretch of
+// state.comboPath ("X/Y avant la famille suivante"), same segment
+// ComboChecklistPanel opens into detail. Mix: total landed across the
+// run's whole pool (state.comboLandedKeys — see useGame.js). Only one
+// of the two is ever relevant for a given run, matching comboSource.
+const comboFamilySegment = computed(() => {
+  if (!isCombo.value || state.comboSource !== "career" || !state.comboPath.length) {
+    return null;
+  }
+  const current = state.comboPath[state.comboPathIndex];
+  if (!current) {
+    return null;
+  }
+  let start = state.comboPathIndex;
+  while (start > 0 && state.comboPath[start - 1].familyId === current.familyId) {
+    start--;
+  }
+  let end = state.comboPathIndex;
+  while (
+    end < state.comboPath.length - 1 &&
+    state.comboPath[end + 1].familyId === current.familyId
+  ) {
+    end++;
+  }
+  return {
+    familyName: familyBaseName(current.familyName),
+    landed: state.comboPathIndex - start,
+    total: end - start + 1,
+  };
+});
+const comboMixProgress = computed(() => {
+  if (!isCombo.value || state.comboSource !== "mix") {
+    return null;
+  }
+  const total = state.comboFamilyIds.reduce((sum, id) => {
+    const fam = resolveFamily(id, settings.customFamilies);
+    return sum + (fam ? fam.entries.length : 0);
+  }, 0);
+  return { landed: state.comboLandedKeys.length, total };
+});
 
 const pointsPop = ref(false);
 
@@ -183,6 +226,45 @@ const sessionDuration = computed(() => {
       </button>
     </div>
 
+    <div v-else-if="isCombo" class="scoreboard panel">
+      <div class="scoreboard__block">
+        <span class="scoreboard__caption">Combo</span>
+        <span class="scoreboard__value" :class="{ pop: pointsPop }">{{ state.comboChain }}</span>
+      </div>
+      <div class="scoreboard__divider" />
+      <button
+        v-if="comboFamilySegment"
+        class="scoreboard__block scoreboard__block--tap"
+        @click="showComboChecklist = true"
+      >
+        <span class="scoreboard__caption">{{ comboFamilySegment.familyName }}</span>
+        <span class="scoreboard__level">
+          {{ comboFamilySegment.landed }}/{{ comboFamilySegment.total }}
+        </span>
+      </button>
+      <button
+        v-else-if="comboMixProgress"
+        class="scoreboard__block scoreboard__block--tap"
+        @click="showComboChecklist = true"
+      >
+        <span class="scoreboard__caption">Mix</span>
+        <span class="scoreboard__level">
+          {{ comboMixProgress.landed }}/{{ comboMixProgress.total }}
+        </span>
+      </button>
+      <div v-else class="scoreboard__block">
+        <span class="scoreboard__caption">Niveau</span>
+        <span class="scoreboard__level">{{ levelName() }}</span>
+      </div>
+      <template v-if="comboFamilySegment || comboMixProgress">
+        <div class="scoreboard__divider" />
+        <div class="scoreboard__block">
+          <span class="scoreboard__caption">Niveau</span>
+          <span class="scoreboard__level">{{ levelName() }}</span>
+        </div>
+      </template>
+    </div>
+
     <div v-else class="scoreboard panel">
       <div class="scoreboard__block">
         <span class="scoreboard__caption">Manche</span>
@@ -216,6 +298,11 @@ const sessionDuration = computed(() => {
     v-if="showMixChecklist && isMix"
     :family-ids="state.activeFamilyIds"
     @close="showMixChecklist = false"
+  />
+
+  <ComboChecklistPanel
+    v-if="showComboChecklist && isCombo"
+    @close="showComboChecklist = false"
   />
 
   <TargetedTrainingChecklistPanel
