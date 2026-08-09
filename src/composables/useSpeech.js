@@ -151,8 +151,11 @@ const MAX_PHRASE_WORDS = 4; // longest sample key ("to 540 rewind out")
 // actually pronounce correctly (a screen reader-style engine reading
 // "BS"/"FS"/"AO" literally as letters would be unintelligible) — also
 // used ahead of the sample-based tokenizer below, since a few sample
-// keys are recorded under the expanded form too.
-function buildSpokenText(name) {
+// keys are recorded under the expanded form too. Exported so voice
+// control's "répète" can read the same expanded form speakTrick uses
+// — it goes through speakPhrase (built for fixed confirmation
+// sentences, not trick names), which doesn't apply this on its own.
+export function buildSpokenText(name) {
   let text = name;
   for (const [pattern, spoken] of SPOKEN) {
     text = text.replace(pattern, spoken);

@@ -7,7 +7,7 @@ import TrickListPanel from "./TrickListPanel.vue";
 import FamilyChecklistPanel from "./FamilyChecklistPanel.vue";
 import { LETTERS, useGame } from "../composables/useGame.js";
 import { useSettings } from "../composables/useSettings.js";
-import { useSpeech } from "../composables/useSpeech.js";
+import { useSpeech, buildSpokenText } from "../composables/useSpeech.js";
 import { useCollection } from "../composables/useCollection.js";
 import { useVoiceControl } from "../composables/useVoiceControl.js";
 
@@ -242,8 +242,20 @@ function onAddToDrill() {
 // no way to tell whose "réussi" it was) and while a panel is open on
 // top (so a stray "passe" while reading the trick explainer doesn't
 // skip anything).
-const { isSupported: voiceSupported, isListening: voiceListening, lastHeard: voiceLastHeard, start: startVoice, stop: stopVoice } =
+const { isSupported: voiceSupported, isListening: voiceListening, lastHeard: voiceLastHeard, lastAction: voiceLastAction, start: startVoice, stop: stopVoice } =
   useVoiceControl();
+
+// Labels/colors for whichever action voice control last recognized —
+// shown right next to the raw transcript so it's obvious the app
+// understood correctly (or didn't) without needing to catch the
+// spoken confirmation over rail noise.
+const VOICE_ACTION_LABELS = {
+  land: "✓ Réussi",
+  skip: "→ Passé",
+  fail: "✗ Raté",
+  undo: "↺ Annulé",
+  repeat: "🔁 Répète",
+};
 
 watch(
   () => settings.voiceControl && (isSolo.value || isVs.value || isCombo.value || isDrill.value) && !openPanel.value,
@@ -291,9 +303,9 @@ watch(
             return null;
           }
           undoLastAction();
-          return state.spin?.name ?? null;
+          return state.spin ? buildSpokenText(state.spin.name) : null;
         },
-        onRepeat: () => state.spin?.name ?? null,
+        onRepeat: () => (state.spin ? buildSpokenText(state.spin.name) : null),
       });
     } else {
       stopVoice();
@@ -539,7 +551,14 @@ function onReelStopped() {
             <div v-if="settings.voiceControl && voiceSupported" class="voice-indicator">
               <span class="voice-indicator__dot" :class="{ 'voice-indicator__dot--live': voiceListening }" />
               {{ voiceListening ? "À l'écoute…" : "Micro en pause" }}
-              <span v-if="voiceLastHeard" class="voice-indicator__heard">« {{ voiceLastHeard }} »</span>
+              <span v-if="voiceLastHeard" class="voice-indicator__heard">
+                « {{ voiceLastHeard }} »
+                <span
+                  v-if="voiceLastAction"
+                  class="voice-indicator__action"
+                  :class="`voice-indicator__action--${voiceLastAction}`"
+                >{{ VOICE_ACTION_LABELS[voiceLastAction] }}</span>
+              </span>
             </div>
 
             <!-- attempt counter: tap once per failed real-life try before
@@ -666,7 +685,14 @@ function onReelStopped() {
             <div v-if="settings.voiceControl && voiceSupported" class="voice-indicator">
               <span class="voice-indicator__dot" :class="{ 'voice-indicator__dot--live': voiceListening }" />
               {{ voiceListening ? "À l'écoute…" : "Micro en pause" }}
-              <span v-if="voiceLastHeard" class="voice-indicator__heard">« {{ voiceLastHeard }} »</span>
+              <span v-if="voiceLastHeard" class="voice-indicator__heard">
+                « {{ voiceLastHeard }} »
+                <span
+                  v-if="voiceLastAction"
+                  class="voice-indicator__action"
+                  :class="`voice-indicator__action--${voiceLastAction}`"
+                >{{ VOICE_ACTION_LABELS[voiceLastAction] }}</span>
+              </span>
             </div>
 
             <div class="result__actions">
@@ -708,7 +734,14 @@ function onReelStopped() {
           <div v-if="settings.voiceControl && voiceSupported" class="voice-indicator">
             <span class="voice-indicator__dot" :class="{ 'voice-indicator__dot--live': voiceListening }" />
             {{ voiceListening ? "À l'écoute…" : "Micro en pause" }}
-            <span v-if="voiceLastHeard" class="voice-indicator__heard">« {{ voiceLastHeard }} »</span>
+            <span v-if="voiceLastHeard" class="voice-indicator__heard">
+              « {{ voiceLastHeard }} »
+              <span
+                v-if="voiceLastAction"
+                class="voice-indicator__action"
+                :class="`voice-indicator__action--${voiceLastAction}`"
+              >{{ VOICE_ACTION_LABELS[voiceLastAction] }}</span>
+            </span>
           </div>
 
           <div class="result__actions">
@@ -1210,6 +1243,33 @@ function onReelStopped() {
 
 .voice-indicator__heard {
   font-style: italic;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.voice-indicator__action {
+  font-style: normal;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--bg-1);
+  white-space: nowrap;
+}
+.voice-indicator__action--land {
+  color: var(--green-hi);
+}
+.voice-indicator__action--fail {
+  color: var(--danger-hi);
+}
+.voice-indicator__action--skip,
+.voice-indicator__action--repeat {
+  color: var(--text-dim);
+}
+.voice-indicator__action--undo {
+  color: var(--red-hi);
 }
 
 @keyframes voice-pulse {

@@ -14,7 +14,10 @@ const CONFIRMATION_PHRASES = {
 // phrase. Matched as a plain substring after stripping accents, not a
 // whole-word match, so a sentence like "ouais nickel c'est réussi"
 // still triggers "land" through "réussi" alone.
-const LAND_WORDS = ["blade", "reussi", "reussite", "valide", "ouais", "yes", "ok"];
+// "yes" got dropped — too generic in ANY nearby conversation not
+// aimed at the app. "ok" stays despite the same risk (kept on
+// request).
+const LAND_WORDS = ["blade", "reussi", "reussite", "valide", "ouais", "ok"];
 const SKIP_WORDS = ["passe", "passer", "suivant"];
 const FAIL_WORDS = ["rate", "loupe", "perdu", "encore"];
 // Checked before FAIL_WORDS below — "annule"/"annulé" would otherwise
@@ -85,6 +88,12 @@ export function useVoiceControl() {
       lastHeard.value = transcript;
       const action = matchAction(transcript);
       if (!action) {
+        // Heard something, understood nothing — clear any PREVIOUS
+        // match instead of leaving it displayed next to an unrelated
+        // phrase (e.g. "réussi" sets lastAction to "land"; ambient
+        // noise transcribed as something else right after shouldn't
+        // still show "land" alongside it).
+        lastAction.value = null;
         return;
       }
       lastAction.value = action;
