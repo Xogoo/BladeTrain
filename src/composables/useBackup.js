@@ -263,8 +263,13 @@ export function useBackup() {
   }
 
   /**
-   * Restores collection + settings from a previously exported file.
-   * Used by a "Restore backup" file picker in the settings panel.
+   * Restores the collection (history/progress) from a previously
+   * exported file. Used by a "Restore backup" file picker in the
+   * settings panel. Deliberately leaves `settings` untouched — the
+   * person's current réglages (voice, theme, personal families,
+   * targeted training...) are what THEY set up on THIS device right
+   * now, not whatever happened to be saved in an old backup; only the
+   * history/progress side of a restore should ever move.
    */
   function restoreBackup(payload) {
     if (
@@ -283,9 +288,6 @@ export function useBackup() {
       collection,
       migrateFamilyEntryKeyFormat(migrateZerospinSplit(payload.collection))
     );
-    if (payload.settings) {
-      Object.assign(settings, payload.settings);
-    }
     // Without this, the next app load would hydrate lands/skips from
     // whatever was in IndexedDB BEFORE this restore, not what was just
     // restored above — see resyncLog's own comment in useCollection.js.
