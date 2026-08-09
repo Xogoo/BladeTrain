@@ -22,6 +22,12 @@ const FAIL_WORDS = ["rate", "loupe", "perdu", "encore"];
 // importantly a misheard "annule" mustn't ever silently fall through
 // to FAIL and record a wrong attempt instead of undoing one.
 const UNDO_WORDS = ["annule", "annuler"];
+// Just re-reads the trick currently on screen — doesn't touch game
+// state at all, so a false trigger here is harmless (unlike the four
+// above), but still checked ahead of LAND/SKIP/FAIL since none of
+// their words overlap with these anyway and it's the same class of
+// "meta" command as undo.
+const REPEAT_WORDS = ["repete", "repeter", "redis"];
 
 function normalize(text) {
   return text
@@ -34,6 +40,7 @@ function normalize(text) {
 function matchAction(transcript) {
   const text = normalize(transcript);
   if (UNDO_WORDS.some((word) => text.includes(word))) return "undo";
+  if (REPEAT_WORDS.some((word) => text.includes(word))) return "repeat";
   if (LAND_WORDS.some((word) => text.includes(word))) return "land";
   if (SKIP_WORDS.some((word) => text.includes(word))) return "skip";
   if (FAIL_WORDS.some((word) => text.includes(word))) return "fail";
@@ -41,12 +48,12 @@ function matchAction(transcript) {
 }
 
 /**
- * Hands-free "réussi" / "raté, on rejoue" / "passer" during a solo
- * session, via the browser's SpeechRecognition — so a phone propped up
- * on a ledge doesn't need touching between attempts. Experimental:
- * support and reliability vary a lot by browser (notably Safari/iOS),
- * so this degrades to `isSupported === false` cleanly wherever the API
- * just isn't there instead of throwing.
+ * Hands-free "réussi" / "raté, on rejoue" / "passer" / "répète" during
+ * a solo session, via the browser's SpeechRecognition — so a phone
+ * propped up on a ledge doesn't need touching between attempts.
+ * Experimental: support and reliability vary a lot by browser
+ * (notably Safari/iOS), so this degrades to `isSupported === false`
+ * cleanly wherever the API just isn't there instead of throwing.
  */
 export function useVoiceControl() {
   const SpeechRecognitionCtor =
@@ -96,17 +103,20 @@ export function useVoiceControl() {
           // Already stopped.
         }
       }
-      // Undo is different from the other three: what's worth saying
-      // back depends on what actually happens when it runs (which
-      // trick is back on screen), not a fixed phrase decided up
-      // front — so it has to run BEFORE speaking, not after like
-      // land/skip/fail below.
+      // Undo and Repeat are different from the other three: what's
+      // worth saying back depends on what's actually happening (which
+      // trick just came back on screen for undo, which one's already
+      // there for repeat), not a fixed phrase decided up front — so
+      // both run BEFORE speaking, not after like land/skip/fail below.
       let phrase = CONFIRMATION_PHRASES[action];
       if (action === "undo") {
         const resultingTrickName = handlers.onUndo?.();
         phrase = resultingTrickName
           ? `Annulé. ${resultingTrickName}.`
           : CONFIRMATION_PHRASES.undo;
+      } else if (action === "repeat") {
+        const trickName = handlers.onRepeat?.();
+        phrase = trickName || "Aucun trick en cours.";
       }
       speakPhrase(phrase, () => {
         if (wasListening) {
@@ -210,11 +220,11 @@ export function useVoiceControl() {
     visibilityHandlerAttached = false;
   }
 
-  function start({ onLand, onSkip, onFail, onUndo } = {}) {
+  function start({ onLand, onSkip, onFail, onUndo, onRepeat } = {}) {
     if (!isSupported) {
       return;
     }
-    handlers = { onLand, onSkip, onFail, onUndo };
+    handlers = { onLand, onSkip, onFail, onUndo, onRepeat };
     permissionDenied.value = false;
     ensureRecognition();
     attachVisibilityHandler();

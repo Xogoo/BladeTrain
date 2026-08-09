@@ -334,8 +334,9 @@ const REFERENCES = [
       Le contrôle vocal (Réglages) écoute "réussi", "raté" et "passe" pendant
       un tirage, dans tous les modes qui s'y prêtent (Solo, BLADE VS, Combo,
       Drill) — pratique pour ne pas avoir à toucher le téléphone entre deux
-      passages sur le rail. Il se met en pause automatiquement dès qu'un
-      panneau s'ouvre par-dessus, ou que l'app passe en arrière-plan.
+      passages sur le rail. "Annule" annule le dernier trick, "répète" fait
+      relire le nom du trick en cours. Il se met en pause automatiquement dès
+      qu'un panneau s'ouvre par-dessus, ou que l'app passe en arrière-plan.
     </p>
     <p>
       Le <strong>Mode Focus</strong> (bouton en haut de l'écran de tirage en

@@ -293,6 +293,7 @@ watch(
           undoLastAction();
           return state.spin?.name ?? null;
         },
+        onRepeat: () => state.spin?.name ?? null,
       });
     } else {
       stopVoice();
