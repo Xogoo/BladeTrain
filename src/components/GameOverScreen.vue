@@ -7,7 +7,7 @@ import { useSpeech } from "../composables/useSpeech.js";
 
 const { state, startGame, goToStart } = useGame();
 const { settings } = useSettings();
-const { announceWinner } = useSpeech();
+const { announceWinner, speakPhrase } = useSpeech();
 
 function changeConfig() {
   if (state.mode === "vs") {
@@ -39,9 +39,25 @@ function lettersOf(player) {
   return LETTERS.slice(0, player.letters).split("").join(" ");
 }
 
-// "Player N ... wins" — only when there is a single winner to call out.
+// "Player N ... wins" (sample-based, numbered) for group mode — VS
+// gets its own name-based "Victoire de Pierre."/"Victoire de
+// BladeBot." instead (see resolveVsRound's per-round announcement in
+// GameScreen.vue for the matching in-match phrasing), since VS always
+// has exactly the two real, known names rather than an arbitrary
+// group-mode roster.
 onMounted(() => {
-  if (!isDraw.value && winners.value.length === 1) {
+  if (isDraw.value) {
+    if (state.mode === "vs") {
+      speakPhrase("Match nul.");
+    }
+    return;
+  }
+  if (winners.value.length !== 1) {
+    return;
+  }
+  if (state.mode === "vs") {
+    speakPhrase(`Victoire de ${winners.value[0].name}.`);
+  } else {
     announceWinner(state.players.indexOf(winners.value[0]) + 1);
   }
 });

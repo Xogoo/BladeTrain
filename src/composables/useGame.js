@@ -128,8 +128,17 @@ const state = reactive({
   // Set once the round is decided (player landed, or exhausted 3
   // tries) — { playerLanded, robotLanded, robotTries } | null. While
   // set, the game screen shows the round's outcome instead of the
-  // Raté/Réussi buttons, until "Trick suivant" is tapped.
+  // Raté/Réussi buttons, until "Trick suivant" is tapped. NEVER set on
+  // the match-ending round (see resolveVsRound: it jumps straight to
+  // endGame instead) — vsRoundOutcome below covers that round too.
   vsRoundResult: null,
+  // Same shape as vsRoundResult, but set on EVERY round including the
+  // match-ending one — purely for the audio announcement (see
+  // GameScreen.vue's own watch), kept deliberately separate so the
+  // announcement can't accidentally interfere with vsRoundResult's
+  // panel-display/auto-advance-timer duties on a round that's about
+  // to end the match outright.
+  vsRoundOutcome: null,
 
   // Combo mode state — go as far as possible chaining tricks with at
   // most 2 tries each; failing both on any one trick ends the whole
@@ -873,6 +882,17 @@ export function useGame() {
     if (!robot.landed) {
       bot.letters += 1;
     }
+    // Always set, win-or-not — this is what drives the spoken
+    // announcement (see GameScreen.vue), independent of whether the
+    // round also happens to end the match outright below.
+    state.vsRoundOutcome = {
+      playerLanded,
+      robotLanded: robot.landed,
+      playerName: player.name,
+      botName: bot.name,
+      playerLetters: player.letters,
+      botLetters: bot.letters,
+    };
     if (player.letters >= LETTERS.length || bot.letters >= LETTERS.length) {
       endGame(settings);
       return;

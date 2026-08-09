@@ -52,7 +52,7 @@ const {
   addCurrentTrickToDrill,
 } = useGame();
 const { settings, reelSpeedMs } = useSettings();
-const { speakTrick, playKeys } = useSpeech();
+const { speakTrick, speakPhrase, playKeys } = useSpeech();
 const { familyIndex, sessionFamilyEntryStatuses, drillList } = useCollection();
 
 // Switch families carry their own leading "Switch " prefix (see
@@ -104,6 +104,35 @@ watch(
         nextVsRound(settings);
       }, 2000);
     }
+  }
+);
+
+// Announces every VS round out loud — who landed it, who didn't, then
+// each side's current letters spelled out (same B-L-A-D-E spelling as
+// the on-screen scoreboard/lettersOf) — so the result is following
+// even with eyes on the rail, not just the screen. Reacts to
+// vsRoundOutcome rather than vsRoundResult above on purpose: the
+// match-ending round never sets vsRoundResult (useGame.js's
+// resolveVsRound jumps straight to endGame for it, skipping the
+// on-screen panel + auto-advance timer entirely) but still needs
+// announcing — vsRoundOutcome is set unconditionally, every round,
+// specifically so this doesn't go silent on the round that matters
+// most. Fires for both tap and voice attempts alike (this watch
+// reacts to the state change, not to whichever input caused it).
+watch(
+  () => state.vsRoundOutcome,
+  (outcome) => {
+    if (!outcome) {
+      return;
+    }
+    const spellLetters = (letters) =>
+      letters > 0 ? LETTERS.slice(0, letters).split("").join(", ") : "aucune lettre";
+    speakPhrase(
+      `${outcome.playerName}, ${outcome.playerLanded ? "réussi" : "raté"}. ` +
+        `${outcome.botName}, ${outcome.robotLanded ? "réussi" : "raté"}. ` +
+        `${outcome.playerName} : ${spellLetters(outcome.playerLetters)}. ` +
+        `${outcome.botName} : ${spellLetters(outcome.botLetters)}.`
+    );
   }
 );
 
