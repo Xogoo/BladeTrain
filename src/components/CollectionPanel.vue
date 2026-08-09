@@ -100,7 +100,12 @@ const familyProgress = computed(() => {
     .map((family) => ({
       id: family.id,
       name: family.name,
-      landed: familyIndex(family.id, family.entries),
+      // Personal families can only ever be trained via practice (never
+      // Career — Career only ever contains built-in tracked families),
+      // so familyIndex(family.id) here would always read the dead,
+      // never-written practice bucket (see the built-in list's own
+      // comment above). Lifetime lands are the only real source now.
+      landed: familyLifetimeLandedCount(family),
       total: family.entries.length,
     }));
   return [...builtIn, ...custom];

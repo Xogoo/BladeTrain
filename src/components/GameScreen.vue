@@ -405,7 +405,7 @@ function onReelStopped() {
       class="focus-family-progress"
       @click="openPanel = 'familyChecklist'"
     >
-      {{ familyIndex(activeFamilyProgressId, activeFamily.entries) }}/{{ activeFamily.entries.length }} tricks réussis
+      {{ activeFamilyLanded }}/{{ activeFamily.entries.length }} tricks réussis
     </button>
 
     <div v-if="!isSolo && !isVs && !isCombo && !isDrill" class="roster">

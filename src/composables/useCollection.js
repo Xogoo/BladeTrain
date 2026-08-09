@@ -927,9 +927,21 @@ export function useCollection() {
    * 65%") — shown in Sessions history so a session card isn't just an
    * anonymous date + counts. null for plain Solo (nothing more
    * specific to say). */
+  // Date.now() is not guaranteed unique — two sessions started within
+  // the same millisecond (e.g. a rapid double-tap, or any future code
+  // path that starts one right after ending another in the same tick)
+  // would collide, silently merging their lands/skips under one id and
+  // confusing anything that compares session ids for equality
+  // (closeDanglingSession's sweep, resumeDanglingSession, endSession
+  // itself). Bumping past the last-issued id guarantees uniqueness
+  // without changing what the id actually IS everywhere else (still a
+  // plain, sortable, millisecond-ish number).
+  let lastSessionId = 0;
   const startSession = (label = null) => {
+    const id = Math.max(Date.now(), lastSessionId + 1);
+    lastSessionId = id;
     const session = {
-      id: Date.now(),
+      id,
       startedAt: new Date().toISOString(),
       endedAt: null,
       landed: 0,
