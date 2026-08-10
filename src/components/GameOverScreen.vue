@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted } from "vue";
+import { computed, onMounted, watch } from "vue";
 import AppIcon from "./AppIcon.vue";
 import { LETTERS, useGame } from "../composables/useGame.js";
 import { useSettings } from "../composables/useSettings.js";
@@ -7,7 +7,7 @@ import { useSpeech } from "../composables/useSpeech.js";
 
 const { state, startGame, goToStart } = useGame();
 const { settings } = useSettings();
-const { announceWinner, speakPhrase } = useSpeech();
+const { announceWinner, speakPhrase, isSpeaking } = useSpeech();
 
 function changeConfig() {
   if (state.mode === "vs") {
@@ -45,7 +45,15 @@ function lettersOf(player) {
 // GameScreen.vue for the matching in-match phrasing), since VS always
 // has exactly the two real, known names rather than an arbitrary
 // group-mode roster.
-onMounted(() => {
+//
+// The match-ending round is almost always the one where someone JUST
+// gained their 5th letter, so GameScreen's own round-outcome
+// announcement (réussi/raté + the letter recap) is very likely still
+// speaking by the time this screen mounts a moment later — waiting for
+// isSpeaking to clear first stops "Victoire de Pierre" from talking
+// over the end of that sentence. Same speakPhrase pipeline either way,
+// just deferred until the mic/speaker is actually free.
+function announceOutcome() {
   if (isDraw.value) {
     if (state.mode === "vs") {
       speakPhrase("Match nul.");
@@ -60,6 +68,19 @@ onMounted(() => {
   } else {
     announceWinner(state.players.indexOf(winners.value[0]) + 1);
   }
+}
+
+onMounted(() => {
+  if (!isSpeaking.value) {
+    announceOutcome();
+    return;
+  }
+  const stopWatchingSpeech = watch(isSpeaking, (speaking) => {
+    if (!speaking) {
+      stopWatchingSpeech();
+      announceOutcome();
+    }
+  });
 });
 
 // Tumbling logo images rain down instead of generic confetti.

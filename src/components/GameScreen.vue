@@ -52,7 +52,7 @@ const {
   addCurrentTrickToDrill,
 } = useGame();
 const { settings, reelSpeedMs } = useSettings();
-const { speakTrick, speakPhrase, playKeys } = useSpeech();
+const { speakTrick, speakPhrase, playKeys, isSpeaking } = useSpeech();
 const { familyIndex, sessionFamilyEntryStatuses, drillList } = useCollection();
 
 // Switch families carry their own leading "Switch " prefix (see
@@ -89,50 +89,80 @@ onUnmounted(() => {
   clearVsAutoAdvance();
 });
 
-// BLADE VS: once a round is decided (landed, or 3 tries used up), the
-// result stays on screen — réussi/+1 lettre — for 2s, then the next
-// trick starts automatically, no tap needed. Still tappable early via
-// "Trick suivant" (which clears vsRoundResult itself, so this watch's
-// next run just sees nothing pending and does nothing) or via voice.
+// BLADE VS: announces every round out loud, then — once the result is
+// decided (landed, or 3 tries used up) and NOT the match-ending round
+// — advances to the next trick automatically after a couple of
+// seconds, no tap needed. Still tappable early via "Trick suivant"
+// (which clears vsRoundResult itself, so a stray timer firing later
+// just sees nothing pending and does nothing) or via voice.
+//
+// The announcement says who landed it, who didn't, then — only when
+// it actually changed — each side's current letters spelled out (same
+// B-L-A-D-E spelling as the on-screen scoreboard/lettersOf). Letters
+// only ever change on a miss (see resolveVsRound in useGame.js), so a
+// round where both land stays a quick "réussi/réussi" with no recap
+// tacked on — the recap is worth the extra couple of seconds
+// specifically because it's telling you something new.
+//
+// Auto-advance waits for isSpeaking to actually go false rather than a
+// flat delay: the announcement's length varies a lot depending on
+// whether the letter recap is included, and a fixed delay long enough
+// for the short case would routinely cut the longer one off mid-
+// sentence, right as it started speaking the letters someone actually
+// cares about hearing. Both concerns live in this ONE watcher (rather
+// than a separate one for vsRoundResult) specifically so there's no
+// ordering question between "did the announcement start speaking yet"
+// and "should the auto-advance timer check isSpeaking" — they always
+// happen in the right order by construction.
+//
+// Reacts to vsRoundOutcome rather than vsRoundResult on purpose: the
+// match-ending round never sets vsRoundResult (useGame.js's
+// resolveVsRound jumps straight to endGame for it) but still needs
+// announcing — vsRoundOutcome is set unconditionally, every round, so
+// this doesn't go silent on the round that matters most (no
+// auto-advance gets scheduled for it either, correctly, since
+// state.vsRoundResult stays null in that case). Fires for both tap
+// and voice attempts alike (reacts to the state change, not to
+// whichever input caused it).
 watch(
-  () => state.vsRoundResult,
-  (result) => {
+  () => state.vsRoundOutcome,
+  (outcome) => {
     clearVsAutoAdvance();
-    if (result) {
+    if (!outcome) {
+      return;
+    }
+    const gainedLetter = !outcome.playerLanded || !outcome.robotLanded;
+    let phrase =
+      `${outcome.playerName}, ${outcome.playerLanded ? "réussi" : "raté"}. ` +
+      `${outcome.botName}, ${outcome.robotLanded ? "réussi" : "raté"}.`;
+    if (gainedLetter) {
+      const spellLetters = (letters) =>
+        letters > 0 ? LETTERS.slice(0, letters).split("").join(", ") : "aucune lettre";
+      phrase +=
+        ` ${outcome.playerName} : ${spellLetters(outcome.playerLetters)}. ` +
+        `${outcome.botName} : ${spellLetters(outcome.botLetters)}.`;
+    }
+    speakPhrase(phrase);
+
+    if (!state.vsRoundResult) {
+      return; // match-ending round — nothing to advance to
+    }
+    const startTimer = () => {
       vsAutoAdvanceTimer = window.setTimeout(() => {
         vsAutoAdvanceTimer = null;
         nextVsRound(settings);
       }, 2000);
+    };
+    if (isSpeaking.value) {
+      const stopWatchingSpeech = watch(isSpeaking, (speaking) => {
+        if (!speaking) {
+          stopWatchingSpeech();
+          startTimer();
+        }
+      });
+    } else {
+      startTimer();
     }
-  }
-);
-
-// Announces every VS round out loud — who landed it, who didn't, then
-// each side's current letters spelled out (same B-L-A-D-E spelling as
-// the on-screen scoreboard/lettersOf) — so the result is following
-// even with eyes on the rail, not just the screen. Reacts to
-// vsRoundOutcome rather than vsRoundResult above on purpose: the
-// match-ending round never sets vsRoundResult (useGame.js's
-// resolveVsRound jumps straight to endGame for it, skipping the
-// on-screen panel + auto-advance timer entirely) but still needs
-// announcing — vsRoundOutcome is set unconditionally, every round,
-// specifically so this doesn't go silent on the round that matters
-// most. Fires for both tap and voice attempts alike (this watch
-// reacts to the state change, not to whichever input caused it).
-watch(
-  () => state.vsRoundOutcome,
-  (outcome) => {
-    if (!outcome) {
-      return;
-    }
-    const spellLetters = (letters) =>
-      letters > 0 ? LETTERS.slice(0, letters).split("").join(", ") : "aucune lettre";
-    speakPhrase(
-      `${outcome.playerName}, ${outcome.playerLanded ? "réussi" : "raté"}. ` +
-        `${outcome.botName}, ${outcome.robotLanded ? "réussi" : "raté"}. ` +
-        `${outcome.playerName} : ${spellLetters(outcome.playerLetters)}. ` +
-        `${outcome.botName} : ${spellLetters(outcome.botLetters)}.`
-    );
   }
 );
 

@@ -261,6 +261,10 @@ export function stopSpeech() {
   if (typeof window !== "undefined" && window.speechSynthesis) {
     window.speechSynthesis.cancel();
   }
+  // cancel() doesn't reliably fire onend/onerror on every browser (see
+  // speakPhrase's own isSpeaking tracking) — reset it directly here so
+  // a manual stop can't leave anything waiting on speech forever.
+  isSpeaking.value = false;
 }
 
 // French (or French-tagged) voices the browser/OS exposes for
@@ -461,6 +465,13 @@ export function unlockAudio(withMusic) {
   }
 }
 
+// Whether a speakPhrase/speakTrick utterance is currently playing —
+// exported so anything that wants to announce something ELSE right
+// after (the VS auto-advance timer, the match-over victory call) can
+// wait for it to actually finish instead of guessing a fixed delay
+// and risking cutting it off mid-sentence.
+const isSpeaking = ref(false);
+
 /**
  * Short spoken phrases that aren't trick names — confirmations like
  * "Trick validé !" — always go through speech synthesis. Uses
@@ -480,10 +491,13 @@ export function speakPhrase(text, onEnd) {
   } else {
     utterance.lang = "fr-FR";
   }
-  if (onEnd) {
-    utterance.onend = onEnd;
-    utterance.onerror = onEnd;
-  }
+  isSpeaking.value = true;
+  const finish = () => {
+    isSpeaking.value = false;
+    onEnd?.();
+  };
+  utterance.onend = finish;
+  utterance.onerror = finish;
   window.speechSynthesis.speak(utterance);
 }
 
@@ -503,5 +517,6 @@ export function useSpeech() {
     synthesisVoices,
     isSynthesisSupported,
     speakPhrase,
+    isSpeaking,
   };
 }
