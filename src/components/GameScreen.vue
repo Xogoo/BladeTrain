@@ -77,10 +77,23 @@ const openPanel = ref(null); // 'explain' | 'tricklist' | 'familyChecklist' | nu
 const stoppedReels = ref(0);
 
 let vsAutoAdvanceTimer = null;
+// Tracks a pending "wait for the round announcement to finish
+// speaking" watcher (see below) — cleared alongside the real timer so
+// at most ONE advance mechanism is ever pending at a time. Without
+// this, an outer vsRoundOutcome change arriving while a PREVIOUS
+// round's speech was still in flight left that earlier watcher
+// dangling: once ITS speech eventually finished, it would fire its own
+// nextVsRound on top of whatever the current round also scheduled —
+// two trick draws back to back with no tap in between.
+let stopVsSpeechWait = null;
 function clearVsAutoAdvance() {
   if (vsAutoAdvanceTimer) {
     window.clearTimeout(vsAutoAdvanceTimer);
     vsAutoAdvanceTimer = null;
+  }
+  if (stopVsSpeechWait) {
+    stopVsSpeechWait();
+    stopVsSpeechWait = null;
   }
 }
 
@@ -154,9 +167,10 @@ watch(
       }, 2000);
     };
     if (isSpeaking.value) {
-      const stopWatchingSpeech = watch(isSpeaking, (speaking) => {
+      stopVsSpeechWait = watch(isSpeaking, (speaking) => {
         if (!speaking) {
-          stopWatchingSpeech();
+          stopVsSpeechWait?.();
+          stopVsSpeechWait = null;
           startTimer();
         }
       });

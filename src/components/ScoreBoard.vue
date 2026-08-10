@@ -9,7 +9,7 @@ import MixChecklistPanel from "./MixChecklistPanel.vue";
 import ComboChecklistPanel from "./ComboChecklistPanel.vue";
 import TargetedTrainingChecklistPanel from "./TargetedTrainingChecklistPanel.vue";
 
-const { state, isSolo, isDrill, isCombo, activeFamily } = useGame();
+const { state, isSolo, isDrill, isCombo, isVs, activeFamily } = useGame();
 const { settings, levelName } = useSettings();
 const { familyIndex, sessionFamilyEntryStatuses, sessionById, targetedTrainingItems } = useCollection();
 
@@ -263,6 +263,25 @@ const sessionDuration = computed(() => {
           <span class="scoreboard__level">{{ levelName() }}</span>
         </div>
       </template>
+    </div>
+
+    <div v-else-if="isVs" class="scoreboard panel">
+      <div class="scoreboard__block">
+        <span class="scoreboard__caption">Manche</span>
+        <span class="scoreboard__value">{{ state.round }}</span>
+      </div>
+      <div class="scoreboard__divider" />
+      <div class="scoreboard__block">
+        <span class="scoreboard__caption">En jeu</span>
+        <span class="scoreboard__value scoreboard__value--plain">{{
+          playersIn
+        }}</span>
+      </div>
+      <div class="scoreboard__divider" />
+      <div class="scoreboard__block">
+        <span class="scoreboard__caption">Niveau</span>
+        <span class="scoreboard__level">BLADE VS</span>
+      </div>
     </div>
 
     <div v-else class="scoreboard panel">
