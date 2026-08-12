@@ -126,7 +126,11 @@ function onDayTap(d) {
 .aya {
   width: min(460px, 100%);
   margin: 0 auto;
-  padding: 12px 16px 8px;
+  /* Same safe-area handling as .app-header in App.vue — Aya lives
+     inside state.screen === 'start', which never gets .app-header
+     (see App.vue's own v-if), so without this the top buttons render
+     right under the phone's status bar/notch instead of below it. */
+  padding: calc(env(safe-area-inset-top) + 16px) 16px 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
