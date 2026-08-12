@@ -216,7 +216,7 @@ const RARE_GRINDS = GRINDS.filter((g) =>
 const MAX_SESSIONS = 200;
 const MAX_COMBO_RUNS = 100;
 
-function defaultCollection() {
+export function defaultCollection() {
   return {
     tricks: {}, // { [exact trick name]: { landed, skipped } }
     grinds: {}, // { [grindName]: { landed, skipped } }
@@ -805,8 +805,8 @@ function familyLifetimeLandedCount(family) {
 function familyLifetimeEntryStatuses(family) {
   const keys = familyLifetimeLandedKeySet(family.id);
   const landsByKey = {};
-  for (const land of familyLands(family.id)) {
-    if (land.familyEntryKey) {
+  for (const land of collection.lands) {
+    if (land.familyId === family.id && land.familyEntryKey) {
       landsByKey[land.familyEntryKey] = land;
     }
   }

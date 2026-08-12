@@ -1,5 +1,5 @@
 import { computed } from "vue";
-import { useCollection, migrateZerospinSplit, migrateFamilyEntryKeyFormat, resyncLog } from "./useCollection.js";
+import { useCollection, defaultCollection, migrateZerospinSplit, migrateFamilyEntryKeyFormat, resyncLog } from "./useCollection.js";
 import { useSettings } from "./useSettings.js";
 
 // There is no server here, and this app is sideloaded (not from the
@@ -294,8 +294,20 @@ export function useBackup() {
     // never goes through loadCollection()'s own migrations when
     // restored mid-session — run both here too, or progress comes
     // back orphaned/reset under either change.
+    //
+    // defaultCollection() goes FIRST, as its own separate source, so
+    // any field the restored file doesn't have at all (an old backup
+    // taken before Aya existed has no `ayaSessions` key, for instance)
+    // resets to empty instead of silently keeping whatever's currently
+    // live in memory. Object.assign only ever ADDS/OVERWRITES keys
+    // present in a source — it never REMOVES a key that's missing from
+    // one, so without this baseline, restoring an old backup wouldn't
+    // actually return the app to that backup's state; it would just
+    // layer old data on top of today's, leaving anything the old
+    // backup never knew about untouched.
     Object.assign(
       collection,
+      defaultCollection(),
       migrateFamilyEntryKeyFormat(migrateZerospinSplit(payload.collection))
     );
     if (payload.settings?.customFamilies?.length) {
