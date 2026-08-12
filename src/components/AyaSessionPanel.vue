@@ -156,28 +156,23 @@ function onDelete() {
   <AppModal :title="formatLongDate(dateKey)" @close="$emit('close')">
     <template v-if="mode === 'summary' && existingSession">
       <div class="aya-summary-group">
-        <p class="aya-group__title">Soul</p>
-        <p v-if="doneNames('soul', soulFamily).length" class="aya-summary-list">
-          {{ doneNames('soul', soulFamily).join(", ") }}
+        <p class="aya-group__title">Tricks réussis</p>
+        <p
+          v-if="doneNames('soul', soulFamily).length || doneNames('groove', grooveFamily).length"
+          class="aya-summary-list"
+        >
+          {{ [...doneNames('soul', soulFamily), ...doneNames('groove', grooveFamily)].join(", ") }}
         </p>
         <p v-else class="aya-summary-empty">Rien de noté.</p>
-      </div>
-
-      <div class="aya-summary-group">
-        <p class="aya-group__title">Groove</p>
-        <p v-if="doneNames('groove', grooveFamily).length" class="aya-summary-list">
-          {{ doneNames('groove', grooveFamily).join(", ") }}
-        </p>
-        <p v-else class="aya-summary-empty">Rien de noté.</p>
-      </div>
-
-      <div v-if="existingSession.photo" class="aya-section">
-        <img :src="existingSession.photo" alt="" class="aya-photo" />
       </div>
 
       <div v-if="existingSession.note" class="aya-section">
         <span class="aya-section__label">Notes</span>
         <p class="aya-summary-note">{{ existingSession.note }}</p>
+      </div>
+
+      <div v-if="existingSession.photo" class="aya-section">
+        <img :src="existingSession.photo" alt="" class="aya-photo" />
       </div>
 
       <button class="btn aya-edit-btn" @click="startEditing">Modifier</button>
