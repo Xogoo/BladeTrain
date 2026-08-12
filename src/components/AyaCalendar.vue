@@ -65,8 +65,8 @@ function onDayTap(d) {
 <template>
   <section class="aya rise-in">
     <div class="aya__top">
-      <button class="btn btn--ghost" @click="$emit('back')">&lsaquo; Retour</button>
-      <button class="btn btn--ghost" @click="showProgress = true">Progression</button>
+      <button class="btn btn--ghost aya__top-btn" @click="$emit('back')">&lsaquo; Retour</button>
+      <button class="btn btn--ghost aya__top-btn" @click="showProgress = true">Progression</button>
     </div>
 
     <h2 class="aya__title sticker-text">
@@ -141,8 +141,18 @@ function onDayTap(d) {
   margin-bottom: 10px;
 }
 
+/* Default .btn is sized for a primary action (16px/12px×20px padding)
+   — same compact treatment BLADE's own top-bar back buttons use
+   elsewhere (see StartScreen.vue's .setup__back), since this is a
+   secondary nav action competing with a dense calendar grid below it,
+   not a standalone screen's one big call to action. */
+.aya__top-btn {
+  font-size: 13px;
+  padding: 10px 16px;
+}
+
 .aya__title {
-  font-size: clamp(26px, 7vw, 34px);
+  font-size: clamp(22px, 6vw, 28px);
   font-weight: 900;
   text-transform: uppercase;
   margin: 0;
@@ -181,7 +191,7 @@ function onDayTap(d) {
 
 .aya__month {
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -217,7 +227,7 @@ function onDayTap(d) {
   border: 1px solid var(--line);
   background: var(--panel);
   color: var(--text);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   display: flex;
   flex-direction: column;
