@@ -244,11 +244,14 @@ function onDelete() {
         <p v-if="photoError" class="aya-photo__error">
           Cette photo n'a pas pu être lue — essaie un autre fichier.
         </p>
+        <!-- No "capture" attribute here on purpose — that forces the
+             camera open directly on mobile, skipping the normal
+             "Galerie ou Appareil photo" picker. Aya's photos are just
+             as often a shot already taken as one taken on the spot. -->
         <input
           ref="fileInputRef"
           type="file"
           accept="image/*"
-          capture="environment"
           style="display: none"
           @change="onPhotoChosen"
         />

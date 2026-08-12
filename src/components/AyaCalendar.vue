@@ -126,7 +126,7 @@ function onDayTap(d) {
 .aya {
   width: min(460px, 100%);
   margin: 0 auto;
-  padding: 20px 16px 40px;
+  padding: 12px 16px 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -138,7 +138,7 @@ function onDayTap(d) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 /* Default .btn is sized for a primary action (16px/12px×20px padding)
@@ -164,7 +164,7 @@ function onDayTap(d) {
 }
 
 .aya__subtitle {
-  margin: 4px 0 20px;
+  margin: 4px 0 12px;
   font-size: 13px;
   color: var(--text-dim);
 }
@@ -174,7 +174,7 @@ function onDayTap(d) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .aya__nav-btn {
@@ -200,7 +200,7 @@ function onDayTap(d) {
   width: 100%;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 .aya__weekdays span {
   font-size: 11px;
@@ -213,7 +213,7 @@ function onDayTap(d) {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
-  margin-bottom: 24px;
+  margin-bottom: 14px;
 }
 
 .aya__cell-wrap {
