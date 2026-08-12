@@ -1,4 +1,4 @@
-import { computed, reactive, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { GRINDS, RARE_GRIND_NAME_PARTS } from "../game/trickData.js";
 import { GRIND_SYNONYMS } from "../game/trickData.js";
 import { FAMILIES, resolveFamily, familyEntryKey } from "../game/families.js";
@@ -286,6 +286,15 @@ function defaultCollection() {
     // is only ever meant to cover the tail end of one real session,
     // not to become a second full copy of the log.
     recentLog: [], // { kind: "land" | "skip", record }
+    // Aya's own calendar — manually-checked training sessions, no
+    // random draw involved. Keyed by "YYYY-MM-DD" (one session per
+    // day). Lives in the SAME collection object as everything else
+    // above specifically so it rides along for free with the existing
+    // export/auto-backup/restore pipeline (see useBackup.js's
+    // buildPayload/restoreBackup — neither needed to change) — a
+    // brand new nested field just needs to exist here to already be
+    // backed up and restored like any other part of the app's history.
+    ayaSessions: {}, // { [dateKey]: { soul: {[entryKey]: true}, groove: {[entryKey]: true}, note: string, photo: string|null } }
   };
 }
 
@@ -371,11 +380,26 @@ const collection = reactive(
 // the top of this file. Everything else (aggregate stats, badges,
 // sessions, familyProgress, comboRuns, vsMatches, drillEntries...)
 // still persists exactly as before.
+//
+// storageWriteError tracks whether the MOST RECENT write attempt
+// failed (quota exceeded is the realistic case — Aya's photos are the
+// first genuinely large thing this app stores) — reset to false at
+// the start of every write, so it always reflects current status
+// rather than latching on the first-ever failure. Exported so any
+// screen that just added something large (Aya's photo picker) can
+// show a real error instead of the write silently failing with
+// nothing to show for it.
+const storageWriteError = ref(false);
 watch(
   collection,
   () => {
     const { lands, skips, ...toPersist } = collection;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(toPersist));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toPersist));
+      storageWriteError.value = false;
+    } catch {
+      storageWriteError.value = true;
+    }
   },
   { deep: true }
 );
@@ -1831,6 +1855,49 @@ export function useCollection() {
     return earned;
   };
 
+  /**
+   * Aya's calendar — manually-checked sessions, no random draw
+   * involved (see ayaSessions' own comment in defaultCollection).
+   * Nothing about a day is persisted until the player explicitly taps
+   * "Enregistrer" (see AyaSessionPanel.vue, which holds everything as
+   * a local draft until then) — so there's a single all-at-once save,
+   * not a running series of incremental writes every tap would
+   * otherwise trigger. `soul`/`groove` are plain {[entryKey]: true}
+   * maps — a trick's presence IS the fact that it was done that day;
+   * Aya is a logbook, not a pass/fail record, so there's never an
+   * explicit "false"/"missed" entry to store.
+   */
+  function ayaSaveSession(dateKey, { soul, groove, note, photo }) {
+    collection.ayaSessions[dateKey] = {
+      soul: { ...soul },
+      groove: { ...groove },
+      note: note || "",
+      photo: photo || null,
+    };
+  }
+
+  function ayaDeleteSession(dateKey) {
+    delete collection.ayaSessions[dateKey];
+  }
+
+  /**
+   * Lifetime progress across EVERY Aya session ever logged — how many
+   * of Soul's 8 and Groove's 18 tricks have been checked at least once
+   * on ANY day, not just today's. Powers the standalone progress view
+   * (separate from the day-by-day logbook, see AyaProgressPanel.vue) —
+   * kept entirely derived rather than stored, so it can't drift from
+   * the actual session data.
+   */
+  function ayaLifetimeProgress() {
+    const soulKeys = new Set();
+    const grooveKeys = new Set();
+    for (const session of Object.values(collection.ayaSessions)) {
+      for (const key of Object.keys(session.soul)) soulKeys.add(key);
+      for (const key of Object.keys(session.groove)) grooveKeys.add(key);
+    }
+    return { soul: soulKeys.size, groove: grooveKeys.size };
+  }
+
   /** Wipes all lifetime progress: tricks, grinds, lands and badges. */
   // Wipes everything EXCEPT Career progress (familyProgress) and the
   // family-completion badges tied to it — those have their own
@@ -1998,6 +2065,10 @@ export function useCollection() {
     recordLand,
     recordSkip,
     resetCollection,
+    ayaSaveSession,
+    ayaDeleteSession,
+    ayaLifetimeProgress,
+    storageWriteError,
     resetCareerProgress,
     grindBias,
     uniqueTrickCount,

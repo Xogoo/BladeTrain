@@ -108,16 +108,9 @@ export const SAMPLE_FILES = {
   true: "True.wav",
 };
 
-// Game audio: intro music and announcer clips for group mode.
+// Game audio: intro music and the VS/Combo "fight!" call.
 const GAME_AUDIO_BASE = "audioGame/";
 export const GAME_SAMPLE_FILES = {
-  "player 1": "Player 1.mp3",
-  "player 2": "Player 2.mp3",
-  "player 3": "Player 3.mp3",
-  "player 4": "Player 4.mp3",
-  "player 5": "Player 5.mp3",
-  "player 6": "Player 6.mp3",
-  wins: "wins.mp3",
   fight: "fight.mp3",
   music: "title music.mp3",
 };
@@ -381,16 +374,6 @@ export function speakTrick(name) {
   speakWithSynthesis(name);
 }
 
-/** Group mode: announce whose turn starts ("Player 3"). */
-export function announceStarter(playerNumber) {
-  playKeys([`player ${playerNumber}`]);
-}
-
-/** Game over: announce the winner ("Player 2 ... wins"). */
-export function announceWinner(playerNumber) {
-  playKeys([`player ${playerNumber}`, "wins"]);
-}
-
 /* ---------- intro music ---------- */
 
 let musicSource = null;
@@ -507,8 +490,6 @@ export function useSpeech() {
     preloadSpeech,
     speakTrick,
     playKeys,
-    announceStarter,
-    announceWinner,
     startMusic,
     fadeOutMusic,
     unlockAudio,

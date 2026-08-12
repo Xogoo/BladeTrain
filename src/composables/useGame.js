@@ -5,13 +5,9 @@ import { useCollection } from "./useCollection.js";
 import { useSettings, CUSTOM_LEVEL } from "./useSettings.js";
 import { useBackup } from "./useBackup.js";
 
-// Group mode is S.K.A.T.E with the letters A.I.G.H.T: bail a trick and
-// you collect the next letter; five letters and you are out.
+// BLADE VS scoring: bail a trick and you collect the next letter; five
+// letters (B·L·A·D·E) and you've lost the match.
 export const LETTERS = "BLADE";
-
-// The player who starts a turn may swap the trick this many times
-// before attempting it; everyone after them plays the locked-in trick.
-export const REROLLS_PER_TURN = 3;
 
 // How many recent grinds solo mode avoids repeating (a sliding window,
 // since an endless session cycles through the pool many times).
@@ -20,7 +16,7 @@ const SOLO_REPEAT_WINDOW = 15;
 const state = reactive({
   screen: "start", // start | game | gameover | sessionReport
   phase: "idle", // idle | spinning | result
-  mode: "group", // solo | group
+  mode: "solo", // solo | vs | combo | drill
   points: 0, // solo session score
   spinsUsed: 0,
   spinsTotal: 5,
@@ -111,19 +107,16 @@ const state = reactive({
   // screen goes back to (see GameScreen.vue's isCareerFamily).
   isCareerSession: false,
 
-  // group (S.K.A.T.E) state
-  players: [], // { name, letters }
+  // players: [{ name, letters }] — always exactly 2 for BLADE VS
+  // ("Pierre" vs "BladeBot"). round tracks the current VS round number
+  // (GameOverScreen's standings table reads both).
+  players: [],
   round: 0,
-  turnOrder: [], // player indices attempting the current trick, in order
-  turnPos: 0, // position within turnOrder
-  rerollsLeft: 0, // trick swaps the turn's starting player has left
 
   // BLADE VS state — you against the robot, same trick generation and
-  // BLADE-letters scoring as group mode, but each side gets up to 3
-  // tries at the SAME trick instead of one shared attempt, and the
-  // robot's outcome is rolled instead of tapped in. state.players is
-  // reused here too: [{ name: "Toi", letters }, { name: "Robot", letters }]
-  // — GameOverScreen's standings table works unmodified.
+  // BLADE-letters scoring, but each side gets up to 3 tries at the
+  // SAME trick instead of one shared attempt, and the robot's outcome
+  // is rolled instead of tapped in.
   vsTries: 1, // player's try count this round (1-3)
   // Set once the round is decided (player landed, or exhausted 3
   // tries) — { playerLanded, robotLanded, robotTries } | null. While
@@ -253,27 +246,12 @@ function undoLastAction() {
   undoSnapshot.value = null;
 }
 
-const activeIndices = () =>
-  state.players
-    .map((player, index) => ({ player, index }))
-    .filter(({ player }) => player.letters < LETTERS.length)
-    .map(({ index }) => index);
-
 export function useGame() {
   const spinsLeft = computed(() => state.spinsTotal - state.spinsUsed);
   const isSolo = computed(() => state.mode === "solo");
   const isVs = computed(() => state.mode === "vs");
   const isCombo = computed(() => state.mode === "combo");
   const isDrill = computed(() => state.mode === "drill");
-  const currentPlayer = computed(() =>
-    state.mode === "group" && state.turnOrder.length > state.turnPos
-      ? state.players[state.turnOrder[state.turnPos]]
-      : null
-  );
-  // The current player bails out of the game with one more letter.
-  const onLastLetter = computed(
-    () => (currentPlayer.value?.letters ?? 0) === LETTERS.length - 1
-  );
   const activeFamily = computed(() =>
     resolveFamilyById(state.activeFamilyId ?? state.freeLoopFamilyId)
   );
@@ -300,7 +278,7 @@ export function useGame() {
     return isFresh;
   }
 
-  const startGame = (settings, mode = settings.mode || "group") => {
+  const startGame = (settings, mode = settings.mode || "solo") => {
     state.mode = mode;
     state.activeFamilyId = null;
     state.activeFamilyEntryIndex = null;
@@ -322,9 +300,8 @@ export function useGame() {
       return;
     }
 
-    // Group/VS both always start a clean slate — and close out any
-    // solo session left dangling open rather than abandoning it
-    // silently.
+    // VS always starts a clean slate — and closes out any solo session
+    // left dangling open rather than abandoning it silently.
     if (state.sessionId) {
       collection.endSession(state.sessionId);
       backupApi.autoBackupIfDue();
@@ -337,36 +314,26 @@ export function useGame() {
     state.usedGrinds = [];
     state.newBadges = [];
 
-    if (mode === "vs") {
-      state.players = [
-        { name: "Pierre", letters: 0 },
-        { name: "BladeBot", letters: 0 },
-      ];
-      state.round = 0;
-      // A VS match now feeds the same history as solo training: trick/
-      // grind counts, Collection, badges, and its own row in the
-      // session history — see landTrick's recordLand call and
-      // endGame/giveUp closing this back out.
-      state.sessionId = collection.startSession("BLADE VS");
-      // Same family-restricted draw Mix uses (see buildMixPool/nextSpin)
-      // — draws from every entry of the chosen families, landed or
-      // not. VS never advances family PROGRESS either way (see
-      // landTrick's "state.mode === 'solo'" guard on that), this only
-      // changes which tricks can come up.
-      state.activeFamilyIds =
-        settings.vsMode === "families"
-          ? [...new Set(settings.vsFamilyIds)].filter((id) => resolveFamilyById(id))
-          : [];
-      beginVsRound(settings);
-      return;
-    }
-
-    state.players = settings.players.map((name, i) => ({
-      name: String(name).trim() || `Joueur ${i + 1}`,
-      letters: 0,
-    }));
+    state.players = [
+      { name: "Pierre", letters: 0 },
+      { name: "BladeBot", letters: 0 },
+    ];
     state.round = 0;
-    beginRound(settings);
+    // A VS match now feeds the same history as solo training: trick/
+    // grind counts, Collection, badges, and its own row in the
+    // session history — see landTrick's recordLand call and
+    // endGame/giveUp closing this back out.
+    state.sessionId = collection.startSession("BLADE VS");
+    // Same family-restricted draw Mix uses (see buildMixPool/nextSpin)
+    // — draws from every entry of the chosen families, landed or
+    // not. VS never advances family PROGRESS either way (see
+    // landTrick's "state.mode === 'solo'" guard on that), this only
+    // changes which tricks can come up.
+    state.activeFamilyIds =
+      settings.vsMode === "families"
+        ? [...new Set(settings.vsFamilyIds)].filter((id) => resolveFamilyById(id))
+        : [];
+    beginVsRound(settings);
   };
 
   /**
@@ -809,18 +776,6 @@ export function useGame() {
     state.phase = "idle";
   }
 
-  // One round = one trick that every player still in the game attempts.
-  // The starting player rotates each round and gets fresh rerolls.
-  const beginRound = (settings) => {
-    state.round += 1;
-    const active = activeIndices();
-    const start = (state.round - 1) % active.length;
-    state.turnOrder = [...active.slice(start), ...active.slice(0, start)];
-    state.turnPos = 0;
-    state.rerollsLeft = REROLLS_PER_TURN;
-    nextSpin(settings);
-  };
-
   /**
    * VS: one round = one trick both sides attempt independently, up to
    * 3 tries each (see vsAttempt/resolveVsRound below) — no turn order,
@@ -921,18 +876,6 @@ export function useGame() {
   /** VS: advances past the round-result panel into the next round. */
   const nextVsRound = (settings) => {
     beginVsRound(settings);
-  };
-
-  /**
-   * Group: the starting player swaps the trick for a fresh spin. Only
-   * possible before anyone attempted it, and at most 3 times per turn.
-   */
-  const rerollTrick = (settings) => {
-    if (state.mode !== "group" || state.turnPos !== 0 || state.rerollsLeft <= 0) {
-      return;
-    }
-    state.rerollsLeft -= 1;
-    nextSpin(settings);
   };
 
   /** Mix: pool of every {familyId, index} across ALL the given
@@ -1053,31 +996,6 @@ export function useGame() {
     orig: state.spin.orig,
     score: state.spin.score,
   });
-
-  /** Group: resolve the current player's attempt at the round's trick. */
-  const attempt = (landed, settings) => {
-    captureUndoSnapshot();
-    const player = state.players[state.turnOrder[state.turnPos]];
-    if (!landed) {
-      player.letters += 1;
-      // A bail on the last letter can decide the game mid-round: with
-      // one player left standing, later attempts this round are moot.
-      if (activeIndices().length <= 1) {
-        endGame();
-        return;
-      }
-    }
-    if (state.turnPos + 1 < state.turnOrder.length) {
-      state.turnPos += 1; // same trick, next player
-      return;
-    }
-    // Classic S.K.A.T.E: rounds go on until one player is left standing.
-    if (activeIndices().length <= 1) {
-      endGame();
-    } else {
-      beginRound(settings);
-    }
-  };
 
   const landTrick = (settings) => {
     captureUndoSnapshot();
@@ -1356,8 +1274,6 @@ export function useGame() {
       }
       state.pendingVsSetup = true;
       goToStart();
-    } else {
-      endGame();
     }
   };
 
@@ -1549,8 +1465,6 @@ export function useGame() {
     isVs,
     isCombo,
     isDrill,
-    currentPlayer,
-    onLastLetter,
     startGame,
     startReviewSession,
     startFamilySession,
@@ -1565,8 +1479,6 @@ export function useGame() {
     WEAK_POINTS_FAMILY_ID,
     activeFamily,
     onReelsSettled,
-    attempt,
-    rerollTrick,
     landTrick,
     skipTrick,
     canUndo,

@@ -47,7 +47,7 @@ const REFERENCES = [
     <p>
       Neuf façons de jouer : <strong>Solo</strong>, <strong>Famille</strong>,
       <strong>Carrière</strong>, <strong>BLADE VS</strong>,
-      <strong>Groupe</strong>, <strong>Drill</strong>, <strong>Combo</strong>
+      <strong>Aya</strong>, <strong>Drill</strong>, <strong>Combo</strong>
       (via Carrière ou Mix), <strong>Points faibles</strong> et
       <strong>Grinds à réviser</strong> — détaillés ci-dessous.
     </p>
@@ -143,36 +143,32 @@ const REFERENCES = [
       c'est haut, plus il est difficile à battre.
     </p>
 
-    <h3 class="section-title">Mode Groupe — S.K.A.T.E</h3>
+    <h3 class="section-title">Mode Aya</h3>
+    <p>
+      Un calendrier de sessions pensé pour s'entraîner sans tirage aléatoire —
+      pratique pour débuter, avec les familles <strong>Soul</strong> et
+      <strong>Groove</strong> uniquement.
+    </p>
     <ol class="steps">
       <li>
-        Entre les joueurs (2 à 6), choisis le nombre de manches et la
-        difficulté, puis appuie sur <strong>Démarrer la partie</strong>.
+        Depuis l'accueil, choisis <strong>Aya</strong> — un calendrier du mois
+        s'ouvre, les jours avec une session déjà créée ressortent.
       </li>
       <li>
-        Chaque manche, un trick est tiré et <strong>chaque joueur le
-        tente</strong>, l'un après l'autre. Le joueur qui commence change à
-        chaque manche.
+        Tape un jour vide pour créer une session ce jour-là, ou un jour
+        existant pour la rouvrir.
       </li>
       <li>
-        Le joueur qui commence peut relancer le trick jusqu'à
-        <strong>3 fois</strong> — mais une fois qu'il l'a tenté, le trick est
-        verrouillé pour tout le monde.
+        Coche les tricks Soul et Groove faits ce jour-là — pas de tirage, juste
+        une liste à cocher.
       </li>
       <li>
-        Loupe le trick et tu récoltes la lettre suivante de
-        <strong>B&middot;L&middot;A&middot;D&middot;E</strong>. Cinq lettres et
-        t'es éliminé.
-      </li>
-      <li>
-        La partie se termine après la dernière manche ou quand il ne reste
-        qu'un seul joueur. Celui avec le moins de lettres gagne.
+        Ajoute une photo et des notes libres sur la session.
       </li>
     </ol>
     <p>
-      Contrairement à tous les autres modes, le Groupe ne remplit pas ton
-      historique/collection — c'est volontaire, pensé comme une partie
-      ponctuelle entre potes plutôt qu'un entraînement personnel.
+      Les sessions Aya utilisent le même système de sauvegarde que le reste de
+      BLADE — elles sont incluses dans l'export/restauration automatique.
     </p>
 
     <h3 class="section-title">Mode Combo</h3>
@@ -262,8 +258,7 @@ const REFERENCES = [
 
     <h3 class="section-title">L'historique</h3>
     <p>
-      Rangé par onglets, tout ce que l'app a enregistré (sauf le mode Groupe,
-      volontairement laissé de côté) :
+      Rangé par onglets, tout ce que l'app a enregistré :
     </p>
     <table class="data-table">
       <tbody>

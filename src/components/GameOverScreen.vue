@@ -7,14 +7,13 @@ import { useSpeech } from "../composables/useSpeech.js";
 
 const { state, startGame, goToStart } = useGame();
 const { settings } = useSettings();
-const { announceWinner, speakPhrase, isSpeaking } = useSpeech();
+const { speakPhrase, isSpeaking } = useSpeech();
 
 function changeConfig() {
-  if (state.mode === "vs") {
-    // Same idea as giveUp() mid-match: land back on VS's own setup
-    // screen (sliders and all) instead of the top-level mode-picker.
-    state.pendingVsSetup = true;
-  }
+  // Same idea as giveUp() mid-match: land back on VS's own setup
+  // screen (sliders and all) instead of the top-level mode-picker.
+  // (endGame — and therefore this whole screen — is VS-only now.)
+  state.pendingVsSetup = true;
   goToStart();
 }
 
@@ -27,10 +26,8 @@ const winners = computed(() =>
 const winnerNames = computed(() =>
   winners.value.map((p) => p.name).join(" & ")
 );
-// VS is the one mode where both sides can hit 5 letters on the exact
-// same round (see resolveVsRound in useGame.js) — group mode always
-// ends the instant a bail leaves only one player standing, so this
-// can't happen there. When it does, nobody actually "won".
+// Both sides can hit 5 letters on the exact same round — when that
+// happens, nobody actually "won".
 const isDraw = computed(() =>
   state.players.every((p) => p.letters >= LETTERS.length)
 );
@@ -39,35 +36,21 @@ function lettersOf(player) {
   return LETTERS.slice(0, player.letters).split("").join(" ");
 }
 
-// "Player N ... wins" (sample-based, numbered) for group mode — VS
-// gets its own name-based "Victoire de Pierre."/"Victoire de
-// BladeBot." instead (see resolveVsRound's per-round announcement in
-// GameScreen.vue for the matching in-match phrasing), since VS always
-// has exactly the two real, known names rather than an arbitrary
-// group-mode roster.
-//
 // The match-ending round is almost always the one where someone JUST
 // gained their 5th letter, so GameScreen's own round-outcome
 // announcement (réussi/raté + the letter recap) is very likely still
 // speaking by the time this screen mounts a moment later — waiting for
 // isSpeaking to clear first stops "Victoire de Pierre" from talking
-// over the end of that sentence. Same speakPhrase pipeline either way,
-// just deferred until the mic/speaker is actually free.
+// over the end of that sentence.
 function announceOutcome() {
   if (isDraw.value) {
-    if (state.mode === "vs") {
-      speakPhrase("Match nul.");
-    }
+    speakPhrase("Match nul.");
     return;
   }
   if (winners.value.length !== 1) {
     return;
   }
-  if (state.mode === "vs") {
-    speakPhrase(`Victoire de ${winners.value[0].name}.`);
-  } else {
-    announceWinner(state.players.indexOf(winners.value[0]) + 1);
-  }
+  speakPhrase(`Victoire de ${winners.value[0].name}.`);
 }
 
 onMounted(() => {

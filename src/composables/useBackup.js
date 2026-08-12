@@ -264,12 +264,22 @@ export function useBackup() {
 
   /**
    * Restores the collection (history/progress) from a previously
-   * exported file. Used by a "Restore backup" file picker in the
-   * settings panel. Deliberately leaves `settings` untouched — the
-   * person's current réglages (voice, theme, personal families,
-   * targeted training...) are what THEY set up on THIS device right
-   * now, not whatever happened to be saved in an old backup; only the
-   * history/progress side of a restore should ever move.
+   * exported file, AND merges back in any personal families it
+   * contains. Used by a "Restore backup" file picker in the settings
+   * panel — also the only way to get a personal family back after a
+   * full uninstall/reinstall, since customFamilies otherwise lives
+   * only in this device's own localStorage, wiped along with
+   * everything else when the app itself is removed.
+   *
+   * Deliberately still leaves every OTHER setting untouched (voice,
+   * theme, level, backup email...) — those are preferences for how
+   * THIS device behaves right now, not data that was ever at risk of
+   * being lost. Personal families are different: they're content the
+   * person built, same category as their training history, so losing
+   * them to an uninstall would be a real loss, not a preference reset.
+   * importCustomFamilies already dedupes by name+entries, so restoring
+   * the same backup twice (or restoring on top of families that
+   * already exist) never duplicates anything.
    */
   function restoreBackup(payload) {
     if (
@@ -288,6 +298,9 @@ export function useBackup() {
       collection,
       migrateFamilyEntryKeyFormat(migrateZerospinSplit(payload.collection))
     );
+    if (payload.settings?.customFamilies?.length) {
+      importCustomFamilies(payload.settings.customFamilies);
+    }
     // Without this, the next app load would hydrate lands/skips from
     // whatever was in IndexedDB BEFORE this restore, not what was just
     // restored above — see resyncLog's own comment in useCollection.js.

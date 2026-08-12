@@ -4,12 +4,11 @@ import AppIcon from "./AppIcon.vue";
 import FamilyHistoryPanel from "./FamilyHistoryPanel.vue";
 import SettingsPanel from "./SettingsPanel.vue";
 import TargetedTrainingHistoryPanel from "./TargetedTrainingHistoryPanel.vue";
+import AyaCalendar from "./AyaCalendar.vue";
 import {
   CUSTOM_LEVEL,
   LEVELS,
   SOLO_LEVELS,
-  MAX_PLAYERS,
-  MIN_PLAYERS,
   useSettings,
 } from "../composables/useSettings.js";
 import { useGame } from "../composables/useGame.js";
@@ -297,7 +296,7 @@ function startComboFromMix() {
 // BLADE VS's "Familles" mode: same idea as Mix's family checkboxes,
 // but backed by settings.vsFamilyIds (persisted) instead of a local
 // ref — so the choice carries over to "Revanche" and the next time
-// BLADE VS is opened, the way settings.players does for Groupe.
+// BLADE VS is opened.
 function isVsFamilySelected(id) {
   return settings.vsFamilyIds.includes(id);
 }
@@ -439,9 +438,9 @@ const MODES = [
     tagline: "Un trick précis, en boucle, jusqu'à le dompter",
   },
   {
-    id: "group",
-    name: "Groupe",
-    tagline: "S.K.A.T.E entre potes — loupe et récolte B·L·A·D·E",
+    id: "aya",
+    name: "Aya",
+    tagline: "Calendrier de sessions — Soul et Groove, coche ce qui est fait",
   },
 ];
 
@@ -519,6 +518,14 @@ function chooseMode(modeId) {
     fadeOutMusic();
     return;
   }
+  if (modeId === "aya") {
+    // Aya isn't a draw mode at all — no reels, no settings.mode, its
+    // own dedicated calendar screen (see AyaCalendar.vue) instead of
+    // the shared "setup" step every other mode routes through.
+    step.value = "aya";
+    fadeOutMusic();
+    return;
+  }
   settings.mode = modeId;
   if (modeId === "solo" && !SOLO_LEVELS.some((l) => l.id === settings.level)) {
     applyLevel(CUSTOM_LEVEL);
@@ -544,18 +551,6 @@ function selectLevel(levelId) {
   applyLevel(levelId);
   if (levelId === CUSTOM_LEVEL) {
     emit("open-settings");
-  }
-}
-
-function addPlayer() {
-  if (settings.players.length < MAX_PLAYERS) {
-    settings.players.push(`Joueur ${settings.players.length + 1}`);
-  }
-}
-
-function removePlayer(index) {
-  if (settings.players.length > MIN_PLAYERS) {
-    settings.players.splice(index, 1);
   }
 }
 </script>
@@ -1018,6 +1013,10 @@ function removePlayer(index) {
     </template>
   </section>
 
+  <!-- Aya's own screen — a calendar, not a draw mode, so it skips the
+       shared "setup" step everything else routes through. -->
+  <AyaCalendar v-else-if="step === 'aya'" @back="step = 'mode'" />
+
   <!-- step 2: difficulty + mode specifics + start -->
   <section v-else class="start setup rise-in">
     <div class="setup__top">
@@ -1230,52 +1229,6 @@ function removePlayer(index) {
           Personne ne l'a landé ? Vous prenez chacun une lettre de
           B&middot;L&middot;A&middot;D&middot;E. Cinq lettres et t'es
           éliminé — premier éliminé perd.
-        </p>
-      </div>
-    </template>
-
-    <template v-else>
-      <div class="setup__section">
-        <span class="setup__label">Joueurs</span>
-        <div class="players">
-          <div
-            v-for="(name, i) in settings.players"
-            :key="i"
-            class="player-row"
-          >
-            <input
-              v-model="settings.players[i]"
-              class="player-input"
-              type="text"
-              maxlength="14"
-              autocapitalize="words"
-              autocomplete="off"
-              :placeholder="`Joueur ${i + 1}`"
-            />
-            <button
-              class="stepper__btn"
-              :disabled="settings.players.length <= MIN_PLAYERS"
-              :aria-label="`Retirer le joueur ${i + 1}`"
-              @click="removePlayer(i)"
-            >
-              &times;
-            </button>
-          </div>
-          <button
-            class="btn btn--ghost players__add"
-            :disabled="settings.players.length >= MAX_PLAYERS"
-            @click="addPlayer()"
-          >
-            + Ajouter un joueur
-          </button>
-        </div>
-      </div>
-
-      <div class="setup__section">
-        <p class="setup__hint">
-          Comme un S.K.A.T.E. — tout le monde tente le même trick. Loupe et tu
-          récoltes une lettre de B&middot;L&middot;A&middot;D&middot;E ;
-          cinq lettres et t'es éliminé. Le dernier debout gagne.
         </p>
       </div>
     </template>
@@ -1886,41 +1839,6 @@ body.theme-inverted .start__logo-mark {
   white-space: nowrap;
 }
 
-.players {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.player-row {
-  display: flex;
-  gap: 8px;
-}
-
-.player-input {
-  flex: 1;
-  font-family: var(--font-body);
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--text);
-  background: var(--bg-2);
-  border: 1px solid var(--line-strong);
-  border-radius: 10px;
-  padding: 9px 12px;
-}
-
-.player-input:focus {
-  outline: none;
-  border-color: var(--red-hi);
-  box-shadow: var(--glow-red-hi);
-}
-
-.players__add {
-  align-self: flex-start;
-  font-size: 12px;
-  padding: 8px 14px;
-}
-
 .spins-row {
   display: flex;
   align-items: center;
@@ -1932,27 +1850,6 @@ body.theme-inverted .start__logo-mark {
   display: flex;
   align-items: center;
   gap: 4px;
-}
-
-.stepper__btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  border: 1px solid var(--line-strong);
-  background: var(--panel-strong);
-  font-size: 20px;
-  color: var(--text);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.stepper__btn:hover {
-  border-color: var(--red-hi);
-  box-shadow: var(--glow-red-hi);
-}
-
-.stepper__btn:disabled {
-  opacity: 0.35;
-  pointer-events: none;
 }
 
 .stepper__value {

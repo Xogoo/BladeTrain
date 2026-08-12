@@ -5,11 +5,15 @@ import SlotReel from "./SlotReel.vue";
 import TrickExplainPanel from "./TrickExplainPanel.vue";
 import TrickListPanel from "./TrickListPanel.vue";
 import FamilyChecklistPanel from "./FamilyChecklistPanel.vue";
+import MixChecklistPanel from "./MixChecklistPanel.vue";
+import ComboChecklistPanel from "./ComboChecklistPanel.vue";
+import TargetedTrainingChecklistPanel from "./TargetedTrainingChecklistPanel.vue";
 import { LETTERS, useGame } from "../composables/useGame.js";
 import { useSettings } from "../composables/useSettings.js";
 import { useSpeech, buildSpokenText } from "../composables/useSpeech.js";
 import { useCollection } from "../composables/useCollection.js";
 import { useVoiceControl } from "../composables/useVoiceControl.js";
+import { resolveFamily } from "../game/families.js";
 
 const REEL_STAGGER_MS = 320;
 
@@ -30,10 +34,6 @@ const {
   isVs,
   isCombo,
   isDrill,
-  currentPlayer,
-  onLastLetter,
-  attempt,
-  rerollTrick,
   landTrick,
   skipTrick,
   canUndo,
@@ -53,7 +53,7 @@ const {
 } = useGame();
 const { settings, reelSpeedMs } = useSettings();
 const { speakTrick, speakPhrase, playKeys, isSpeaking } = useSpeech();
-const { familyIndex, sessionFamilyEntryStatuses, drillList } = useCollection();
+const { familyIndex, sessionFamilyEntryStatuses, targetedTrainingItems, drillList } = useCollection();
 
 // Switch families carry their own leading "Switch " prefix (see
 // families.js) — nothing to strip here anymore, kept as a pass-through
@@ -73,7 +73,7 @@ onMounted(() => {
   }
 });
 
-const openPanel = ref(null); // 'explain' | 'tricklist' | 'familyChecklist' | null
+const openPanel = ref(null); // 'explain' | 'tricklist' | 'familyChecklist' | 'mixChecklist' | 'comboChecklist' | 'targetedChecklist' | null
 const stoppedReels = ref(0);
 
 let vsAutoAdvanceTimer = null;
@@ -213,6 +213,75 @@ const activeFamilyLanded = computed(() => {
       ).length;
 });
 
+// Same shape as ScoreBoard's own mixFamilies/mixProgress/
+// comboFamilySegment/comboMixProgress/enabledGrindsCount — duplicated
+// here rather than shared, same self-contained pattern already used by
+// MixChecklistPanel/ComboChecklistPanel, because ScoreBoard's whole
+// header is HIDDEN during Focus mode (see App.vue) but the trick being
+// trained doesn't stop needing a progress readout just because the
+// header disappeared — this is what Focus mode actually shows instead
+// (see the focus-progress-* buttons in the template below), covering
+// every draw screen the family-only version below used to miss (Mix,
+// Combo, ciblé/grinds training).
+const mixFamilies = computed(() =>
+  state.activeFamilyIds
+    .map((id) => resolveFamily(id, settings.customFamilies))
+    .filter(Boolean)
+);
+const isMix = computed(() => mixFamilies.value.length > 0);
+const mixLanded = computed(() => {
+  let landed = 0;
+  for (const family of mixFamilies.value) {
+    landed += sessionFamilyEntryStatuses(family, state.sessionId).filter((s) => s.landed).length;
+  }
+  return landed;
+});
+const mixTotal = computed(() =>
+  mixFamilies.value.reduce((sum, f) => sum + f.entries.length, 0)
+);
+
+const enabledGrindsCount = computed(() => {
+  const items = targetedTrainingItems(settings, state.sessionId);
+  const landed = items.filter((item) => item.landed).length;
+  return { landed, total: items.length };
+});
+
+const comboFamilySegment = computed(() => {
+  if (!isCombo.value || state.comboSource !== "career" || !state.comboPath.length) {
+    return null;
+  }
+  const current = state.comboPath[state.comboPathIndex];
+  if (!current) {
+    return null;
+  }
+  let start = state.comboPathIndex;
+  while (start > 0 && state.comboPath[start - 1].familyId === current.familyId) {
+    start--;
+  }
+  let end = state.comboPathIndex;
+  while (
+    end < state.comboPath.length - 1 &&
+    state.comboPath[end + 1].familyId === current.familyId
+  ) {
+    end++;
+  }
+  return {
+    familyName: familyBaseName(current.familyName),
+    landed: state.comboPathIndex - start,
+    total: end - start + 1,
+  };
+});
+const comboMixProgress = computed(() => {
+  if (!isCombo.value || state.comboSource !== "mix") {
+    return null;
+  }
+  const total = state.comboFamilyIds.reduce((sum, id) => {
+    const fam = resolveFamily(id, settings.customFamilies);
+    return sum + (fam ? fam.entries.length : 0);
+  }, 0);
+  return { landed: state.comboLandedKeys.length, total };
+});
+
 // "Terminer la session/partie" needs a tap-again-to-confirm, same
 // pattern as the reset buttons elsewhere — too easy to hit by accident
 // mid-session otherwise, and there's no undo once it's ended.
@@ -300,21 +369,23 @@ function onAddToDrill() {
   }, 1500);
 }
 
-// Hands-free "réussi"/"raté, on rejoue"/"passer" during a solo session
-// or a BLADE VS match (see useVoiceControl.js) — "solo" here covers
-// all of Carrière, Famille, and plain Solo (they're all
+// Hands-free "réussi"/"raté, on rejoue"/"passer" — listens continuously
+// for the whole session, from the moment it starts to whenever it
+// ends, not gated to the result screen, so it's already listening by
+// the time a trick lands. Covers every mode with something to attempt:
+// "solo" here means Carrière/Famille/Mix/plain Solo (they're all
 // state.mode === "solo", just with different training around them),
-// so this listens continuously for the whole session, from the moment
-// it starts to whenever it ends — not gated to the result screen, so
-// it's already listening by the time a trick lands. VS uses the same
-// three voice commands but routes them to vsAttempt() instead of
-// landTrick()/addTry() (VS has no skip concept mid-round — "passe"/
-// "suivant" only does something once the round has resolved, where it
-// behaves like the "Trick suivant" button). Still paused for group
-// mode (no voice flow designed for it — multiple players, turn order,
-// no way to tell whose "réussi" it was) and while a panel is open on
-// top (so a stray "passe" while reading the trick explainer doesn't
-// skip anything).
+// Hands-free "réussi"/"raté, on rejoue"/"passer" — listens continuously
+// for the whole session, from the moment it starts to whenever it
+// ends, not gated to the result screen, so it's already listening by
+// the time a trick lands. Covers every mode with something to attempt:
+// "solo" here means Carrière/Famille/Mix/plain Solo (they're all
+// state.mode === "solo", just with different training around them),
+// plus VS (routes to vsAttempt instead of landTrick/addTry — VS has no
+// skip concept mid-round, "passe" only does something once the round
+// has resolved, same as the "Trick suivant" button), Combo, and Drill.
+// Still paused while a panel is open on top (so a stray "passe" while
+// reading the trick explainer doesn't skip anything).
 const { isSupported: voiceSupported, isListening: voiceListening, lastHeard: voiceLastHeard, lastAction: voiceLastAction, start: startVoice, stop: stopVoice } =
   useVoiceControl();
 
@@ -331,7 +402,7 @@ const VOICE_ACTION_LABELS = {
 };
 
 watch(
-  () => settings.voiceControl && (isSolo.value || isVs.value || isCombo.value || isDrill.value) && !openPanel.value,
+  () => settings.voiceControl && !openPanel.value,
   (shouldListen) => {
     if (shouldListen) {
       startVoice({
@@ -386,22 +457,6 @@ watch(
   },
   { immediate: true }
 );
-
-// Roster info for group mode: whether a player already attempted the
-// current trick, is up now, or is out of the game.
-function playerStatus(index) {
-  const pos = state.turnOrder.indexOf(index);
-  if (state.players[index].letters >= LETTERS.length) {
-    return "out";
-  }
-  if (pos === -1) {
-    return "waiting";
-  }
-  if (pos < state.turnPos) {
-    return "done";
-  }
-  return pos === state.turnPos ? "up" : "waiting";
-}
 
 function lettersOf(player) {
   return LETTERS.slice(0, player.letters).split("").join(" ");
@@ -494,23 +549,43 @@ function onReelStopped() {
       {{ activeFamilyLanded }}/{{ activeFamily.entries.length }} tricks réussis
     </button>
 
-    <div v-if="!isSolo && !isVs && !isCombo && !isDrill" class="roster">
-      <div
-        v-for="(player, i) in state.players"
-        :key="i"
-        class="roster__chip panel"
-        :class="`roster__chip--${playerStatus(i)}`"
-      >
-        <AppIcon
-          v-if="i === state.turnOrder[0]"
-          name="play"
-          :size="10"
-          title="Commence ce tour"
-        />
-        <span class="roster__name">{{ player.name }}</span>
-        <span class="roster__letters">{{ lettersOf(player) || "—" }}</span>
-      </div>
+    <!-- Every other draw screen Focus mode used to leave blank once
+         ScoreBoard's header disappeared (see mixFamilies/isMix's own
+         comment above for why this can't just reuse ScoreBoard) — each
+         mode gets whichever one of these actually applies. -->
+    <button
+      v-else-if="settings.focusMode && isMix"
+      class="focus-family-progress"
+      @click="openPanel = 'mixChecklist'"
+    >
+      Mix : {{ mixLanded }}/{{ mixTotal }} tricks réussis
+    </button>
+    <button
+      v-else-if="settings.focusMode && isCombo && comboFamilySegment"
+      class="focus-family-progress"
+      @click="openPanel = 'comboChecklist'"
+    >
+      Combo {{ state.comboChain }} — {{ comboFamilySegment.familyName }} :
+      {{ comboFamilySegment.landed }}/{{ comboFamilySegment.total }}
+    </button>
+    <button
+      v-else-if="settings.focusMode && isCombo && comboMixProgress"
+      class="focus-family-progress"
+      @click="openPanel = 'comboChecklist'"
+    >
+      Combo {{ state.comboChain }} — Mix : {{ comboMixProgress.landed }}/{{ comboMixProgress.total }}
+    </button>
+    <div v-else-if="settings.focusMode && isDrill && currentDrillEntry" class="focus-family-progress">
+      Drill : {{ currentDrillEntry.totalLanded }}/{{ currentDrillEntry.targetTotal }} —
+      série {{ currentDrillEntry.currentStreak }}/{{ currentDrillEntry.targetStreak }}
     </div>
+    <button
+      v-else-if="settings.focusMode && isSolo && enabledGrindsCount.total > 0"
+      class="focus-family-progress"
+      @click="openPanel = 'targetedChecklist'"
+    >
+      {{ enabledGrindsCount.landed }}/{{ enabledGrindsCount.total }} tricks réussis
+    </button>
 
     <div v-if="isVs" class="vs-scoreboard panel">
       <div class="vs-scoreboard__side">
@@ -842,49 +917,6 @@ function onReelStopped() {
             </button>
           </div>
         </template>
-
-        <!-- group: every player attempts the same trick, bails cost a letter -->
-        <template v-else>
-          <div class="result__turn">
-            <span class="result__turn-name">{{ currentPlayer?.name }}</span> — à
-            toi de jouer !
-            <span v-if="onLastLetter" class="result__last">dernière lettre !</span>
-          </div>
-
-          <div class="result__actions">
-            <button class="btn" @click="openPanel = 'explain'">
-              <AppIcon name="question" :size="18" /> Explication
-            </button>
-            <!-- only the turn's starting player may swap the trick -->
-            <button
-              v-if="state.turnPos === 0"
-              class="btn"
-              :disabled="state.rerollsLeft <= 0"
-              @click="rerollTrick(settings)"
-            >
-              <AppIcon name="forward" :size="18" /> Nouveau trick ({{
-                state.rerollsLeft
-              }})
-            </button>
-            <button class="btn" @click="attempt(false, settings)">
-              <AppIcon name="flag" :size="18" /> Loupé
-            </button>
-            <button class="btn btn--go" @click="attempt(true, settings)">
-              <AppIcon name="check" :size="18" /> Réussi
-            </button>
-          </div>
-          <div class="result__actions result__actions--secondary">
-            <button
-              class="btn btn--ghost"
-              :class="{ 'btn--confirm': confirmingEndSession }"
-              @click="onEndSessionClick()"
-              @blur="confirmingEndSession = false"
-            >
-              <AppIcon name="flag" :size="16" />
-              {{ confirmingEndSession ? "Confirmer" : "Terminer la partie" }}
-            </button>
-          </div>
-        </template>
       </div>
     </transition>
 
@@ -921,6 +953,19 @@ function onReelStopped() {
       v-if="openPanel === 'familyChecklist' && activeFamily"
       :family-id="activeFamily.id"
       :is-career="state.isCareerSession"
+      @close="openPanel = null"
+    />
+    <MixChecklistPanel
+      v-if="openPanel === 'mixChecklist' && isMix"
+      :family-ids="state.activeFamilyIds"
+      @close="openPanel = null"
+    />
+    <ComboChecklistPanel
+      v-if="openPanel === 'comboChecklist' && isCombo"
+      @close="openPanel = null"
+    />
+    <TargetedTrainingChecklistPanel
+      v-if="openPanel === 'targetedChecklist'"
       @close="openPanel = null"
     />
 
@@ -1052,7 +1097,6 @@ function onReelStopped() {
 /* Focus mode: just the trick name (big) and the two main buttons
    (big) — everything else that isn't essential while handling the
    phone mid-session gets out of the way. */
-.game--focus .roster,
 .game--focus .machine,
 .game--focus .result__score,
 .game--focus .result__actions--secondary,
@@ -1116,6 +1160,13 @@ function onReelStopped() {
   color: var(--red-hi);
   text-shadow: var(--glow-red);
   margin-bottom: -6px;
+  /* Combo/Mix readouts run noticeably longer than a plain family name
+     ("Combo 5 — Backslide to AO Top : 3/8") — wrap instead of
+     overflowing a narrow phone screen, and cap the width so it wraps
+     in a sensible spot rather than corner to corner. */
+  max-width: min(92vw, 420px);
+  white-space: normal;
+  line-height: 1.3;
 }
 
 .machine {
@@ -1372,84 +1423,6 @@ function onReelStopped() {
 .result__tries-btn {
   font-size: 12px;
   padding: 7px 12px;
-}
-
-.result__last {
-  color: var(--red-hi);
-}
-
-.result__turn {
-  font-size: 18px;
-  color: var(--text-dim);
-}
-
-.result__turn-name {
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: 20px;
-  text-transform: uppercase;
-  color: var(--text);
-  text-shadow: var(--glow-white);
-}
-
-/* group roster */
-.roster {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-}
-
-.roster__chip {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-}
-
-.roster__chip--up {
-  border-color: var(--red);
-  box-shadow: var(--glow-red);
-}
-
-/* marker for the player who starts this turn */
-.roster__chip > svg {
-  color: var(--red-hi);
-  flex: none;
-}
-
-.roster__chip--done {
-  opacity: 0.6;
-}
-
-.roster__chip--out {
-  opacity: 0.35;
-}
-
-.roster__chip--out .roster__name {
-  text-decoration: line-through;
-}
-
-.roster__name {
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.roster__chip--up .roster__name {
-  color: var(--red-hi);
-}
-
-.roster__letters {
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  color: var(--red);
-  text-shadow: var(--glow-red);
 }
 
 /* ---------- BLADE VS ---------- */

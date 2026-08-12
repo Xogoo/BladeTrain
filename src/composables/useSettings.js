@@ -17,9 +17,6 @@ function defaultCustomFamilies() {
 
 export const CUSTOM_LEVEL = 5;
 
-export const MIN_PLAYERS = 2;
-export const MAX_PLAYERS = 6;
-
 export const LEVELS = [
   { id: 1, name: "Classik", tagline: "Grinds soul & groove, rotations jusqu'à 360" },
   { id: 2, name: "Juicy", tagline: "Topsides, negatives et 360" },
@@ -321,9 +318,8 @@ function allGrindsOff() {
 
 function defaultSettings() {
   return {
-    mode: "solo", // solo | group | vs
+    mode: "solo", // solo | vs
     level: 1,
-    players: ["Joueur 1", "Joueur 2"],
     // BLADE VS: the robot's GLOBAL chance (0-100) of landing the trick
     // within its 3 tries, not a per-attempt chance — see rollRobot in
     // useGame.js, which derives the per-attempt probability from this.
@@ -411,15 +407,7 @@ function loadSettings() {
       ...stored,
       tricks: { ...defaults.tricks, ...(stored && stored.tricks) },
     };
-    if (
-      !Array.isArray(merged.players) ||
-      merged.players.length < MIN_PLAYERS ||
-      merged.players.some((name) => typeof name !== "string")
-    ) {
-      merged.players = [...defaults.players];
-    }
-    merged.players = merged.players.slice(0, MAX_PLAYERS);
-    if (merged.mode !== "solo" && merged.mode !== "group" && merged.mode !== "vs") {
+    if (merged.mode !== "solo" && merged.mode !== "vs") {
       merged.mode = "solo";
     }
     if (
