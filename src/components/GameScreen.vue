@@ -43,6 +43,7 @@ const {
   nextCareerFamily,
   addTry,
   vsAttempt,
+  vsGiveUpRound,
   nextVsRound,
   comboAttempt,
   giveUp,
@@ -375,17 +376,13 @@ function onAddToDrill() {
 // the time a trick lands. Covers every mode with something to attempt:
 // "solo" here means Carrière/Famille/Mix/plain Solo (they're all
 // state.mode === "solo", just with different training around them),
-// Hands-free "réussi"/"raté, on rejoue"/"passer" — listens continuously
-// for the whole session, from the moment it starts to whenever it
-// ends, not gated to the result screen, so it's already listening by
-// the time a trick lands. Covers every mode with something to attempt:
-// "solo" here means Carrière/Famille/Mix/plain Solo (they're all
-// state.mode === "solo", just with different training around them),
-// plus VS (routes to vsAttempt instead of landTrick/addTry — VS has no
-// skip concept mid-round, "passe" only does something once the round
-// has resolved, same as the "Trick suivant" button), Combo, and Drill.
-// Still paused while a panel is open on top (so a stray "passe" while
-// reading the trick explainer doesn't skip anything).
+// plus VS (routes to vsAttempt instead of landTrick/addTry — "passe"
+// mid-round gives up on the trick outright, same as missing all 3
+// tries, see vsGiveUpRound in useGame.js; once the round's already
+// resolved, "passe" advances instead, same as the "Trick suivant"
+// button), Combo, and Drill. Still paused while a panel is open on top
+// (so a stray "passe" while reading the trick explainer doesn't skip
+// anything).
 const { isSupported: voiceSupported, isListening: voiceListening, lastHeard: voiceLastHeard, lastAction: voiceLastAction, start: startVoice, stop: stopVoice } =
   useVoiceControl();
 
@@ -419,8 +416,15 @@ watch(
         },
         onSkip: () => {
           if (isVs.value) {
+            // "Passe" mid-round gives up on the trick outright — same
+            // outcome as burning all 3 tries and missing (see
+            // vsGiveUpRound in useGame.js), just immediate. Once the
+            // round's already resolved, it advances instead, same as
+            // the "Trick suivant" button.
             if (state.vsRoundResult) {
               nextVsRound(settings);
+            } else {
+              vsGiveUpRound(settings);
             }
             return;
           }

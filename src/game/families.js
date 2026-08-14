@@ -29,26 +29,32 @@ const SOUL_GRIND_NAMES = [
   "X-Grind",
 ];
 
-// Every groove grind in the game (isGroove: true).
+// Every groove grind in the game (isGroove: true). Frontside-type
+// grinds listed before their Backside counterpart throughout — Combo-
+// Carrière walks this array in order (see families.js's own
+// familiesInTrackOrder), so this raw order IS the training order:
+// every FS entry gets trained/drawn before any BS one (see
+// stageByOrientation for the random-draw equivalent used by plain
+// Family training, Career, and Combo-Mix).
 const GROOVE_GRIND_NAMES = [
   "FS Royale",
-  "BS Royale",
   "FS Unity",
-  "BS Unity",
   "FS Torque",
-  "BS Torque",
   "FS Cab driver",
-  "BS Cab driver",
   "FS Backslide",
-  "BS Backslide",
   "FS Full Torque",
-  "BS Full Torque",
   "FS Fastslide",
-  "BS Fastslide",
-  "Frontside",
-  "Backside",
   "FS Savannah",
+  "Frontside",
+  "BS Royale",
+  "BS Unity",
+  "BS Torque",
+  "BS Cab driver",
+  "BS Backslide",
+  "BS Full Torque",
+  "BS Fastslide",
   "BS Savannah",
+  "Backside",
 ];
 
 // Every grind that has a plain "Topside" entry in its variations list
@@ -373,4 +379,37 @@ export function familyEntryKey(entry) {
     entry.switchUp2VariationName || "",
     entry.switchSpin2Name || "",
   ].join("|");
+}
+
+// "front" | "back" | null (neither — most soul-plate grinds have no
+// Frontside/Backside naming at all, e.g. plain "Soul"/"Acid"). Only
+// groove grinds carry this distinction, via their own "FS "/"BS "
+// prefix (or plain "Frontside"/"Backside") — same signal
+// isFrontsideGroove uses internally for spin direction.
+export function entryOrientation(entry) {
+  if (entry.grindName === "Frontside" || entry.grindName.startsWith("FS ")) {
+    return "front";
+  }
+  if (entry.grindName === "Backside" || entry.grindName.startsWith("BS ")) {
+    return "back";
+  }
+  return null;
+}
+
+/**
+ * Staged draw order: every family/combo pool that trains Frontside
+ * and Backside grinds together (Groove, mainly) should exhaust every
+ * Frontside entry before a Backside one ever comes up — practice one
+ * side properly before the other, rather than mixing both randomly
+ * from the start. Given a list of {entry, ...} candidates (or plain
+ * entries — pass a mapper), narrows it down to just the Frontside
+ * ones if any remain; once none are left, Backside (and orientation-
+ * less, e.g. Soul-type) entries become fair game again, drawn
+ * normally. A family with no orientation split at all (Soul) is
+ * completely unaffected — every entry there returns orientation null,
+ * so the "any front left?" check is always false and nothing narrows.
+ */
+export function stageByOrientation(candidates, entryOf = (c) => c) {
+  const front = candidates.filter((c) => entryOrientation(entryOf(c)) === "front");
+  return front.length ? front : candidates;
 }

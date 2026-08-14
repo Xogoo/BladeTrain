@@ -328,6 +328,17 @@ function speakWithSynthesis(name) {
   } else {
     utterance.lang = "fr-FR";
   }
+  // Shares isSpeaking with speakPhrase below (same ref, defined further
+  // down but already initialized by the time this ever actually runs)
+  // — voice control's mic-resume waits on this exact flag so it never
+  // starts recording right on top of a trick name being read aloud;
+  // without this, speakTrick was invisible to that wait entirely.
+  isSpeaking.value = true;
+  const finish = () => {
+    isSpeaking.value = false;
+  };
+  utterance.onend = finish;
+  utterance.onerror = finish;
   window.speechSynthesis.speak(utterance);
 }
 
@@ -453,7 +464,7 @@ export function unlockAudio(withMusic) {
 // after (the VS auto-advance timer, the match-over victory call) can
 // wait for it to actually finish instead of guessing a fixed delay
 // and risking cutting it off mid-sentence.
-const isSpeaking = ref(false);
+export const isSpeaking = ref(false);
 
 /**
  * Short spoken phrases that aren't trick names — confirmations like

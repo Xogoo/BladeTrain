@@ -1,18 +1,42 @@
 <script setup>
-import { computed } from "vue";
+import { computed, onMounted, watch } from "vue";
 import AppIcon from "./AppIcon.vue";
 import { useGame } from "../composables/useGame.js";
 import { useCollection } from "../composables/useCollection.js";
 import { useSettings } from "../composables/useSettings.js";
+import { useSpeech } from "../composables/useSpeech.js";
 
 const { state, goToStart, startComboCareer, startComboMix } = useGame();
 const { bestComboChain } = useCollection();
 const { settings } = useSettings();
+const { speakPhrase, isSpeaking } = useSpeech();
 
 const recap = computed(() => state.comboRecap);
 const isNewBest = computed(
   () => recap.value && bestComboChain.value !== null && recap.value.chain >= bestComboChain.value
 );
+
+// If voice control was used for that last attempt, its own "Raté, on
+// recommence." confirmation might still be mid-sentence by the time
+// this screen mounts a moment later — waiting for isSpeaking to clear
+// first stops this from talking over the end of it, same reasoning as
+// GameOverScreen's own victory announcement.
+function announceOutcome() {
+  speakPhrase(recap.value?.cleared ? "Combo terminé. Chemin réussi !" : "Combo terminé. Game over.");
+}
+
+onMounted(() => {
+  if (!isSpeaking.value) {
+    announceOutcome();
+    return;
+  }
+  const stopWatchingSpeech = watch(isSpeaking, (speaking) => {
+    if (!speaking) {
+      stopWatchingSpeech();
+      announceOutcome();
+    }
+  });
+});
 
 function relancer() {
   if (!recap.value) {

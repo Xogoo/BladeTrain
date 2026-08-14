@@ -1,5 +1,5 @@
-import { ref, onUnmounted } from "vue";
-import { speakPhrase } from "./useSpeech.js";
+import { ref, watch, onUnmounted } from "vue";
+import { speakPhrase, isSpeaking } from "./useSpeech.js";
 
 const CONFIRMATION_PHRASES = {
   land: "Trick validé !",
@@ -72,6 +72,44 @@ export function useVoiceControl() {
   let shouldRestart = false; // "the caller wants this listening right now"
   let pausedForVisibility = false; // internal-only: temporarily stopped because the page went to the background, not because the caller stopped wanting it
   let handlers = {};
+  let stopWaitingForSpeech = null; // pending resumeListeningAfterSpeech watcher, if any
+
+  // Turning the mic back on right when a confirmation phrase ends
+  // isn't actually safe yet: landing/failing a trick also draws the
+  // NEXT one and reads it aloud (speakTrick) a beat later, once the
+  // reel-settle animation finishes — not necessarily speaking yet at
+  // this exact instant, so isSpeaking alone can't be trusted without
+  // a short buffer first. Waits BUFFER_MS for that read-aloud to
+  // actually start, then (whether it did or not) waits for isSpeaking
+  // to genuinely clear before starting the recognizer — so the mic
+  // never opens on top of the app's own voice mid-sentence.
+  const RESUME_BUFFER_MS = 350;
+  function resumeListeningAfterSpeech() {
+    stopWaitingForSpeech?.();
+    stopWaitingForSpeech = null;
+    const goLive = () => {
+      shouldRestart = true;
+      try {
+        recognition.start();
+        isListening.value = true;
+      } catch {
+        // Already running, or onend will pick it back up shortly.
+      }
+    };
+    window.setTimeout(() => {
+      if (!isSpeaking.value) {
+        goLive();
+        return;
+      }
+      stopWaitingForSpeech = watch(isSpeaking, (speaking) => {
+        if (!speaking) {
+          stopWaitingForSpeech?.();
+          stopWaitingForSpeech = null;
+          goLive();
+        }
+      });
+    }, RESUME_BUFFER_MS);
+  }
 
   function ensureRecognition() {
     if (recognition || !isSupported) {
@@ -129,13 +167,7 @@ export function useVoiceControl() {
       }
       speakPhrase(phrase, () => {
         if (wasListening) {
-          shouldRestart = true;
-          try {
-            recognition.start();
-            isListening.value = true;
-          } catch {
-            // Already running, or onend will pick it back up shortly.
-          }
+          resumeListeningAfterSpeech();
         }
       });
       if (action === "land") handlers.onLand?.();
@@ -250,6 +282,8 @@ export function useVoiceControl() {
   function stop() {
     shouldRestart = false;
     pausedForVisibility = false;
+    stopWaitingForSpeech?.();
+    stopWaitingForSpeech = null;
     detachVisibilityHandler();
     try {
       recognition?.stop();

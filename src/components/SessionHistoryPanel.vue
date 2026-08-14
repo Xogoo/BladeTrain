@@ -161,7 +161,94 @@ const filteredSessionHistory = computed(() => {
   return list;
 });
 
-// ---- Par trick -----------------------------------------------------------
+// ---- Sessions grouped by day -------------------------------------------
+// Pierre wants a day-first view: one recap per calendar day (how much
+// got done, broken down by mode — "2 BLADE VS — 1 victoire, 1 défaite")
+// with the individual sessions still reachable underneath, rather than
+// a flat list of one card per session/mode played. VS matches and
+// Combo runs don't share a session id with their own `sessions` row
+// (see recordVsMatch/recordComboRun — separate records, correlated
+// only by roughly-the-same-instant timestamps), so the per-day
+// breakdown below matches them up by CALENDAR DAY instead — accurate
+// as long as a match/run and its session both happened the same day,
+// which they always do (a VS match/Combo run starts and ends its own
+// session in one sitting).
+function dayKeyOf(iso) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function formatDayLabel(dayKey) {
+  const [y, m, d] = dayKey.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+const groupedSessionsByDay = computed(() => {
+  const days = new Map();
+  for (const session of filteredSessionHistory.value) {
+    const key = dayKeyOf(session.startedAt);
+    if (!days.has(key)) {
+      days.set(key, { dayKey: key, sessions: [] });
+    }
+    days.get(key).sessions.push(session);
+  }
+  // filteredSessionHistory is already newest-first; Map preserves
+  // first-insertion order, so days come out newest-first too.
+  return [...days.values()].map((day) => {
+    const totalLanded = day.sessions.reduce((sum, s) => sum + s.landed, 0);
+    const totalSkipped = day.sessions.reduce((sum, s) => sum + s.skipped, 0);
+
+    // One line per mode category present that day, richer than a
+    // plain count wherever there's something more useful to say.
+    const byCategory = new Map();
+    for (const session of day.sessions) {
+      const cat = sessionCategory(session);
+      if (!byCategory.has(cat)) byCategory.set(cat, []);
+      byCategory.get(cat).push(session);
+    }
+    const dayVsMatches = vsMatchHistory.value.filter((m) => dayKeyOf(m.endedAt) === day.dayKey);
+    const dayComboRuns = comboRunHistory.value.filter((r) => dayKeyOf(r.endedAt) === day.dayKey);
+
+    const breakdown = [...byCategory.entries()].map(([category, sessions]) => {
+      if (category === "BLADE VS" && dayVsMatches.length) {
+        const wins = dayVsMatches.filter((m) => m.result === "win").length;
+        const losses = dayVsMatches.filter((m) => m.result === "loss").length;
+        const draws = dayVsMatches.filter((m) => m.result === "draw").length;
+        const parts = [];
+        if (wins) parts.push(`${wins} victoire${wins > 1 ? "s" : ""}`);
+        if (losses) parts.push(`${losses} défaite${losses > 1 ? "s" : ""}`);
+        if (draws) parts.push(`${draws} nul${draws > 1 ? "s" : ""}`);
+        return { category, count: sessions.length, detail: parts.join(", ") };
+      }
+      if (category === "Combo" && dayComboRuns.length) {
+        const best = Math.max(...dayComboRuns.map((r) => r.chain));
+        return { category, count: sessions.length, detail: `meilleure chaîne ${best}` };
+      }
+      const landed = sessions.reduce((sum, s) => sum + s.landed, 0);
+      return { category, count: sessions.length, detail: `${landed} réussis` };
+    });
+
+    return {
+      dayKey: day.dayKey,
+      label: formatDayLabel(day.dayKey),
+      sessions: day.sessions,
+      totalLanded,
+      totalSkipped,
+      breakdown,
+    };
+  });
+});
+
+const expandedDay = ref(null);
+function toggleDay(dayKey) {
+  expandedDay.value = expandedDay.value === dayKey ? null : dayKey;
+}
+
+
 
 // Tricks landed 2+ times, most-practiced first — enough data points for
 // a meaningful attempts-over-time chart.
@@ -459,24 +546,47 @@ watch(
           Aucune session ne correspond à ce filtre.
         </p>
         <div v-else class="sessions">
-          <div v-for="session in filteredSessionHistory" :key="session.id" class="session-card">
-            <button class="session-card__row" @click="toggle(session.id)">
-              <span class="session-card__main">
-                <span class="session-card__date">{{ formatDate(session.startedAt) }}</span>
-                <span v-if="session.label" class="session-card__label">{{ session.label }}</span>
+          <div v-for="day in groupedSessionsByDay" :key="day.dayKey" class="day-card">
+            <button class="day-card__row" @click="toggleDay(day.dayKey)">
+              <span class="day-card__main">
+                <span class="day-card__date">{{ day.label }}</span>
+                <span class="day-card__breakdown">
+                  <span v-for="(item, i) in day.breakdown" :key="item.category">
+                    {{ item.count }} {{ item.category }}<template v-if="item.detail"> — {{ item.detail }}</template>{{ i < day.breakdown.length - 1 ? " · " : "" }}
+                  </span>
+                </span>
               </span>
-              <span class="session-card__stats">
-                {{ session.landed }} réussis &middot; {{ session.skipped }} passés
+              <span class="day-card__stats">
+                {{ day.totalLanded }} réussis &middot; {{ day.totalSkipped }} passés
               </span>
               <AppIcon
                 name="forward"
                 :size="14"
-                :class="{ 'session-card__chevron--open': expandedId === session.id }"
+                :class="{ 'session-card__chevron--open': expandedDay === day.dayKey }"
                 class="session-card__chevron"
               />
             </button>
-            <div v-if="expandedId === session.id" class="session-card__detail">
-              <SessionSummary :session-id="session.id" />
+            <div v-if="expandedDay === day.dayKey" class="day-card__sessions">
+              <div v-for="session in day.sessions" :key="session.id" class="session-card">
+                <button class="session-card__row" @click="toggle(session.id)">
+                  <span class="session-card__main">
+                    <span class="session-card__date">{{ formatDate(session.startedAt) }}</span>
+                    <span v-if="session.label" class="session-card__label">{{ session.label }}</span>
+                  </span>
+                  <span class="session-card__stats">
+                    {{ session.landed }} réussis &middot; {{ session.skipped }} passés
+                  </span>
+                  <AppIcon
+                    name="forward"
+                    :size="14"
+                    :class="{ 'session-card__chevron--open': expandedId === session.id }"
+                    class="session-card__chevron"
+                  />
+                </button>
+                <div v-if="expandedId === session.id" class="session-card__detail">
+                  <SessionSummary :session-id="session.id" />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1038,6 +1148,53 @@ watch(
 }
 
 .sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.day-card {
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.day-card__row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 14px;
+  background: var(--panel-strong);
+  text-align: left;
+}
+.day-card__main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.day-card__date {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.day-card__breakdown {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.day-card__stats {
+  margin-left: auto;
+  flex: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--red-hi);
+  text-align: right;
+}
+.day-card__sessions {
+  padding: 10px;
+  border-top: 1px solid var(--line);
+  background: var(--bg-2);
   display: flex;
   flex-direction: column;
   gap: 8px;

@@ -1,6 +1,6 @@
 import { computed, reactive, ref } from "vue";
 import { generateSpin } from "../game/trickGenerator.js";
-import { FAMILIES, resolveFamily, familiesInTrackOrder, familyEntryKey } from "../game/families.js";
+import { FAMILIES, resolveFamily, familiesInTrackOrder, familyEntryKey, stageByOrientation } from "../game/families.js";
 import { useCollection } from "./useCollection.js";
 import { useSettings, CUSTOM_LEVEL } from "./useSettings.js";
 import { useBackup } from "./useBackup.js";
@@ -670,12 +670,13 @@ export function useGame() {
       state.comboCurrentFamilyId = step.familyId;
       state.comboCurrentEntryIndex = null;
     } else {
-      const pool = buildMixPool(state.comboFamilyIds).filter(
-        ({ familyId, index }) => {
+      const pool = stageByOrientation(
+        buildMixPool(state.comboFamilyIds).filter(({ familyId, index }) => {
           const family = resolveFamilyById(familyId);
           const entry = family?.entries[index];
           return entry && !state.comboLandedKeys.includes(familyEntryKey(entry));
-        }
+        }),
+        ({ familyId, index }) => resolveFamilyById(familyId).entries[index]
       );
       if (!pool.length) {
         finishComboRun({ cleared: true });
@@ -873,6 +874,15 @@ export function useGame() {
     resolveVsRound(landed, settings);
   };
 
+  /** VS: "passe" — giving up on the current trick outright, same
+   * outcome as burning all 3 tries and missing the last one (the
+   * round resolves immediately as a miss, awarding the next letter),
+   * just without actually attempting it 3 times first. */
+  const vsGiveUpRound = (settings) => {
+    captureUndoSnapshot();
+    resolveVsRound(false, settings);
+  };
+
   /** VS: advances past the round-result panel into the next round. */
   const nextVsRound = (settings) => {
     beginVsRound(settings);
@@ -923,9 +933,10 @@ export function useGame() {
       // Should only be empty for one frame right as the family
       // completes (landTrick clears activeFamilyId before this runs) —
       // guarded here anyway rather than crashing.
-      if (remaining.length) {
+      const staged = stageByOrientation(remaining, (i) => family.entries[i]);
+      if (staged.length) {
         state.activeFamilyEntryIndex =
-          remaining[Math.floor(Math.random() * remaining.length)];
+          staged[Math.floor(Math.random() * staged.length)];
         forcedTrick = family.entries[state.activeFamilyEntryIndex];
       }
     } else if (state.activeFamilyIds.length) {
@@ -1488,6 +1499,7 @@ export function useGame() {
     nextCareerFamily,
     addTry,
     vsAttempt,
+    vsGiveUpRound,
     nextVsRound,
     giveUp,
     goToStart,
