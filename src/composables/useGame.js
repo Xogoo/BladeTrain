@@ -746,6 +746,7 @@ export function useGame() {
             .map((id) => resolveFamilyById(id)?.name || "?")
             .join(", ")})`;
     const run = collection.recordComboRun({
+      sessionId: state.sessionId,
       source: state.comboSource,
       label,
       chain: state.comboChain,
@@ -1208,6 +1209,7 @@ export function useGame() {
             ? "win"
             : "loss";
       collection.recordVsMatch({
+        sessionId: state.sessionId,
         playerLetters: player.letters,
         robotLetters: bot.letters,
         result,

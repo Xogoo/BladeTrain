@@ -363,8 +363,9 @@ function defaultSettings() {
     speechVoiceURI: "",
     // Only used to pre-fill the "to" field when sharing/emailing a
     // backup export — never sent anywhere on its own, see
-    // useBackup.js.
-    backupEmail: "",
+    // useBackup.js. Pre-filled with Pierre's own address so this is a
+    // one-time thing, not something to type in every time.
+    backupEmail: "raposo.pierre@hotmail.fr",
     tricks: { ...ALL_TRICKS_OFF },
     // Per-grind training filter for the first grind: name -> false when
     // switched off. Missing entries mean "on", so new grinds default to
@@ -409,6 +410,15 @@ function loadSettings() {
     };
     if (merged.mode !== "solo" && merged.mode !== "vs") {
       merged.mode = "solo";
+    }
+    // Backfills the default even for someone who already has settings
+    // saved from before this address existed — the stored value would
+    // otherwise be "" forever (an explicit, if empty, string beats the
+    // default in the merge above), never picking up the new default.
+    // There's no real "I deliberately want this blank" case to
+    // protect here — it's just a share-sheet prefill, not a toggle.
+    if (!merged.backupEmail) {
+      merged.backupEmail = defaults.backupEmail;
     }
     if (
       typeof merged.vsRobotChance !== "number" ||

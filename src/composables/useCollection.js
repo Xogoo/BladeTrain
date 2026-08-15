@@ -996,20 +996,43 @@ export function useCollection() {
    * launched and immediately abandoned...), not an undo: the tricks
    * it logged stay counted in lifetime stats/Collection/badges either
    * way, same as Aya's own ayaDeleteSession never un-counts what was
-   * genuinely landed. Only the history ROW disappears. */
+   * genuinely landed. Only the history ROW disappears — except for
+   * its linked Combo run / VS match (see recordComboRun/recordVsMatch),
+   * which come along too: leaving a "chaîne de 0" run behind after its
+   * session is gone would keep skewing the Combo chart with a run that,
+   * from every other view, no longer happened.
+   */
   const deleteSession = (sessionId) => {
     const index = collection.sessions.findIndex((s) => s.id === sessionId);
     if (index !== -1) {
       collection.sessions.splice(index, 1);
     }
+    const comboIndex = collection.comboRuns.findIndex((r) => r.sessionId === sessionId);
+    if (comboIndex !== -1) {
+      collection.comboRuns.splice(comboIndex, 1);
+    }
+    const vsIndex = collection.vsMatches.findIndex((m) => m.sessionId === sessionId);
+    if (vsIndex !== -1) {
+      collection.vsMatches.splice(vsIndex, 1);
+    }
   };
 
   /** Records a finished Combo run (Carrière or Mix) — see useGame.js's
    * startComboCareer/startComboMix/comboAttempt. `chain` is how many
-   * tricks were landed in a row before the run ended. */
-  const recordComboRun = ({ source, label, chain, endedOnTrick = null }) => {
+   * tricks were landed in a row before the run ended. `sessionId`
+   * links it back to its own session row — a combo run and its
+   * session are ALWAYS created and torn down together (one run per
+   * session, never more), so deleting either one now takes the other
+   * with it (see deleteSession/deleteComboRun below); without this
+   * link, deleting a "chaîne de 0" run from a fumbled combo left its
+   * empty session sitting in the Sessions tab, and deleting the
+   * session the other way round left a phantom 0-chain entry
+   * skewing the Combo chart — the two views could drift out of sync
+   * with each other with no way to reconcile them. */
+  const recordComboRun = ({ sessionId, source, label, chain, endedOnTrick = null }) => {
     const run = {
       id: Date.now(),
+      sessionId,
       source, // "career" | "mix"
       label, // e.g. "Carrière — Normal" or "Mix (Soul, Groove)"
       chain,
@@ -1033,20 +1056,34 @@ export function useCollection() {
   /** Removes one Combo run — meant for the "launched by accident,
    * chain of 0" case (a run ended on the very first trick, nothing
    * ever actually landed) cluttering history as if it were a real
-   * attempt. Same "history row only" scope as deleteSession above. */
+   * attempt. Takes its linked session row with it (see
+   * recordComboRun's own comment on why that's always safe to do) so
+   * the Sessions tab and the Combo chart never disagree about
+   * whether this run ever happened. */
   const deleteComboRun = (id) => {
+    const run = collection.comboRuns.find((r) => r.id === id);
     const index = collection.comboRuns.findIndex((r) => r.id === id);
     if (index !== -1) {
       collection.comboRuns.splice(index, 1);
+    }
+    if (run?.sessionId) {
+      const sessionIndex = collection.sessions.findIndex((s) => s.id === run.sessionId);
+      if (sessionIndex !== -1) {
+        collection.sessions.splice(sessionIndex, 1);
+      }
     }
   };
 
   const MAX_VS_MATCHES = 100;
 
-  /** Records a finished BLADE VS match — see useGame.js's endGame(). */
-  const recordVsMatch = ({ playerLetters, robotLetters, result, robotChance }) => {
+  /** Records a finished BLADE VS match — see useGame.js's endGame().
+   * `sessionId` links it to its own session row, same reasoning as
+   * recordComboRun's own — a match and its session are always
+   * created/torn down together, one match per session. */
+  const recordVsMatch = ({ sessionId, playerLetters, robotLetters, result, robotChance }) => {
     const match = {
       id: Date.now(),
+      sessionId,
       playerLetters,
       robotLetters,
       result, // "win" | "loss" | "draw"
@@ -1067,12 +1104,19 @@ export function useCollection() {
     )
   );
 
-  /** Removes one VS match — same "history row only" cleanup as
-   * deleteSession/deleteComboRun above. */
+  /** Removes one VS match — takes its linked session row with it, same
+   * reasoning as deleteComboRun above. */
   const deleteVsMatch = (id) => {
+    const match = collection.vsMatches.find((m) => m.id === id);
     const index = collection.vsMatches.findIndex((m) => m.id === id);
     if (index !== -1) {
       collection.vsMatches.splice(index, 1);
+    }
+    if (match?.sessionId) {
+      const sessionIndex = collection.sessions.findIndex((s) => s.id === match.sessionId);
+      if (sessionIndex !== -1) {
+        collection.sessions.splice(sessionIndex, 1);
+      }
     }
   };
 
