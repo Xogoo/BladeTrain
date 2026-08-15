@@ -15,9 +15,12 @@ const {
   repeatedTrickSeries,
   switchUpLands,
   resetCollection,
+  deleteSession,
   comboRunHistory,
+  deleteComboRun,
   bestComboChain,
   vsMatchHistory,
+  deleteVsMatch,
   vsRecord,
   collection,
   uniqueTrickCount,
@@ -30,6 +33,24 @@ const {
   addDrillEntry,
   removeDrillEntry,
 } = useCollection();
+
+// Shared tap-twice-to-confirm across Sessions/Combos/BLADE VS delete
+// buttons — a "this shouldn't be here" cleanup tool (an accidental
+// session, a combo launched and immediately abandoned — see
+// deleteComboRun's own comment in useCollection.js), not an undo:
+// only the history ROW disappears, lifetime stats/badges/Collection
+// stay exactly as they were. One shared key (not a boolean) so
+// confirming one row's delete never bleeds into another row still
+// showing its own default label.
+const confirmingDeleteKey = ref(null);
+function requestDelete(key, deleteFn) {
+  if (confirmingDeleteKey.value !== key) {
+    confirmingDeleteKey.value = key;
+    return;
+  }
+  deleteFn();
+  confirmingDeleteKey.value = null;
+}
 
 const confirmingReset = ref(false);
 const onReset = () => {
@@ -49,6 +70,11 @@ function toggle(id) {
 const expandedComboId = ref(null);
 function toggleCombo(id) {
   expandedComboId.value = expandedComboId.value === id ? null : id;
+}
+
+const expandedVsId = ref(null);
+function toggleVsMatch(id) {
+  expandedVsId.value = expandedVsId.value === id ? null : id;
 }
 
 // Oldest-first for the chart (comboRunHistory itself is newest-first,
@@ -236,6 +262,12 @@ const groupedSessionsByDay = computed(() => {
       dayKey: day.dayKey,
       label: formatDayLabel(day.dayKey),
       sessions: day.sessions,
+      // Same grouping the breakdown line above already computed —
+      // reused here so the expanded view lists sessions under a
+      // per-mode heading instead of one flat mixed list (Carrière,
+      // BLADE VS, Combo... all jumbled together in whatever order
+      // they happened to be played).
+      byCategory: [...byCategory.entries()].map(([category, sessions]) => ({ category, sessions })),
       totalLanded,
       totalSkipped,
       breakdown,
@@ -567,24 +599,35 @@ watch(
               />
             </button>
             <div v-if="expandedDay === day.dayKey" class="day-card__sessions">
-              <div v-for="session in day.sessions" :key="session.id" class="session-card">
-                <button class="session-card__row" @click="toggle(session.id)">
-                  <span class="session-card__main">
-                    <span class="session-card__date">{{ formatDate(session.startedAt) }}</span>
-                    <span v-if="session.label" class="session-card__label">{{ session.label }}</span>
-                  </span>
-                  <span class="session-card__stats">
-                    {{ session.landed }} réussis &middot; {{ session.skipped }} passés
-                  </span>
-                  <AppIcon
-                    name="forward"
-                    :size="14"
-                    :class="{ 'session-card__chevron--open': expandedId === session.id }"
-                    class="session-card__chevron"
-                  />
-                </button>
-                <div v-if="expandedId === session.id" class="session-card__detail">
-                  <SessionSummary :session-id="session.id" />
+              <div v-for="group in day.byCategory" :key="group.category" class="day-card__category">
+                <p class="day-card__category-title">{{ group.category }}</p>
+                <div v-for="session in group.sessions" :key="session.id" class="session-card">
+                  <button class="session-card__row" @click="toggle(session.id)">
+                    <span class="session-card__main">
+                      <span class="session-card__date">{{ formatDate(session.startedAt) }}</span>
+                      <span v-if="session.label" class="session-card__label">{{ session.label }}</span>
+                    </span>
+                    <span class="session-card__stats">
+                      {{ session.landed }} réussis &middot; {{ session.skipped }} passés
+                    </span>
+                    <AppIcon
+                      name="forward"
+                      :size="14"
+                      :class="{ 'session-card__chevron--open': expandedId === session.id }"
+                      class="session-card__chevron"
+                    />
+                  </button>
+                  <div v-if="expandedId === session.id" class="session-card__detail">
+                    <SessionSummary :session-id="session.id" />
+                    <button
+                      class="btn btn--ghost delete-row-btn"
+                      :class="{ 'btn--confirm': confirmingDeleteKey === `session:${session.id}` }"
+                      @click="requestDelete(`session:${session.id}`, () => deleteSession(session.id))"
+                      @blur="confirmingDeleteKey = null"
+                    >
+                      {{ confirmingDeleteKey === `session:${session.id}` ? "Confirmer la suppression" : "Supprimer cette session" }}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -811,6 +854,14 @@ watch(
               <p v-else>
                 Chaîne de {{ run.chain }}, run interrompu.
               </p>
+              <button
+                class="btn btn--ghost delete-row-btn"
+                :class="{ 'btn--confirm': confirmingDeleteKey === `combo:${run.id}` }"
+                @click="requestDelete(`combo:${run.id}`, () => deleteComboRun(run.id))"
+                @blur="confirmingDeleteKey = null"
+              >
+                {{ confirmingDeleteKey === `combo:${run.id}` ? "Confirmer la suppression" : "Supprimer ce run" }}
+              </button>
             </div>
           </div>
         </div>
@@ -842,12 +893,13 @@ watch(
         <h3 class="section-title">Matchs</h3>
         <div class="sessions">
           <div v-for="match in vsMatchHistory" :key="match.id" class="session-card">
-            <div
+            <button
               class="session-card__row combo-run-row"
               :class="{
                 'vs-match--win': match.result === 'win',
                 'vs-match--loss': match.result === 'loss',
               }"
+              @click="toggleVsMatch(match.id)"
             >
               <span class="session-card__date">{{ formatDate(match.endedAt) }}</span>
               <span class="session-card__stats">
@@ -863,6 +915,22 @@ watch(
                   &middot; robot {{ match.robotChance }}%
                 </template>
               </span>
+              <AppIcon
+                name="forward"
+                :size="14"
+                :class="{ 'session-card__chevron--open': expandedVsId === match.id }"
+                class="session-card__chevron"
+              />
+            </button>
+            <div v-if="expandedVsId === match.id" class="session-card__detail">
+              <button
+                class="btn btn--ghost delete-row-btn"
+                :class="{ 'btn--confirm': confirmingDeleteKey === `vs:${match.id}` }"
+                @click="requestDelete(`vs:${match.id}`, () => deleteVsMatch(match.id))"
+                @blur="confirmingDeleteKey = null"
+              >
+                {{ confirmingDeleteKey === `vs:${match.id}` ? "Confirmer la suppression" : "Supprimer ce match" }}
+              </button>
             </div>
           </div>
         </div>
@@ -1197,7 +1265,25 @@ watch(
   background: var(--bg-2);
   display: flex;
   flex-direction: column;
+  gap: 14px;
+}
+.day-card__category {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+}
+.day-card__category-title {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+.delete-row-btn {
+  margin-top: 10px;
+  width: 100%;
+  font-size: 12px;
 }
 .session-card {
   border: 1px solid var(--line);

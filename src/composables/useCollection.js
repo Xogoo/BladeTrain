@@ -991,6 +991,19 @@ export function useCollection() {
   const sessionById = (sessionId) =>
     collection.sessions.find((s) => s.id === sessionId) || null;
 
+  /** Removes one session row from history — a "this shouldn't be
+   * here" cleanup tool (an accidental session, testing, a combo
+   * launched and immediately abandoned...), not an undo: the tricks
+   * it logged stay counted in lifetime stats/Collection/badges either
+   * way, same as Aya's own ayaDeleteSession never un-counts what was
+   * genuinely landed. Only the history ROW disappears. */
+  const deleteSession = (sessionId) => {
+    const index = collection.sessions.findIndex((s) => s.id === sessionId);
+    if (index !== -1) {
+      collection.sessions.splice(index, 1);
+    }
+  };
+
   /** Records a finished Combo run (Carrière or Mix) — see useGame.js's
    * startComboCareer/startComboMix/comboAttempt. `chain` is how many
    * tricks were landed in a row before the run ended. */
@@ -1017,6 +1030,17 @@ export function useCollection() {
     )
   );
 
+  /** Removes one Combo run — meant for the "launched by accident,
+   * chain of 0" case (a run ended on the very first trick, nothing
+   * ever actually landed) cluttering history as if it were a real
+   * attempt. Same "history row only" scope as deleteSession above. */
+  const deleteComboRun = (id) => {
+    const index = collection.comboRuns.findIndex((r) => r.id === id);
+    if (index !== -1) {
+      collection.comboRuns.splice(index, 1);
+    }
+  };
+
   const MAX_VS_MATCHES = 100;
 
   /** Records a finished BLADE VS match — see useGame.js's endGame(). */
@@ -1042,6 +1066,15 @@ export function useCollection() {
       (a, b) => new Date(b.endedAt) - new Date(a.endedAt)
     )
   );
+
+  /** Removes one VS match — same "history row only" cleanup as
+   * deleteSession/deleteComboRun above. */
+  const deleteVsMatch = (id) => {
+    const index = collection.vsMatches.findIndex((m) => m.id === id);
+    if (index !== -1) {
+      collection.vsMatches.splice(index, 1);
+    }
+  };
 
   const vsRecord = computed(() => {
     const wins = collection.vsMatches.filter((m) => m.result === "win").length;
@@ -2095,12 +2128,15 @@ export function useCollection() {
     startSession,
     endSession,
     sessionById,
+    deleteSession,
     sessionHistory,
     recordComboRun,
     comboRunHistory,
+    deleteComboRun,
     bestComboChain,
     recordVsMatch,
     vsMatchHistory,
+    deleteVsMatch,
     vsRecord,
     addDrillEntry,
     removeDrillEntry,
