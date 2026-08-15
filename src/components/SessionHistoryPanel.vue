@@ -923,6 +923,34 @@ watch(
               />
             </button>
             <div v-if="expandedVsId === match.id" class="session-card__detail">
+              <p v-if="match.note" class="hint vs-rounds__note">{{ match.note }}</p>
+              <div v-if="match.rounds?.length" class="vs-rounds">
+                <div
+                  v-for="(round, i) in match.rounds"
+                  :key="i"
+                  class="vs-round"
+                  :class="{ 'vs-round--miss': !round.playerLanded }"
+                >
+                  <span class="vs-round__index">{{ i + 1 }}</span>
+                  <span class="vs-round__trick">{{ round.trickName }}</span>
+                  <span class="vs-round__result">
+                    <AppIcon :name="round.playerLanded ? 'check' : 'close'" :size="13" />
+                    toi
+                  </span>
+                  <span class="vs-round__result vs-round__result--robot">
+                    <AppIcon
+                      v-if="round.robotLanded !== null && round.robotLanded !== undefined"
+                      :name="round.robotLanded ? 'check' : 'close'"
+                      :size="13"
+                    />
+                    <span v-else class="vs-round__unknown">?</span>
+                    robot
+                  </span>
+                </div>
+              </div>
+              <p v-else class="hint">
+                Match d'avant le détail par trick — rien à afficher pour celui-ci.
+              </p>
               <button
                 class="btn btn--ghost delete-row-btn"
                 :class="{ 'btn--confirm': confirmingDeleteKey === `vs:${match.id}` }"
@@ -1354,6 +1382,60 @@ watch(
 }
 .combo-detail strong {
   color: var(--red-hi);
+}
+
+.vs-rounds {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.vs-round {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text);
+}
+.vs-round--miss {
+  color: var(--text-dim);
+}
+.vs-round__index {
+  flex: none;
+  width: 20px;
+  text-align: right;
+  font-family: var(--font-display);
+  color: var(--text-dim);
+  opacity: 0.7;
+}
+.vs-round__trick {
+  flex: 1;
+  min-width: 0;
+}
+.vs-round__result {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--green-hi);
+}
+.vs-round--miss .vs-round__result:first-of-type {
+  color: var(--danger-hi);
+}
+.vs-round__result--robot {
+  color: var(--text-dim);
+}
+.vs-round__unknown {
+  font-weight: 700;
+  opacity: 0.6;
+}
+.vs-rounds__note {
+  margin-bottom: 10px;
+  font-style: italic;
 }
 
 .drill-list {

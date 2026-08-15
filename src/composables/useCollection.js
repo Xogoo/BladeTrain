@@ -1079,8 +1079,12 @@ export function useCollection() {
   /** Records a finished BLADE VS match — see useGame.js's endGame().
    * `sessionId` links it to its own session row, same reasoning as
    * recordComboRun's own — a match and its session are always
-   * created/torn down together, one match per session. */
-  const recordVsMatch = ({ sessionId, playerLetters, robotLetters, result, robotChance }) => {
+   * created/torn down together, one match per session. `rounds` is
+   * the trick-by-trick log built up over the match (see useGame.js's
+   * vsRoundLog) — kept on the match record itself rather than
+   * reconstructed from lands/skips, since a missed round was never
+   * recorded there at all. */
+  const recordVsMatch = ({ sessionId, playerLetters, robotLetters, result, robotChance, rounds = [] }) => {
     const match = {
       id: Date.now(),
       sessionId,
@@ -1088,6 +1092,7 @@ export function useCollection() {
       robotLetters,
       result, // "win" | "loss" | "draw"
       robotChance,
+      rounds,
       endedAt: new Date().toISOString(),
     };
     collection.vsMatches.push(match);

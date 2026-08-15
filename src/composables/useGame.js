@@ -132,6 +132,17 @@ const state = reactive({
   // panel-display/auto-advance-timer duties on a round that's about
   // to end the match outright.
   vsRoundOutcome: null,
+  // Every round of the CURRENT match, in order — {trickName,
+  // playerLanded, robotLanded} — purely for the match's own history
+  // detail (see recordVsMatch/SessionHistoryPanel): which tricks came
+  // up and who landed what. Reset at the start of each match, handed
+  // off to collection.recordVsMatch when it ends. Deliberately its own
+  // thing rather than reusing the generic lands/skips log — a missed
+  // VS round was never recorded there at all (only recordLand on a
+  // landed round; see resolveVsRound), and this isn't the place to
+  // start changing what counts toward lifetime skip stats just to get
+  // a match recap.
+  vsRoundLog: [],
 
   // Combo mode state — go as far as possible chaining tricks with at
   // most 2 tries each; failing both on any one trick ends the whole
@@ -319,6 +330,7 @@ export function useGame() {
       { name: "BladeBot", letters: 0 },
     ];
     state.round = 0;
+    state.vsRoundLog = [];
     // A VS match now feeds the same history as solo training: trick/
     // grind counts, Collection, badges, and its own row in the
     // session history — see landTrick's recordLand call and
@@ -850,6 +862,13 @@ export function useGame() {
       playerLetters: player.letters,
       botLetters: bot.letters,
     };
+    // Logged before the win check below on purpose — the match-ending
+    // round still needs to show up in its own recap (see vsRoundLog's
+    // own comment on why this isn't the generic lands/skips log).
+    state.vsRoundLog = [
+      ...state.vsRoundLog,
+      { trickName: state.spin.name, playerLanded, robotLanded: robot.landed },
+    ];
     if (player.letters >= LETTERS.length || bot.letters >= LETTERS.length) {
       endGame(settings);
       return;
@@ -1214,6 +1233,7 @@ export function useGame() {
         robotLetters: bot.letters,
         result,
         robotChance: settings?.vsRobotChance ?? null,
+        rounds: state.vsRoundLog,
       });
       if (state.sessionId) {
         collection.endSession(state.sessionId);
