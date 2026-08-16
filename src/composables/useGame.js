@@ -730,6 +730,30 @@ export function useGame() {
       );
       state.comboChain += 1;
       if (state.comboSource === "career") {
+        // Combo-Carrière walks the WHOLE track from the very start
+        // every run, regardless of where the player's real Carrière
+        // stands — landing something here is landing the exact same
+        // trick Carrière itself would show, so it counts there too,
+        // unlocking/advancing it exactly like landTrick's own Career
+        // branch does. Landing something already marked done in
+        // Carrière (this run started earlier than the player's real
+        // progress) is a safe no-op — advanceFamilyProgress only ever
+        // adds a key once and only awards a badge the first time a
+        // family completes.
+        const step = state.comboPath[state.comboPathIndex];
+        if (step) {
+          const stepFamily = resolveFamilyById(step.familyId);
+          if (stepFamily) {
+            const careerBadge = collection.advanceFamilyProgress(
+              stepFamily,
+              step.entry,
+              stepFamily.id
+            );
+            if (careerBadge) {
+              state.newBadges = [...state.newBadges, careerBadge];
+            }
+          }
+        }
         state.comboPathIndex += 1;
       } else {
         const entry = comboCurrentEntry();

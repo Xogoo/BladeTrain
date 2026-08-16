@@ -86,9 +86,19 @@ export function nameTrick(slots, options = {}) {
   // Alley-oop/True. A 360 or 720 (even multiple) brings you all the way
   // back to facing forward, so it stays a plain forward trick (e.g. a
   // forward 360 into Torque Soul is "360 Torque Soul", never "Soyale").
-  // Used to pick grind synonyms like Kindgrind/Soyale over their plain
-  // straight-in counterpart (Sweatstance/Torque Soul).
-  const isReverse = !isGroove && (isFakie || (hasSpin && isReverseSpinDegree(spinTo.winner.name)));
+  //
+  // Fakie compounds with that same rule instead of overriding it: fakie
+  // on its own IS a reverse entry, but Halfcab/True Halfcab (fakie +
+  // 180°, an odd multiple) flips you a SECOND time, landing you back
+  // facing forward — net forward, not reverse. Fullcab/True Fullcab
+  // (fakie + 360°, even) doesn't flip you again, so fakie's own reverse
+  // stands. Same "odd flips, even doesn't" rule either way, just XORed
+  // against fakie's own starting state instead of a plain forward
+  // approach's. Without this, "Halfcab Kindgrind" used to come up —
+  // physically impossible, since a Halfcab's own 180° already puts you
+  // facing forward, nothing left to be "Alley-oop" about.
+  const isReverse =
+    !isGroove && (isFakie !== (hasSpin && isReverseSpinDegree(spinTo.winner.name)));
 
   let approachName = parseApproach(approach, isFakie, hasSpin, isGroove);
   const spinName = parseSpinTo(spinTo, isGroove, isInspin, isOutspin, isFakie);
@@ -412,6 +422,14 @@ function applyGrindSynonym(result, grindName, props) {
 
   result = result.replace(grindName, synonym.newName);
   if (synonym.isReverse) {
+    // Kindgrind (Mizou's own isReverse synonym) is only ever matched
+    // AT ALL when props.isReverse is true (see the synonym filter
+    // above) — and with isReverse's own fixed formula now correctly
+    // excluding the Halfcab/True Halfcab (fakie + 180°, net forward)
+    // case, "Halfcab Kindgrind" can't happen anymore; that combination
+    // just never matches this synonym in the first place, so there's
+    // no leftover "Halfcab"/"True Halfcab" text to strip here — only
+    // "Alley-oop" (the plain non-fakie reverse case) ever needs it.
     result = result.replace("Alley-oop", "");
   }
   if (synonym.isTopside) {

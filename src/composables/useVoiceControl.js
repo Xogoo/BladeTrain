@@ -73,6 +73,27 @@ export function useVoiceControl() {
   let pausedForVisibility = false; // internal-only: temporarily stopped because the page went to the background, not because the caller stopped wanting it
   let handlers = {};
   let stopWaitingForSpeech = null; // pending resumeListeningAfterSpeech watcher, if any
+  let pendingResumeTimeout = null; // the setTimeout inside resumeListeningAfterSpeech, if any
+
+  // Cancels anything resumeListeningAfterSpeech might currently be
+  // waiting on — the initial buffer timeout AND the isSpeaking watch
+  // that can follow it. Without tracking the timeout specifically
+  // (the watch alone isn't enough), backgrounding or closing the app
+  // during that buffer window left it completely uncancellable: the
+  // mic would start listening on its own a moment later regardless of
+  // the app no longer being in front, the exact "doesn't always stop
+  // when the app closes" symptom this exists to prevent. Called from
+  // stop() and from handleVisibilityChange's hide branch below —
+  // anywhere the mic is being told to actually stop, not just from
+  // resumeListeningAfterSpeech's own re-entry guard.
+  function cancelPendingResume() {
+    if (pendingResumeTimeout !== null) {
+      window.clearTimeout(pendingResumeTimeout);
+      pendingResumeTimeout = null;
+    }
+    stopWaitingForSpeech?.();
+    stopWaitingForSpeech = null;
+  }
 
   // Turning the mic back on right when a confirmation phrase ends
   // isn't actually safe yet: landing/failing a trick also draws the
@@ -85,9 +106,16 @@ export function useVoiceControl() {
   // never opens on top of the app's own voice mid-sentence.
   const RESUME_BUFFER_MS = 350;
   function resumeListeningAfterSpeech() {
-    stopWaitingForSpeech?.();
-    stopWaitingForSpeech = null;
+    cancelPendingResume();
     const goLive = () => {
+      pendingResumeTimeout = null;
+      // Defense in depth: even if this fires despite cancelPendingResume
+      // (a genuine race — e.g. the page hid in the same tick the
+      // timeout was already due), don't turn the mic on if the app no
+      // longer wants it listening.
+      if (pausedForVisibility) {
+        return;
+      }
       shouldRestart = true;
       try {
         recognition.start();
@@ -96,7 +124,8 @@ export function useVoiceControl() {
         // Already running, or onend will pick it back up shortly.
       }
     };
-    window.setTimeout(() => {
+    pendingResumeTimeout = window.setTimeout(() => {
+      pendingResumeTimeout = null;
       if (!isSpeaking.value) {
         goLive();
         return;
@@ -216,9 +245,17 @@ export function useVoiceControl() {
       return;
     }
     if (document.hidden) {
-      if (shouldRestart) {
+      // A resume can be mid-buffer (waiting out RESUME_BUFFER_MS, or
+      // waiting for isSpeaking to clear) without shouldRestart having
+      // flipped back to true yet — that only happens inside goLive()
+      // itself. Checking shouldRestart alone missed exactly that
+      // window: the pending resume would survive backgrounding
+      // uncancelled and switch the mic on moments later regardless.
+      const hadPendingResume = pendingResumeTimeout !== null || stopWaitingForSpeech !== null;
+      if (shouldRestart || hadPendingResume) {
         pausedForVisibility = true;
         shouldRestart = false; // keep onend from racing to restart it below
+        cancelPendingResume();
         try {
           recognition.stop();
         } catch {
@@ -282,8 +319,7 @@ export function useVoiceControl() {
   function stop() {
     shouldRestart = false;
     pausedForVisibility = false;
-    stopWaitingForSpeech?.();
-    stopWaitingForSpeech = null;
+    cancelPendingResume();
     detachVisibilityHandler();
     try {
       recognition?.stop();
